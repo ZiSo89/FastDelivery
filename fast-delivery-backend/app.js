@@ -39,7 +39,7 @@ io.on('connection', (socket) => {
 
     // Παράδειγμα: Ακρόαση για νέα παραγγελία
     socket.on('newOrder', (order) => {
-        //console.log('Νέα παραγγελία:', order);
+        console.log('Νέα παραγγελία:', order);
         io.emit('orderUpdated', order); // Στέλνει ενημέρωση σε όλους τους clients
     });
 

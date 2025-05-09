@@ -1,8 +1,6 @@
 cd fast-delivery-backend
 nodemon app.js
 
-mongod
-
 cd fast-delivery-frontend
 npm start
 npm run build

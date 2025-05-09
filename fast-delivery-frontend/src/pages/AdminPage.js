@@ -11,10 +11,38 @@ function AdminPage() {
   const socket = io('http://192.168.1.8:5000'); // Σύνδεση με τον server
 
   useEffect(() => {
+    // Άκου για νέες παραγγελίες μέσω Socket.IO
+    socket.on('orderUpdated', () => {
+      console.log('Νέα παραγγελία δημιουργήθηκε. Ενημέρωση παραγγελιών...');
+      fetchOrders(); // Κάλεσε τη λειτουργία για να κάνεις fetch τις παραγγελίες
+    });
+
+    // Καθαρισμός σύνδεσης όταν αποσυνδέεται το component
+    return () => {
+      socket.off('orderUpdated');
+    };
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get('http://192.168.1.8:5000/api/orders');
+      const sortedOrders = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setOrders(sortedOrders);
+    } catch (err) {
+      console.error('Σφάλμα κατά τη φόρτωση των παραγγελιών:', err);
+      setError('Αποτυχία φόρτωσης των παραγγελιών. Παρακαλώ δοκιμάστε ξανά.');
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
     // Άκου για ενημερώσεις κατάστασης παραγγελιών μέσω Socket.IO
     socket.on('orderStatusUpdated', (updatedOrder) => {
       console.log('Η κατάσταση της παραγγελίας ενημερώθηκε:', updatedOrder);
-  
+
       // Ενημέρωση του state για τη συγκεκριμένη παραγγελία
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
@@ -22,7 +50,7 @@ function AdminPage() {
         )
       );
     });
-  
+
     // Καθαρισμός σύνδεσης όταν αποσυνδέεται το component
     return () => {
       socket.off('orderStatusUpdated');
@@ -41,17 +69,6 @@ function AdminPage() {
       }
     };
 
-    // Φόρτωσε τη λίστα των παραγγελιών
-    const fetchOrders = async () => {
-      try {
-        const response = await axios.get('http://192.168.1.8:5000/api/orders');
-        setOrders(response.data);
-      } catch (err) {
-        console.error('Σφάλμα κατά τη φόρτωση των παραγγελιών:', err);
-        setError('Αποτυχία φόρτωσης των παραγγελιών. Παρακαλώ δοκιμάστε ξανά.');
-      }
-    };
-
     // Φόρτωσε τη λίστα των διανομέων
     const fetchDeliveryUsers = async () => {
       try {
@@ -64,7 +81,6 @@ function AdminPage() {
     };
 
     fetchStores();
-    fetchOrders();
     fetchDeliveryUsers();
   }, []);
 
@@ -239,7 +255,6 @@ function AdminPage() {
       {/* Κατηγορία: Όλα τα Καταστήματα */}
       <div className="p-4 mb-4" style={{ backgroundColor: '#f1f3f5', borderRadius: '8px' }}>
         <h2 className="mb-3 text-warning">Όλα τα Καταστήματα</h2>
-        {error && <p className="text-danger">{error}</p>}
         <div className="text-center mb-4">
           <Link to="/admin/stores" className="btn btn-primary">
             Προσθήκη Καταστήματος
