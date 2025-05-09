@@ -1,70 +1,103 @@
-# Getting Started with Create React App
+# **FastDelivery**
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Ένα ολοκληρωμένο σύστημα παραγγελιών delivery που περιλαμβάνει backend και frontend για τη διαχείριση παραγγελιών, καταστημάτων και διανομών.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## **Περιεχόμενα**
+- [Περιγραφή Έργου](#περιγραφή-έργου)
+- [Λειτουργίες Χρηστών](#λειτουργίες-χρηστών)
+- [Εγκατάσταση](#εγκατάσταση)
+- [Οδηγίες Εκτέλεσης](#οδηγίες-εκτέλεσης)
+- [Τεχνολογίες](#τεχνολογίες)
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://192.168.1.8:3000](http://192.168.1.8:3000) to view it in your browser.
+## **Περιγραφή Έργου**
+Το FastDelivery επιτρέπει τη δημιουργία και διαχείριση παραγγελιών delivery από πελάτες, διαχειριστές και διανομείς. Περιλαμβάνει:
+- **Frontend**: Εφαρμογή React για πλοήγηση στον ιστότοπο.
+- **Backend**: Express server με σύνδεση σε MongoDB για αποθήκευση δεδομένων.
+- **Real-Time Ενημερώσεις**: Socket.IO για ενημερώσεις παραγγελιών σε πραγματικό χρόνο.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## **Λειτουργίες Χρηστών**
+### **1. Πελάτης (Customer)**
+- Δημιουργία παραγγελίας με επιλογή καταστήματος και διεύθυνσης παράδοσης.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### **2. Διαχειριστής (Admin)**
+- Διαχείριση καταστημάτων, παραγγελιών και χρηστών.
 
-### `npm run build`
+### **3. Διανομέας (Delivery User)**
+- Προβολή αναθέσεων παραγγελιών και ενημέρωση κατάστασης παραγγελιών.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## **Εγκατάσταση**
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### **Προαπαιτούμενα**
+- [Node.js](https://nodejs.org/) (έκδοση 16 ή νεότερη)
+- [MongoDB](https://www.mongodb.com/) (τοπικά ή σε cloud)
+- Git
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### **Βήματα Εγκατάστασης**
+1. **Κλωνοποίηση του Repository**
+   ```bash
+   git clone https://github.com/ZiSo89/FastDelivery.git
+   cd FastDelivery
+   ```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+2. **Εγκατάσταση Εξαρτήσεων**
+   - **Backend**:
+     ```bash
+     cd fast-delivery-backend
+     npm install
+     ```
+   - **Frontend**:
+     ```bash
+     cd ../fast-delivery-frontend
+     npm install
+     ```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+3. **Δημιουργία `.env` Αρχείου** για το Backend
+   Δημιουργήστε ένα αρχείο `.env` στον φάκελο `fast-delivery-backend` και προσθέστε τα εξής:
+   ```
+   MONGO_URI=mongodb://<your-mongodb-url>:27017/fastdelivery
+   PORT=5000
+   ```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## **Οδηγίες Εκτέλεσης**
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### **1. Εκκίνηση Backend**
+Μεταβείτε στον φάκελο `fast-delivery-backend` και τρέξτε:
+```bash
+npm start
+```
+Ο server θα τρέξει στο `http://localhost:5000`.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+### **2. Εκκίνηση Frontend**
+Μεταβείτε στον φάκελο `fast-delivery-frontend` και τρέξτε:
+```bash
+npm start
+```
+Η εφαρμογή θα ανοίξει στο `http://localhost:3000`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+---
 
-### Analyzing the Bundle Size
+## **Τεχνολογίες**
+- **Frontend**: React.js με React Router
+- **Backend**: Express.js, Mongoose
+- **Database**: MongoDB
+- **Real-Time**: Socket.IO
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+---
 
-### Making a Progressive Web App
+Αν αντιμετωπίσετε προβλήματα ή έχετε απορίες, παρακαλώ ανοίξτε ένα θέμα (issue) στο [GitHub Repository](https://github.com/ZiSo89/FastDelivery/issues).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+--- 
