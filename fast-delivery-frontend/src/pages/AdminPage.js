@@ -186,6 +186,19 @@ function AdminPage() {
                     Διαγραφή
                   </button>
                   <div className="mb-3">
+                    <label className="form-label">
+                      Κόστος Παραγγελίας:
+                    </label>
+                    <input
+                      type="number"
+                      className="form-control rounded"
+                      name="cost"
+                      //value={order.cost || ''}
+                      //onChange={handleChange}
+                      required
+                    />
+                  </div>
+                  <div className="mb-3">
                     <label className="form-label">Ανάθεση σε Διανομέα:</label>
                     <select
                       value={order.assignedTo || ''} // Χρησιμοποιεί το assignedTo της παραγγελίας
