@@ -10,6 +10,7 @@ const orderSchema = new mongoose.Schema({
         enum: ['Σε Εξέλιξη', 'Ολοκληρώθηκε', 'Ακυρώθηκε'], // Μεταφρασμένες καταστάσεις
         default: 'Σε Εξέλιξη' // Αφαίρεση του Pending
     }, // Προσθήκη πεδίου status
+    cost: { type: Number, required: false, default: 0 }, // Προσθήκη πεδίου cost
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

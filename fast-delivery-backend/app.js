@@ -3,6 +3,17 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const http = require('http'); // Για τη δημιουργία HTTP server
+const https = require('https');
+const fs = require('fs');
+const PORT = 5000;
+
+const options = {
+    key: fs.readFileSync("../fast-delivery-frontend/.cert/key.key"),
+    cert: fs.readFileSync("../fast-delivery-frontend/.cert/cert.crt"),
+    requestCert: false,
+    rejectUnauthorized: false
+};
+
 const { Server } = require('socket.io'); // Socket.IO
 
 const userRoutes = require('./routes/userRoutes');
@@ -10,7 +21,10 @@ const orderRoutes = require('./routes/orderRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 
 const app = express();
-const server = http.createServer(app); // Δημιουργία HTTP server
+
+const server = https.createServer(options, app);
+//const server = http.createServer(app); // Δημιουργία HTTP server
+
 const io = new Server(server, {
     cors: {
         origin: '*', // Επιτρέπει συνδέσεις από οποιοδήποτε origin
@@ -39,19 +53,14 @@ io.on('connection', (socket) => {
 
     // Παράδειγμα: Ακρόαση για νέα παραγγελία
     socket.on('newOrder', (order) => {
-        console.log('Νέα παραγγελία:', order);
+        //console.log('Νέα παραγγελία:', order);
         io.emit('orderUpdated', order); // Στέλνει ενημέρωση σε όλους τους clients
     });
-
-    socket.on('updateOrderStatus', (updatedOrder) => {
-        io.emit('orderStatusUpdated', updatedOrder); // Στέλνει ενημέρωση σε όλους τους clients
-    });
-
+    
     socket.on('disconnect', () => {
 
     });
 });
 
 // Start Server
-const PORT = 5000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

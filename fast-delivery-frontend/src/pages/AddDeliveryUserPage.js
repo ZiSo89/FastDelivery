@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 function AddDeliveryUserPage() {
     const [name, setName] = useState('');
@@ -9,7 +10,7 @@ function AddDeliveryUserPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://192.168.1.8:5000/api/users/delivery', { name });
+            await axios.post(`${API_BASE_URL}/api/users/delivery`, { name });
             setMessage('Ο διανομέας προστέθηκε με επιτυχία!');
             setError('');
             setName(''); // Καθαρισμός του πεδίου

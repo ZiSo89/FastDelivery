@@ -4,20 +4,21 @@ import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { FaStore, FaMapMarkerAlt, FaClipboardList } from 'react-icons/fa';
 import { Spinner } from 'react-bootstrap';
-import './OrderPage.css'; // Import custom CSS for dark mode and styling
+import { API_BASE_URL } from '../config';
+import './style.css'; // Import custom CSS for dark mode and styling
 
 function OrderPage() {
   const [order, setOrder] = useState({ address: '', items: '', storeId: '' });
   const [stores, setStores] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const socket = io('http://192.168.1.8:5000');
+  const socket = io(API_BASE_URL);
 
   useEffect(() => {
     const fetchStores = async () => {
       setLoading(true);
       try {
-        const response = await axios.get('http://192.168.1.8:5000/api/stores');
+        const response = await axios.get(`${API_BASE_URL}/api/stores`);
         setStores(response.data);
       } catch (err) {
         console.error('Error fetching stores:', err);
@@ -37,7 +38,7 @@ function OrderPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post('http://192.168.1.8:5000/api/orders', order);
+      const response = await axios.post(`${API_BASE_URL}/api/orders`, order);
       setMessage('Η παραγγελία καταχωρήθηκε με επιτυχία!');
       setOrder({ address: '', items: '', storeId: '' });
       socket.emit('newOrder', response.data);
