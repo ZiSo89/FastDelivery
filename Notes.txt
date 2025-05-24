@@ -1,7 +1,0 @@
-cd fast-delivery-backend
-nodemon app.js
-
-cd fast-delivery-frontend
-npm start
-npm run build
-

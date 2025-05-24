@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client'; // Εισαγωγή του Socket.IO client
+import { API_BASE_URL } from '../config';
+
+const socket = io(API_BASE_URL); // Σύνδεση με τον Socket.IO server
 
 function DeliveryPage() {
     const [deliveryUsers, setDeliveryUsers] = useState([]); // Λίστα με τους delivery χρήστες
@@ -9,35 +12,41 @@ function DeliveryPage() {
     const [error, setError] = useState('');
     const [statusFilters, setStatusFilters] = useState({
         'Σε Εξέλιξη': true,
-        'Ολοκληρώθηκε': true,
-        'Ακυρώθηκε': true,
+        'Ολοκληρώθηκε': false,
+        'Ακυρώθηκε': false,
     }); // Φίλτρα για τις καταστάσεις
-    const socket = io('http://192.168.1.8:5000'); // Σύνδεση με τον Socket.IO server
+
+    const fetchAssignedOrders = async () => {
+        if (!selectedUserId) return; // Αν δεν έχει επιλεγεί χρήστης, μην κάνεις request
+        try {
+            //console.log('Ανάκτηση παραγγελιών για userId:', selectedUserId); // Debug log
+            const response = await axios.get(`${API_BASE_URL}/api/orders/assigned/${selectedUserId}`);
+            //console.log('Παραγγελίες που ανακτήθηκαν:', response.data); // Debug log
+            setOrders(response.data);
+        } catch (err) {
+            console.error('Σφάλμα κατά την ανάκτηση των παραγγελιών:', err);
+            setError('Αποτυχία ανάκτησης των παραγγελιών. Παρακαλώ δοκιμάστε ξανά.');
+        }
+    };
 
     useEffect(() => {
-        // Άκου για ενημερώσεις κατάστασης παραγγελιών μέσω Socket.IO
-        socket.on('orderStatusUpdated', (updatedOrder) => {
-            console.log('Η κατάσταση της παραγγελίας ενημερώθηκε:', updatedOrder);
-
-            // Ενημέρωση του state για τη συγκεκριμένη παραγγελία
-            setOrders((prevOrders) =>
-                prevOrders.map((order) =>
-                    order._id === updatedOrder._id ? { ...order, status: updatedOrder.status } : order
-                )
-            );
+        // Άκου για νέες παραγγελίες μέσω Socket.IO
+        socket.on('orderUpdated', () => {
+            //console.log('Νέα παραγγελία δημιουργήθηκε. Ενημέρωση παραγγελιών...');
+            fetchAssignedOrders(); // Κάλεσε τη λειτουργία για να κάνεις fetch τις παραγγελίες
         });
 
         // Καθαρισμός σύνδεσης όταν αποσυνδέεται το component
         return () => {
-            socket.off('orderStatusUpdated');
+            socket.off('orderUpdated');
         };
-    }, []);
+    });
 
     useEffect(() => {
         // Φόρτωσε τη λίστα των delivery χρηστών
         const fetchDeliveryUsers = async () => {
             try {
-                const response = await axios.get('http://192.168.1.8:5000/api/users/delivery');
+                const response = await axios.get(`${API_BASE_URL}/api/users/delivery`);
                 setDeliveryUsers(response.data);
             } catch (err) {
                 console.error('Σφάλμα κατά τη φόρτωση των διανομέων:', err);
@@ -48,55 +57,44 @@ function DeliveryPage() {
         fetchDeliveryUsers();
     }, []);
 
-    useEffect(() => {
-        const fetchAssignedOrders = async () => {
-            if (!selectedUserId) return; // Αν δεν έχει επιλεγεί χρήστης, μην κάνεις request
-            try {
-                console.log('Ανάκτηση παραγγελιών για userId:', selectedUserId); // Debug log
-                const response = await axios.get(`http://192.168.1.8:5000/api/orders/assigned/${selectedUserId}`);
-                console.log('Παραγγελίες που ανακτήθηκαν:', response.data); // Debug log
-                setOrders(response.data);
-            } catch (err) {
-                console.error('Σφάλμα κατά την ανάκτηση των παραγγελιών:', err);
-                setError('Αποτυχία ανάκτησης των παραγγελιών. Παρακαλώ δοκιμάστε ξανά.');
-            }
-        };
 
+
+    useEffect(() => {
         fetchAssignedOrders();
-    }, [selectedUserId]);
+    });
 
+    /*
+        useEffect(() => {
+            // Άκου για ενημερώσεις παραγγελιών μέσω Socket.IO
+            socket.on('orderUpdated', async (updatedOrder) => {
+                //console.log('Ενημερωμένη παραγγελία:', updatedOrder);
     
-    useEffect(() => {
-        // Άκου για ενημερώσεις παραγγελιών μέσω Socket.IO
-        socket.on('orderUpdated', async (updatedOrder) => {
-            console.log('Ενημερωμένη παραγγελία:', updatedOrder);
-    
-            // Ανάκτηση των παραγγελιών του επιλεγμένου χρήστη
-            if (selectedUserId) {
-                try {
-                    const response = await axios.get(`http://192.168.1.8:5000/api/orders/assigned/${selectedUserId}`);
-                    console.log('Ανανεωμένες παραγγελίες:', response.data);
-                    setOrders(response.data); // Ενημέρωση του state με τις νέες παραγγελίες
-                } catch (err) {
-                    console.error('Σφάλμα κατά την ανάκτηση των παραγγελιών:', err);
-                    setError('Αποτυχία ανάκτησης των παραγγελιών. Παρακαλώ δοκιμάστε ξανά.');
+                // Ανάκτηση των παραγγελιών του επιλεγμένου χρήστη
+                if (selectedUserId) {
+                    try {
+                        const response = await axios.get(`${API_BASE_URL}/api/orders/assigned/${selectedUserId}`);
+                        //console.log('Ανανεωμένες παραγγελίες:', response.data);
+                        setOrders(response.data); // Ενημέρωση του state με τις νέες παραγγελίες
+                    } catch (err) {
+                        console.error('Σφάλμα κατά την ανάκτηση των παραγγελιών:', err);
+                        setError('Αποτυχία ανάκτησης των παραγγελιών. Παρακαλώ δοκιμάστε ξανά.');
+                    }
                 }
-            }
-        });
+            });
     
-        // Καθαρισμός σύνδεσης όταν αποσυνδέεται το component
-        return () => {
-            socket.off('orderUpdated');
-        };
-    }, [selectedUserId]);
+            // Καθαρισμός σύνδεσης όταν αποσυνδέεται το component
+            return () => {
+                socket.off('orderUpdated');
+            };
+        }, [selectedUserId]);
     
-
+    */
 
     const handleStatusChange = async (orderId, status) => {
         try {
-            const response = await axios.put(`http://192.168.1.8:5000/api/orders/${orderId}/status`, { status });
-            console.log('Η κατάσταση της παραγγελίας ενημερώθηκε:', response.data);
-            socket.emit('updateOrderStatus', response.data); // Στέλνει ενημέρωση στους clients
+            const response = await axios.put(`${API_BASE_URL}/api/orders/${orderId}/status`, { status });
+            //console.log('Η κατάσταση της παραγγελίας ενημερώθηκε:', response.data);
+            socket.emit('newOrder', response.data); // Στέλνει ενημέρωση στους clients
             // Ενημέρωση του state για τη συγκεκριμένη παραγγελία
             setOrders((prevOrders) =>
                 prevOrders.map((order) =>
@@ -142,7 +140,7 @@ function DeliveryPage() {
             <div className="mb-4">
                 <h5>Φίλτρα Κατάστασης:</h5>
                 {Object.keys(statusFilters).map((status) => (
-                    <div className="form-check" key={status}>
+                    <div className="form-check form-switch" key={status}>
                         <input
                             className="form-check-input"
                             type="checkbox"
@@ -176,6 +174,9 @@ function DeliveryPage() {
                                     </p>
                                     <p className="card-text">
                                         <strong>Κατάσταση:</strong> {order.status}
+                                    </p>
+                                    <p className="card-text">
+                                        <strong>Κόστος:</strong> {order.cost}€
                                     </p>
                                     <div className="mb-3">
                                         <label className="form-label">Αλλαγή Κατάστασης:</label>

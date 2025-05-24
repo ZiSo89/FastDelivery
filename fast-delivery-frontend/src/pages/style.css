@@ -1,0 +1,80 @@
+.order-page {
+  background-image: url('../../public/assets/images/background.png'),
+    linear-gradient(to right, #1a212a, #283544);
+  /* Εδώ μπορείτε να προσθέσετε την εικόνα φόντου */
+  /*  url('../../public/assets/images/background.png'); */
+  background-size: cover;
+  /* Καλύπτει ολόκληρη την περιοχή */
+  background-position: center;
+  /* Κεντράρει την εικόνα */
+  background-attachment: fixed;
+  /* Η εικόνα παραμένει σταθερή κατά την κύλιση */
+  background-repeat: no-repeat;
+  /* Αποτρέπει την επανάληψη της εικόνας */
+  min-height: 100vh;
+  /* Εξασφαλίζει ότι το background καλύπτει όλο το ύψος της σελίδας */
+  display: flex;
+  /* Χρησιμοποιείται για να κεντράρεις περιεχόμενο αν χρειάζεται */
+  flex-direction: column;
+  justify-content: space-between;
+  /* Διαχωρίζει το header, το main και το footer */
+  color: #ffffff;
+  /* Κείμενο σε λευκό χρώμα */
+  font-family: 'Roboto', sans-serif;
+}
+
+.header-dark {
+  background-color: rgb(33, 37, 41);
+}
+
+.order-page .card {
+  background-color: rgba(30, 30, 30, 0.9);
+  /* Ελαφρώς διαφανές φόντο */
+  border: 1px solid #333;
+  animation: fadeIn 1s ease-in-out;
+}
+
+.order-page .form-select,
+.order-page .form-control {
+  background-color: #1e1e1e;
+  color: #ffffff;
+  border: 1px solid #555;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.order-page .form-control:focus,
+.order-page .form-select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+}
+
+.order-page .btn-primary {
+  background-color: #007bff;
+  border-color: #0056b3;
+  transition: transform 0.3s, background-color 0.3s;
+}
+
+.order-page .btn-primary:disabled {
+  background-color: #0056b3;
+  border-color: #003f7f;
+}
+
+.order-page .btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #003f7f;
+  transform: scale(1.05);
+}
+
+.order-page .alert {
+  border-radius: 8px;
+  animation: slideDown 0.5s ease-in-out;
+}
+
+.order-page textarea {
+  resize: none;
+}
+
+
+.form-check-label{
+    float: left;
+ }

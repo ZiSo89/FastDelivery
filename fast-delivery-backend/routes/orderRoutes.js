@@ -5,8 +5,8 @@ const Order = require('../models/Order');
 // Δημιουργία νέας παραγγελίας
 router.post('/', async (req, res) => {
     try {
-        const { address, items, storeId, status } = req.body;
-        const newOrder = new Order({ address, items, storeId, status: status || 'Σε Εξέλιξη' });
+        const { address, items, storeId, status, cost } = req.body;
+        const newOrder = new Order({ address, items, storeId, status: status || 'Σε Εξέλιξη', cost: cost || '' });
         await newOrder.save();
         res.status(201).json({ message: 'Order created successfully', order: newOrder });
     } catch (error) {
@@ -53,7 +53,7 @@ router.put('/:id/assign', async (req, res) => {
             { new: true }
         );
 
-        //console.log('Assigned to:', assignedTo);    
+        //console.log('Assigned to:', req.body);    
         //console.log('Order ID:', orderId);  
 
         if (!updatedOrder) {
@@ -64,6 +64,31 @@ router.put('/:id/assign', async (req, res) => {
     } catch (err) {
         console.error('Error assigning order:', err);
         res.status(500).json({ error: 'Failed to assign order' });
+    }
+});
+
+// Ανάθεση παραγγελίας σε παραγγελία
+router.put('/:id/cost', async (req, res) => {
+    try {
+        const costTo = req.body.cost; // Το cost της παραγγελίας
+        const orderId = req.params.id;
+
+        const updatedOrder = await Order.findByIdAndUpdate(orderId,
+            { cost: costTo }, // Πρέπει να είναι αντικείμενο
+            { new: true }
+        );
+
+        //console.log('Cost updated to:', costTo);
+        //console.log('Order ID:', orderId);
+
+        if (!updatedOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        res.status(200).json({ message: 'Order cost updated successfully', order: updatedOrder });
+    } catch (err) {
+        console.error('Error assigning cost to order:', err);
+        res.status(500).json({ error: 'Failed to assign cost to order' });
     }
 });
 

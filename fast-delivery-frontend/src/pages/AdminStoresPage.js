@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 function AdminStoresPage() {
     const [store, setStore] = useState({ name: '', address: '', workingHours: '' });
@@ -12,9 +13,9 @@ function AdminStoresPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://192.168.1.8:5000/api/stores', store);
+            await axios.post(`${API_BASE_URL}/api/stores`, store);
             setMessage('Το κατάστημα προστέθηκε με επιτυχία!');
-            console.log('Απάντηση από το backend:', response.data);
+            //console.log('Απάντηση από το backend:', response.data);
             setStore({ name: '', address: '', workingHours: '' }); // Καθαρισμός πεδίων
         } catch (error) {
             console.error('Σφάλμα κατά την προσθήκη καταστήματος:', error);

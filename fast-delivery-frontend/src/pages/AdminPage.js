@@ -2,30 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { API_BASE_URL } from '../config';
 
 function AdminPage() {
   const [stores, setStores] = useState([]); // State για αποθήκευση της λίστας καταστημάτων
   const [orders, setOrders] = useState([]); // State για αποθήκευση της λίστας παραγγελιών
   const [deliveryUsers, setDeliveryUsers] = useState([]); // State για διανομείς
   const [error, setError] = useState(''); // State για αποθήκευση σφαλμάτων
-  const socket = io('http://192.168.1.8:5000'); // Σύνδεση με τον server
-
-  useEffect(() => {
-    // Άκου για νέες παραγγελίες μέσω Socket.IO
-    socket.on('orderUpdated', () => {
-      console.log('Νέα παραγγελία δημιουργήθηκε. Ενημέρωση παραγγελιών...');
-      fetchOrders(); // Κάλεσε τη λειτουργία για να κάνεις fetch τις παραγγελίες
-    });
-
-    // Καθαρισμός σύνδεσης όταν αποσυνδέεται το component
-    return () => {
-      socket.off('orderUpdated');
-    };
-  }, []);
+  const socket = io(API_BASE_URL); // Σύνδεση με τον server
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('http://192.168.1.8:5000/api/orders');
+      const response = await axios.get(`${API_BASE_URL}/api/orders`);
       const sortedOrders = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setOrders(sortedOrders);
     } catch (err) {
@@ -35,33 +23,29 @@ function AdminPage() {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  useEffect(() => {
-    // Άκου για ενημερώσεις κατάστασης παραγγελιών μέσω Socket.IO
-    socket.on('orderStatusUpdated', (updatedOrder) => {
-      console.log('Η κατάσταση της παραγγελίας ενημερώθηκε:', updatedOrder);
-
-      // Ενημέρωση του state για τη συγκεκριμένη παραγγελία
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order._id === updatedOrder._id ? { ...order, status: updatedOrder.status } : order
-        )
-      );
+    // Άκου για νέες παραγγελίες μέσω Socket.IO
+    socket.on('orderUpdated', () => {
+      //console.log('Νέα παραγγελία δημιουργήθηκε. Ενημέρωση παραγγελιών...');
+      fetchOrders(); // Κάλεσε τη λειτουργία για να κάνεις fetch τις παραγγελίες
     });
 
     // Καθαρισμός σύνδεσης όταν αποσυνδέεται το component
     return () => {
-      socket.off('orderStatusUpdated');
+      socket.off('orderUpdated');
     };
+  }, [socket]);
+
+
+  useEffect(() => {
+    fetchOrders();
   }, []);
+
 
   useEffect(() => {
     // Φόρτωσε τη λίστα των καταστημάτων
     const fetchStores = async () => {
       try {
-        const response = await axios.get('http://192.168.1.8:5000/api/stores');
+        const response = await axios.get(`${API_BASE_URL}/api/stores`);
         setStores(response.data);
       } catch (err) {
         console.error('Σφάλμα κατά τη φόρτωση των καταστημάτων:', err);
@@ -72,7 +56,7 @@ function AdminPage() {
     // Φόρτωσε τη λίστα των διανομέων
     const fetchDeliveryUsers = async () => {
       try {
-        const response = await axios.get('http://192.168.1.8:5000/api/users/delivery');
+        const response = await axios.get(`${API_BASE_URL}/api/users/delivery`);
         setDeliveryUsers(response.data);
       } catch (err) {
         console.error('Σφάλμα κατά τη φόρτωση των διανομέων:', err);
@@ -86,7 +70,7 @@ function AdminPage() {
 
   const handleOrderDelete = async (id) => {
     try {
-      await axios.delete(`http://192.168.1.8:5000/api/orders/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/orders/${id}`);
       setOrders(orders.filter((order) => order._id !== id));
     } catch (err) {
       console.error('Σφάλμα κατά τη διαγραφή της παραγγελίας:', err);
@@ -96,7 +80,7 @@ function AdminPage() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://192.168.1.8:5000/api/stores/${id}`);
+      await axios.delete(`${API_BASE_URL}/api/stores/${id}`);
       setStores(stores.filter((store) => store._id !== id)); // Αφαίρεσε το διαγραμμένο κατάστημα από το state
     } catch (err) {
       console.error('Σφάλμα κατά τη διαγραφή του καταστήματος:', err);
@@ -106,7 +90,7 @@ function AdminPage() {
 
   const handleDeleteUser = async (userId) => {
     try {
-      await axios.delete(`http://192.168.1.8:5000/api/users/${userId}`);
+      await axios.delete(`${API_BASE_URL}/api/users/${userId}`);
       setDeliveryUsers(deliveryUsers.filter((user) => user._id !== userId));
     } catch (err) {
       console.error('Σφάλμα κατά τη διαγραφή του χρήστη:', err);
@@ -116,10 +100,11 @@ function AdminPage() {
 
   const handleAssignOrder = async (orderId, userId) => {
     try {
-      const response = await axios.put(`http://192.168.1.8:5000/api/orders/${orderId}/assign`, {
+      const response = await axios.put(`${API_BASE_URL}/api/orders/${orderId}/assign`, {
         assignedTo: userId,
       });
-      console.log('Η παραγγελία ανατέθηκε:', response.data);
+      //console.log('Η παραγγελία ανατέθηκε:', response.data);
+      //console.log('response', response);
 
       socket.emit('newOrder', response.data); // Στέλνει ενημέρωση στους clients
       // Ενημέρωση του state για τη συγκεκριμένη παραγγελία
@@ -136,9 +121,9 @@ function AdminPage() {
 
   const handleStatusChange = async (orderId, status) => {
     try {
-      const response = await axios.put(`http://192.168.1.8:5000/api/orders/${orderId}/status`, { status });
-      console.log('Η κατάσταση της παραγγελίας ενημερώθηκε:', response.data);
-      socket.emit('updateOrderStatus', response.data); // Στέλνει ενημέρωση στους clients
+      const response = await axios.put(`${API_BASE_URL}/api/orders/${orderId}/status`, { status });
+      //console.log('Η κατάσταση της παραγγελίας ενημερώθηκε:', response.data);
+      socket.emit('newOrder', response.data); // Στέλνει ενημέρωση στους clients
       // Ενημέρωση του state για τη συγκεκριμένη παραγγελία
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
@@ -148,6 +133,23 @@ function AdminPage() {
     } catch (err) {
       console.error('Σφάλμα κατά την ενημέρωση της κατάστασης:', err);
       setError('Αποτυχία ενημέρωσης της κατάστασης. Παρακαλώ δοκιμάστε ξανά.');
+    }
+  };
+
+  const handleCostChange = async (orderId, cost) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/api/orders/${orderId}/cost`, { cost });
+      //console.log('Το κόστος της παραγγελίας ενημερώθηκε:', response.data);
+      socket.emit('newOrder', response.data); // Στέλνει ενημέρωση στους clients
+      // Ενημέρωση του state για τη συγκεκριμένη παραγγελία
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order._id === orderId ? { ...order, cost } : order
+        )
+      );
+    } catch (err) {
+      console.error('Σφάλμα κατά την ενημέρωση του κόστους:', err);
+      setError('Αποτυχία ενημέρωσης του κόστους. Παρακαλώ δοκιμάστε ξανά.');
     }
   };
 
@@ -161,7 +163,7 @@ function AdminPage() {
         <h2 className="mb-3 text-primary">Όλες οι Παραγγελίες</h2>
         <div className="row">
           {orders.map((order) => (
-            <div className="col-md-6 mb-4" key={order._id}>
+            <div className="col-sm-4 mb-4" key={order._id}>
               <div className="card">
                 <div className="card-body">
                   <p className="card-text">
@@ -176,15 +178,27 @@ function AdminPage() {
                   <p className="card-text">
                     <strong>Διεύθυνση Παράδοσης:</strong> {order.address}
                   </p>
-                  <p className="card-text">
-                    <strong>Κατάσταση:</strong> {order.status}
-                  </p>
                   <button
                     className="btn btn-danger"
                     onClick={() => handleOrderDelete(order._id)}
                   >
                     Διαγραφή
                   </button>
+
+                  <div className="mb-3">
+                    <label className="form-label">Ανάθεση Κόστους:</label>
+                    <div className="input-group">
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control rounded"
+                        name="cost"
+                        value={order.cost || ''}
+                        onChange={(e) => handleCostChange(order._id, e.target.value)}
+                      />
+                      <span className="input-group-text">€</span>
+                    </div>
+                  </div>
                   <div className="mb-3">
                     <label className="form-label">Ανάθεση σε Διανομέα:</label>
                     <select
