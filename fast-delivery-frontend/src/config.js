@@ -1,1 +1,1 @@
-export const API_BASE_URL = 'https://fastdelivery-api.onrender.com:5000';
+export const API_BASE_URL = 'https://fastdelivery-api.onrender.com';
