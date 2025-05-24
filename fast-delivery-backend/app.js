@@ -22,8 +22,8 @@ const storeRoutes = require('./routes/storeRoutes');
 
 const app = express();
 
-const server = https.createServer(options, app);
-//const server = http.createServer(app); // Δημιουργία HTTP server
+//const server = https.createServer(options, app);
+const server = http.createServer(app); // Δημιουργία HTTP server
 
 const io = new Server(server, {
     cors: {
