@@ -41,7 +41,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/stores', storeRoutes);
 
 // Database Connection
-mongoose.connect('mongodb://192.168.1.8:27017/fastdelivery', {
+//mongodb+srv://fastdelivery:root@cluster0.istyclo.mongodb.net/
+//mongodb://192.168.1.8:27017/fastdelivery
+mongoose.connect('mongodb+srv://fastdelivery:root@cluster0.istyclo.mongodb.net', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 })
