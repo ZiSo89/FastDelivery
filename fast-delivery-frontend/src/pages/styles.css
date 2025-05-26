@@ -1,0 +1,96 @@
+body {
+  background: none;
+}
+
+.order-page {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(120deg, #232b39 0%, #283544 100%);
+  min-height: 100vh;
+  animation: bgMove 10s ease-in-out infinite alternate;
+}
+
+@keyframes bgMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.order-page > .container {
+  flex: 1;
+}
+
+/* Card styling with animation */
+.order-page .card {
+  background: rgba(34, 40, 49, 0.97);
+  box-shadow: 0 4px 24px 0 rgba(255, 152, 0, 0.15);
+  animation: fadeInUp 3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Button with pulse effect */
+.order-page .btn-primary {
+  background: linear-gradient(90deg, #ff9800 0%, #ff5722 100%);
+  border: none;
+  color: #fff;
+  font-weight: bold;
+  transition: transform 0.3s, background 0.3s;
+  box-shadow: 0 2px 8px 0 rgba(255, 152, 0, 0.15);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 152, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 152, 0, 0);
+  }
+}
+
+.order-page .btn-primary:hover {
+  background: linear-gradient(90deg, #ff5722 0%, #ff9800 100%);
+  transform: scale(1.07);
+}
+
+.order-page .form-select,
+.order-page .form-control {
+  background-color: #232b39;
+  color: #fff;
+  border: 1.5px solid #ff9800;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.order-page .form-control:focus,
+.order-page .form-select:focus {
+  border-color: #ff5722;
+  box-shadow: 0 0 8px rgba(255, 87, 34, 0.5);
+}
+
+.order-page .alert {
+  border-radius: 8px;
+  animation: fadeInUp 0.7s;
+  background: linear-gradient(90deg, #ff9800 0%, #ff5722 100%);
+  color: #fff;
+  border: none;
+}
+
+.order-page textarea {
+  resize: none;
+}
