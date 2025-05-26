@@ -5,7 +5,7 @@ const cors = require('cors');
 const http = require('http'); // Για τη δημιουργία HTTP server
 const https = require('https');
 const fs = require('fs');
-const PORT = 5000;
+const PORT = 4000;
 
 const options = {
     key: fs.readFileSync("../fast-delivery-frontend/.cert/key.key"),
@@ -40,8 +40,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/stores', storeRoutes);
 
+
 // Database Connection
-//mongodb+srv://fastdelivery:root@cluster0.istyclo.mongodb.net/
 //mongodb://192.168.1.8:27017/fastdelivery
 mongoose.connect('mongodb+srv://fastdelivery:root@cluster0.istyclo.mongodb.net', {
     useNewUrlParser: true,
