@@ -11,7 +11,7 @@ import './App.css';
 
 function App() {
   return (
-    <Router basename="/">
+    <Router basename="https://fastdelivery-gglm.onrender.com">
       <div className="App">
         <Routes>
           <Route path="/" element={<HomePage />} />
