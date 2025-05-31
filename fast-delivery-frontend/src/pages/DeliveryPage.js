@@ -170,14 +170,23 @@ function DeliveryPage() {
                                         <strong>Διεύθυνση Παράδοσης:</strong> {order.address}
                                     </p>
                                     <p className="card-text">
-                                        <strong>Προϊόντα:</strong> {order.items}
+                                        <strong>Όνομα Πελάτη:</strong> {order.name}
                                     </p>
+                                    <p className="card-text">
+                                        <strong>Τηλέφωνο Πελάτη:</strong> {' '}
+                                        <a
+                                            href={`tel:${order.phone}`}
+                                            style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 'bold' }}
+                                        >
+                                            {order.phone}
+                                        </a></p>
                                     <p className="card-text">
                                         <strong>Κατάσταση:</strong> {order.status}
                                     </p>
                                     <p className="card-text">
                                         <strong>Κόστος:</strong> {order.cost}€
                                     </p>
+
                                     <div className="mb-3">
                                         <label className="form-label">Αλλαγή Κατάστασης:</label>
                                         <select
