@@ -182,8 +182,15 @@ function AdminPage() {
                     <strong>Όνομα Πελάτη:</strong> {order.name}
                   </p>
                   <p className="card-text">
-                    <strong>Τηλέφωνο Πελάτη:</strong> {order.phone}
+                    <strong>Τηλέφωνο Πελάτη:</strong> {' '}
+                    <a
+                      href={`tel:${order.phone}`}
+                      style={{ color: '#1976d2', textDecoration: 'underline', fontWeight: 'bold' }}
+                    >
+                      {order.phone}
+                    </a>
                   </p>
+
 
                   <div className="mb-3">
                     <label className="form-label">Ανάθεση Κόστους:</label>
