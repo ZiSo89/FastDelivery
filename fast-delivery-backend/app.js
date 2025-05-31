@@ -5,6 +5,7 @@ const cors = require('cors');
 const http = require('http'); // Για τη δημιουργία HTTP server
 const https = require('https');
 const fs = require('fs');
+require('dotenv').config()
 const PORT = 4000;
 
 const { Server } = require('socket.io'); // Socket.IO
@@ -35,8 +36,7 @@ app.use('/api/stores', storeRoutes);
 
 
 // Database Connection
-//mongodb://192.168.1.8:27017/fastdelivery
-mongoose.connect('mongodb+srv://fastdelivery:root@cluster0.istyclo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+mongoose.connect(process.env.DATABASE_URL)
     .then(() => console.log('Database connected'))
     .catch(err => console.log(err));
 
