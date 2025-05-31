@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
+    name: { type: String, required: true }, // Προσθήκη πεδίου name
+    phone: { type: String, required: true }, // Προσθήκη πεδίου phone
     address: { type: String, required: true },
     items: { type: String, required: true },
     storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true },

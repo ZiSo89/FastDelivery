@@ -5,8 +5,24 @@ const Order = require('../models/Order');
 // Δημιουργία νέας παραγγελίας
 router.post('/', async (req, res) => {
     try {
-        const { address, items, storeId, status, cost } = req.body;
-        const newOrder = new Order({ address, items, storeId, status: status || 'Σε Εξέλιξη', cost: cost || '' });
+        const { address,
+            items,
+            storeId,
+            status,
+            cost,
+            name,
+            phone
+        } = req.body;
+
+        const newOrder = new Order({
+            address,
+            items,
+            storeId,
+            status: status || 'Σε Εξέλιξη',
+            cost: cost || '',
+            name: name || '',
+            phone: phone || ''
+        });
         await newOrder.save();
         res.status(201).json({ message: 'Order created successfully', order: newOrder });
     } catch (error) {
@@ -67,7 +83,7 @@ router.put('/:id/assign', async (req, res) => {
     }
 });
 
-// Ανάθεση παραγγελίας σε παραγγελία
+// Ανάθεση κόστους παραγγελίας σε παραγγελία
 router.put('/:id/cost', async (req, res) => {
     try {
         const costTo = req.body.cost; // Το cost της παραγγελίας
@@ -123,6 +139,23 @@ router.put('/:id/status', async (req, res) => {
         res.json(order);
     } catch (err) {
         res.status(500).json({ message: 'Σφάλμα κατά την ενημέρωση της κατάστασης.' });
+    }
+});
+
+router.put('/:id', async (req, res) => {
+    try {
+        const { address, items, storeId, status, cost, name, phone } = req.body;
+        const updatedOrder = await Order.findByIdAndUpdate(
+            req.params.id,
+            { address, items, storeId, status, cost, name, phone },
+            { new: true }
+        );
+        if (!updatedOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+        res.status(200).json({ message: 'Order updated successfully', order: updatedOrder });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update order' });
     }
 });
 

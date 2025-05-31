@@ -7,13 +7,6 @@ const https = require('https');
 const fs = require('fs');
 const PORT = 4000;
 
-const options = {
-    key: fs.readFileSync("../fast-delivery-frontend/.cert/key.key"),
-    cert: fs.readFileSync("../fast-delivery-frontend/.cert/cert.crt"),
-    requestCert: false,
-    rejectUnauthorized: false
-};
-
 const { Server } = require('socket.io'); // Socket.IO
 
 const userRoutes = require('./routes/userRoutes');
@@ -43,10 +36,7 @@ app.use('/api/stores', storeRoutes);
 
 // Database Connection
 //mongodb://192.168.1.8:27017/fastdelivery
-mongoose.connect('mongodb+srv://fastdelivery:root@cluster0.istyclo.mongodb.net', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
+mongoose.connect('mongodb+srv://fastdelivery:root@cluster0.istyclo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
     .then(() => console.log('Database connected'))
     .catch(err => console.log(err));
 
@@ -58,7 +48,7 @@ io.on('connection', (socket) => {
         //console.log('Νέα παραγγελία:', order);
         io.emit('orderUpdated', order); // Στέλνει ενημέρωση σε όλους τους clients
     });
-    
+
     socket.on('disconnect', () => {
 
     });
