@@ -22,7 +22,7 @@
   },
   "scripts": {
     "predeploy": "npm run build",
-    "start": "set HTTPS=true&&set SSL_CRT_FILE=./.cert/cert.crt&&set SSL_KEY_FILE=./.cert/key.key&&react-scripts start",
+    "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

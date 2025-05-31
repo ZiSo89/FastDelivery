@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { FaStore, FaMapMarkerAlt, FaClipboardList } from 'react-icons/fa';
+import { FaStore, FaMapMarkerAlt, FaClipboardList, FaUser, FaPhone } from 'react-icons/fa';
 import { Spinner } from 'react-bootstrap';
 import { API_BASE_URL } from '../config';
 import './styles.css'; // Import custom CSS for dark mode and styling
 
 function OrderPage() {
-  const [order, setOrder] = useState({ address: '', items: '', storeId: '' });
+  const [order, setOrder] = useState({ address: '', items: '', storeId: '', name: '', phone: '' });
   const [stores, setStores] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +40,8 @@ function OrderPage() {
     try {
       const response = await axios.post(`${API_BASE_URL}/api/orders`, order);
       setMessage('Η παραγγελία καταχωρήθηκε με επιτυχία!');
-      setOrder({ address: '', items: '', storeId: '' });
+      setOrder({ address: '', items: '', storeId: '', name: '', phone: '' }); // Reset form fields
+      // Emit the new order to the socket server
       socket.emit('newOrder', response.data);
     } catch (error) {
       console.error('Error placing order:', error);
@@ -88,6 +89,34 @@ function OrderPage() {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="mb-3">
+              <label className="form-label">
+                <FaUser className="me-2" /> Όνομα:
+              </label>
+              <input
+                type="text"
+                className="form-control bg-dark text-light border-light rounded"
+                name="name"
+                value={order.name}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">
+                <FaPhone className="me-2" /> Τηλέφωνο:
+              </label>
+              <input
+                type="tel"
+                className="form-control bg-dark text-light border-light rounded"
+                name="phone"
+                value={order.phone}
+                onChange={handleChange}
+                required
+                pattern="^(\+30)?[0-9]{10}$"
+                title="Εισάγετε έγκυρο ελληνικό τηλέφωνο"
+              />
             </div>
             <div className="mb-3">
               <label className="form-label">

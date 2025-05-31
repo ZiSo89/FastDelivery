@@ -178,12 +178,12 @@ function AdminPage() {
                   <p className="card-text">
                     <strong>Διεύθυνση Παράδοσης:</strong> {order.address}
                   </p>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => handleOrderDelete(order._id)}
-                  >
-                    Διαγραφή
-                  </button>
+                  <p className="card-text">
+                    <strong>Όνομα Πελάτη:</strong> {order.name}
+                  </p>
+                  <p className="card-text">
+                    <strong>Τηλέφωνο Πελάτη:</strong> {order.phone}
+                  </p>
 
                   <div className="mb-3">
                     <label className="form-label">Ανάθεση Κόστους:</label>
@@ -228,6 +228,12 @@ function AdminPage() {
                       <option value="Ακυρώθηκε">Ακυρώθηκε</option>
                     </select>
                   </div>
+                  <button
+                    className="btn btn-danger"
+                    onClick={() => handleOrderDelete(order._id)}
+                  >
+                    Διαγραφή
+                  </button>
                 </div>
               </div>
             </div>
