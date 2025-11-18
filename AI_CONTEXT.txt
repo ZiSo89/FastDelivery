@@ -24,6 +24,7 @@
 - **Storage:** Firebase Storage (voice messages)
 - **Real-time:** Socket.IO for notifications
 - **Maps:** Google Maps JavaScript API
+- **Language:** Greek (Ελληνικά) - Full UTF-8 support for UI and data
 
 ---
 
@@ -36,7 +37,8 @@ FastDelivery/
 │   ├── DATABASE.md                # MongoDB schema (7 collections)
 │   ├── API.md                     # 34 REST endpoints
 │   ├── WORKFLOWS.md               # State diagrams
-│   └── DEPLOYMENT.md              # Render deployment guide
+│   ├── DEPLOYMENT.md              # Render deployment guide
+│   └── ΕΓΧΕΙΡΙΔΙΟ_ΧΡΗΣΤΗ.md      # User manual in Greek (non-technical)
 │
 ├── fast-delivery-backend/         # Express.js Backend (DEPLOYED ✅)
 │   ├── README.md                  # Installation & usage guide
@@ -420,6 +422,7 @@ node createAdmin.js
 - [x] API.md (all endpoints)
 - [x] WORKFLOWS.md (state diagrams)
 - [x] DEPLOYMENT.md (deployment guide)
+- [x] ΕΓΧΕΙΡΙΔΙΟ_ΧΡΗΣΤΗ.md (user manual in Greek - non-technical)
 - [x] Backend README.md (installation & usage)
 - [x] Tests README.md (testing guide)
 - [x] API_ENDPOINTS.txt (quick reference)
@@ -467,8 +470,10 @@ node createAdmin.js
   - [ ] Chat system (text + voice messages)
 - [ ] UI/UX
   - [ ] Bootstrap 5 responsive design
-  - [ ] Greek language support
+  - [x] Greek language support (ελληνικά σε όλο το UI)
+  - [x] UTF-8 encoding for Greek characters
   - [ ] Mobile-first approach
+  - [ ] Greek date/number formatting (el-GR locale)
 
 ### Chat System (NOT IMPLEMENTED)
 - [ ] Chat model (text + voice messages)
@@ -680,7 +685,13 @@ cd tests
 
 ### Important Notes:
 - **PowerShell Environment:** User is on Windows, use PowerShell commands
-- **Greek Language:** Specifications are in Greek, error messages too
+- **Greek Language:** 
+  - Specifications are in Greek
+  - Frontend UI will be 100% in Greek (ελληνικά)
+  - All user data (names, addresses, order content) in Greek
+  - Backend supports UTF-8 (Greek characters) natively
+  - Error messages and validation in Greek
+  - Date/number formatting: el-GR locale
 - **Test-Driven:** Always create/run test scripts to verify changes
 - **Git Workflow:** Commit frequently with detailed messages
 - **Documentation:** Update README/API docs when changing endpoints

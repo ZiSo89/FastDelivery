@@ -7,7 +7,8 @@
 **Frontend URL:** https://fastdeliveryfontend.onrender.com  
 **Last Deployment:** 2025-11-18  
 **Backend Tests:** 17/17 core endpoints working  
-**Frontend Build:** 61.02 KB (gzipped)
+**Frontend Build:** 61.02 KB (gzipped)  
+**Language:** Greek (Ελληνικά) - Full UTF-8 support
 
 ---
 
@@ -621,11 +622,12 @@ if (process.env.FIREBASE_CREDENTIALS) {
 **Production Status (2025-11-18):**
 - ✅ Backend deployed and tested (17/17 endpoints working)
 - ✅ Frontend deployed successfully (61.02 KB gzipped)
-- ✅ MongoDB Atlas connected
+- ✅ MongoDB Atlas connected (UTF-8 for Greek data)
 - ✅ Firebase Storage configured
 - ✅ Auto-deploy enabled from GitHub (both services)
 - ✅ CORS configured (backend ↔ frontend communication ready)
 - ✅ SSL/HTTPS enabled for both services
+- ✅ Greek language support (full UTF-8)
 - 🎯 **Both Backend & Frontend on Render.com**
 
 **Render.com Advantages:**
