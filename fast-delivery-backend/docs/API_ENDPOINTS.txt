@@ -39,17 +39,17 @@ Body: {
     "address": "Πατησίων 100, Αθήνα"
   },
   "orderType": "text",
-  "orderText": "1 κιλό ντομάτες, 2 κιλά πατάτες, 1 λίτρο γάλα",
+  "orderContent": "1 κιλό ντομάτες, 2 κιλά πατάτες, 1 λίτρο γάλα",
   "storeId": "STORE_ID_HERE",
   "storeName": "Test Store"
 }
 Files: voice (optional) - audio file for orderType: "voice"
 
-GET /orders/:orderNumber
-Example: GET /orders/ORD-20251118-0001
+GET /orders/:orderNumber/status
+Example: GET /orders/ORD-20251118-0001/status
 
-PUT /orders/confirm-price
-Body: { "phone": "6901234567", "orderNumber": "ORD-20251118-0001", "confirm": true }
+PUT /orders/:orderId/confirm
+Body: { "phone": "6901234567", "confirm": true }
 
 === STORE ENDPOINTS ===
 Headers: Authorization: Bearer TOKEN

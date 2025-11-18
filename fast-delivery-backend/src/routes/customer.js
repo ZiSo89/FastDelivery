@@ -8,16 +8,16 @@ const {
   uploadVoice
 } = require('../controllers/customerController');
 
-// @route   GET /api/v1/stores
+// @route   GET /api/v1/orders/stores
 router.get('/stores', getStores);
 
 // @route   POST /api/v1/orders
-router.post('/orders', uploadVoice, createOrder);
+router.post('/', uploadVoice, createOrder);
 
 // @route   GET /api/v1/orders/:orderNumber/status
-router.get('/orders/:orderNumber/status', getOrderStatus);
+router.get('/:orderNumber/status', getOrderStatus);
 
 // @route   PUT /api/v1/orders/:orderId/confirm
-router.put('/orders/:orderId/confirm', confirmOrderPrice);
+router.put('/:orderId/confirm', confirmOrderPrice);
 
 module.exports = router;
