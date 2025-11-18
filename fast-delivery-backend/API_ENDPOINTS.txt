@@ -1,0 +1,132 @@
+====================================
+FAST DELIVERY API ENDPOINTS
+Base URL: http://localhost:5000/api/v1
+====================================
+
+=== AUTHENTICATION ===
+POST /auth/login
+Body: { "email": "admin@fastdelivery.gr", "password": "admin123", "role": "admin" }
+
+POST /auth/store/register
+Body: {
+  "businessName": "Test Store",
+  "afm": "123456789",
+  "email": "store@test.gr",
+  "password": "store123",
+  "phone": "2101234567",
+  "address": "Αθήνας 10, Αθήνα",
+  "storeType": "super-market",
+  "coordinates": { "lat": 37.9838, "lng": 23.7275 }
+}
+
+POST /auth/driver/register
+Body: {
+  "name": "Γιάννης Παπαδόπουλος",
+  "email": "driver@test.gr",
+  "password": "driver123",
+  "phone": "6901234567"
+}
+
+=== CUSTOMER/GUEST ORDERS ===
+GET /orders/stores
+Query: ?lat=37.9838&lng=23.7275
+
+POST /orders
+Body: {
+  "customer": {
+    "name": "Μαρία Ιωάννου",
+    "phone": "6901234567",
+    "address": "Πατησίων 100, Αθήνα"
+  },
+  "orderType": "text",
+  "orderText": "1 κιλό ντομάτες, 2 κιλά πατάτες, 1 λίτρο γάλα",
+  "storeId": "STORE_ID_HERE",
+  "storeName": "Test Store"
+}
+Files: voice (optional) - audio file for orderType: "voice"
+
+GET /orders/:orderNumber
+Example: GET /orders/ORD-20251118-0001
+
+PUT /orders/confirm-price
+Body: { "phone": "6901234567", "orderNumber": "ORD-20251118-0001", "confirm": true }
+
+=== STORE ENDPOINTS ===
+Headers: Authorization: Bearer TOKEN
+
+GET /store/profile
+
+GET /store/orders
+Query: ?status=pending_store
+
+PUT /store/orders/:orderId/accept
+Body: { "action": "accept" } or { "action": "reject" }
+
+PUT /store/orders/:orderId/price
+Body: { "productPrice": 25.50 }
+
+PUT /store/orders/:orderId/status
+Body: { "status": "preparing" }
+
+PUT /store/profile
+Body: { "phone": "2101234567", "address": "New Address" }
+
+=== DRIVER ENDPOINTS ===
+Headers: Authorization: Bearer TOKEN
+
+GET /driver/profile
+
+PUT /driver/availability
+Body: { "isOnline": true }
+
+GET /driver/orders
+Query: ?status=accepted_driver
+
+PUT /driver/orders/:orderId/accept
+Body: { "action": "accept" } or { "action": "reject" }
+
+PUT /driver/orders/:orderId/status
+Body: { "status": "in_delivery" } or { "status": "completed" }
+
+=== ADMIN ENDPOINTS ===
+Headers: Authorization: Bearer TOKEN
+
+GET /admin/stores
+Query: ?status=pending
+
+PUT /admin/stores/:storeId/approve
+Body: { "action": "approve" } or { "action": "reject" }
+
+GET /admin/drivers
+Query: ?status=pending&isOnline=true
+
+PUT /admin/drivers/:driverId/approve
+Body: { "action": "approve" } or { "action": "reject" }
+
+GET /admin/orders
+Query: ?status=pending_admin&page=1&limit=20
+
+PUT /admin/orders/:orderId/delivery-fee
+Body: { "deliveryFee": 3.50 }
+
+PUT /admin/orders/:orderId/assign-driver
+Body: { "driverId": "DRIVER_ID_HERE" }
+
+PUT /admin/orders/:orderId/cancel
+Body: { "reason": "Πελάτης δεν απάντησε" }
+
+GET /admin/customers
+
+PUT /admin/customers/:customerId/deactivate
+
+GET /admin/stats
+Query: ?period=today|week|month
+
+=== HEALTH CHECK ===
+GET /health
+
+====================================
+ADMIN CREDENTIALS:
+Email: admin@fastdelivery.gr
+Password: admin123
+====================================
