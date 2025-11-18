@@ -13,10 +13,11 @@
 
 ### 1.1 Λογαριασμοί (Δωρεάν)
 - ✅ [MongoDB Atlas](https://cloud.mongodb.com/) - Database
-- ✅ [Render.com](https://render.com/) - Backend hosting
-- ✅ [Vercel](https://vercel.com/) ή [Netlify](https://netlify.com/) - Frontend hosting
+- ✅ [Render.com](https://render.com/) - Backend & Frontend hosting
 - ✅ [Firebase](https://console.firebase.google.com/) - File storage (voice messages)
 - ✅ [Google Cloud Console](https://console.cloud.google.com/) - Maps API
+
+**Note:** Render.com φιλοξενεί **και** το backend (Web Service) **και** το frontend (Static Site) - όλα σε ένα μέρος!
 
 ### 1.2 Εργαλεία Ανάπτυξης
 - Node.js 18+ LTS
@@ -241,11 +242,18 @@ added 330 packages, and audited 331 packages in 13s
 
 ---
 
-## 6. Frontend Deployment (Vercel)
+## 6. Frontend Deployment (Render Static Site)
 
 ### 6.1 Προετοιμασία Frontend - PENDING
 
 **Status:** Backend is production-ready. Frontend development can now begin.
+
+**Render Static Site Benefits:**
+- ✅ Same dashboard as backend (easier management)
+- ✅ Auto-deploy from GitHub
+- ✅ Free SSL certificate
+- ✅ CDN included
+- ✅ 100GB bandwidth/month (free tier)
 
 **When Ready:**
 ```bash
@@ -263,46 +271,72 @@ REACT_APP_GOOGLE_MAPS_API_KEY=AIzaSyDUy3hiyc50qQv1ox6wyH4U9O_YsKyKdVE
 REACT_APP_FIREBASE_STORAGE_BUCKET=fast-delivery-10142.firebasestorage.app
 ```
 
-**Note:** Update `FRONTEND_URL` in Render backend after Vercel deployment.
-
 ### 6.2 Build Test (Τοπικά)
 ```bash
 npm run build
 # Ελέγξτε για errors
 ```
 
-### 6.3 Vercel Deployment
-1. https://vercel.com/
-2. Import Project → GitHub → `fast-delivery-frontend`
-3. Framework Preset: **Create React App**
-4. Root Directory: `fast-delivery-frontend`
-5. Environment Variables:
-   - `REACT_APP_API_URL`
-   - `REACT_APP_SOCKET_URL`
-   - `REACT_APP_GOOGLE_MAPS_API_KEY`
-   - `REACT_APP_FIREBASE_STORAGE_BUCKET`
-6. Deploy
+### 6.3 Render Static Site Deployment
+
+**Step-by-Step Guide:**
+
+1. **Render Dashboard** → **New +** → **Static Site**
+
+2. **Connect Repository:**
+   - GitHub: `ZiSo89/FastDelivery`
+   - Branch: `master`
+
+3. **Configuration:**
+   ```
+   Name: fastdelivery-frontend
+   Root Directory: fast-delivery-frontend
+   Build Command: npm run build
+   Publish Directory: build
+   Auto-Deploy: Yes
+   ```
+
+4. **Environment Variables:**
+   Add in Render Dashboard:
+   - `REACT_APP_API_URL` = `https://fastdelivery-hvff.onrender.com/api/v1`
+   - `REACT_APP_SOCKET_URL` = `https://fastdelivery-hvff.onrender.com`
+   - `REACT_APP_GOOGLE_MAPS_API_KEY` = `AIzaSyDUy3hiyc50qQv1ox6wyH4U9O_YsKyKdVE`
+   - `REACT_APP_FIREBASE_STORAGE_BUCKET` = `fast-delivery-10142.firebasestorage.app`
+
+5. **Deploy:**
+   - Click "Create Static Site"
+   - First build: ~2-3 minutes
+   - URL will be: `https://fastdelivery-frontend.onrender.com`
+
+6. **Update Backend CORS:**
+   After frontend deployment, update backend `FRONTEND_URL`:
+   - Render Dashboard → fastdelivery-api → Environment
+   - Update: `FRONTEND_URL=https://fastdelivery-frontend.onrender.com`
+   - Save → Auto-redeploy
 
 ### 6.4 Custom Domain (Προαιρετικό)
-1. Vercel → Settings → Domains
-2. Προσθέστε custom domain (π.χ., `fastdelivery.gr`)
-3. Ενημερώστε DNS records
+1. Render → fastdelivery-frontend → Settings → Custom Domains
+2. Add custom domain (π.χ., `fastdelivery.gr`)
+3. Update DNS records (provided by Render)
+4. SSL auto-configured by Render
 
 ---
 
 ## 7. Ενημέρωση CORS & URLs
 
 ### 7.1 Backend CORS (Render)
-Ενημερώστε το `FRONTEND_URL` environment variable με το Vercel URL:
-```env
-FRONTEND_URL=https://fast-delivery-frontend.vercel.app
-```
+Μετά το frontend deployment, ενημερώστε το `FRONTEND_URL` στο backend:
+- Render Dashboard → fastdelivery-api → Environment
+- Key: `FRONTEND_URL`
+- Value: `https://fastdelivery-frontend.onrender.com`
+- Save Changes → Auto-redeploy
 
 ### 7.2 Google Maps Restrictions
-Ενημερώστε το API Key με το production URL:
-```
-https://fast-delivery-frontend.vercel.app/*
-```
+Ενημερώστε το API Key restrictions με το production frontend URL:
+- Google Cloud Console → APIs & Services → Credentials
+- Edit API Key → Application restrictions
+- Add: `https://fastdelivery-frontend.onrender.com/*`
+- Add: `http://localhost:3000/*` (για development)
 
 ---
 
@@ -361,7 +395,7 @@ FRONTEND_URL=(Ready for React deployment URL)
 ```
 
 ### 9.2 Frontend (.env.local) - PENDING
-**For Future Vercel Deployment:**
+**For Future Render Static Site Deployment:**
 ```env
 REACT_APP_API_URL=https://fastdelivery-hvff.onrender.com/api/v1
 REACT_APP_SOCKET_URL=https://fastdelivery-hvff.onrender.com
@@ -403,14 +437,22 @@ REACT_APP_FIREBASE_STORAGE_BUCKET=fast-delivery-10142.firebasestorage.app
 
 ## 11. CI/CD (Auto-Deploy)
 
-### 11.1 Backend (Render)
+### 11.1 Backend (Render Web Service) ✅
 - Auto-deploy enabled by default
-- Κάθε `git push` στο `main` branch → auto-deploy
+- Κάθε `git push` στο `master` branch → auto-deploy
+- Build time: ~30-60 seconds
 
-### 11.2 Frontend (Vercel)
+### 11.2 Frontend (Render Static Site)
 - Auto-deploy enabled by default
-- Κάθε `git push` → auto-deploy
-- Preview URLs για κάθε Pull Request
+- Κάθε `git push` στο `master` branch → auto-deploy
+- Build time: ~2-3 minutes (first build)
+- Subsequent builds: ~1-2 minutes (with cache)
+
+**Benefits:**
+- ✅ Both services in one Render dashboard
+- ✅ Same deployment workflow
+- ✅ Easy environment management
+- ✅ No need for multiple platforms
 
 ---
 
@@ -520,13 +562,15 @@ if (process.env.FIREBASE_CREDENTIALS) {
 - **M10 ($57/μήνα):** 10GB storage, automated backups
 
 ### 15.3 CDN για Frontend
-- Vercel δωρεάν tier περιλαμβάνει CDN (100GB/μήνα)
+- Render Static Sites include CDN (δωρεάν)
+- Bandwidth: 100GB/month (free tier)
+- Upgrade to paid plan for more bandwidth if needed
 
 ---
 
 **Deployment URLs:**
 - **Backend (LIVE):** https://fastdelivery-hvff.onrender.com ✅
-- **Frontend (PENDING):** To be deployed on Vercel
+- **Frontend (PENDING):** To be deployed on Render Static Site
 - **Database:** MongoDB Atlas cluster0.istyclo.mongodb.net ✅
 - **Storage:** Firebase fast-delivery-10142.firebasestorage.app ✅
 
@@ -536,5 +580,14 @@ if (process.env.FIREBASE_CREDENTIALS) {
 - ✅ Firebase Storage configured
 - ✅ Auto-deploy enabled from GitHub
 - ⏳ Frontend development pending
+- 🎯 **Frontend will be deployed on Render.com (Static Site)**
 
-**Τελευταία ενημέρωση:** 18/11/2025 (Post-deployment update)
+**Render.com Advantages:**
+- ✅ Backend & Frontend in one dashboard
+- ✅ Consistent deployment workflow
+- ✅ Free SSL for both services
+- ✅ Auto-deploy from GitHub
+- ✅ Easy environment variable management
+- ✅ No need for multiple hosting platforms
+
+**Τελευταία ενημέρωση:** 18/11/2025 (Updated for Render Static Site deployment)

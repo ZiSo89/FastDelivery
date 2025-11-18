@@ -531,14 +531,34 @@ services:
 - Cold start (free tier): 30-60 seconds after 15min inactivity
 
 ### Frontend Deployment (Vercel) - PENDING
-**Planned URL:** https://fastdelivery.onrender.com (or custom domain)
+**Planned URL:** https://fastdelivery-frontend.onrender.com
 
-1. Create Vercel account
-2. Connect GitHub repository
-3. Set build command: `npm run build`
-4. Set output directory: `build`
-5. Add environment variable: `REACT_APP_API_URL=https://fastdelivery-hvff.onrender.com/api/v1`
-6. Deploy and update FRONTEND_URL in Render backend
+**Render Static Site Deployment (When Frontend is Ready):**
+
+1. **Render Dashboard** → **New +** → **Static Site**
+2. Connect GitHub repository: `ZiSo89/FastDelivery`
+3. Configuration:
+   - Name: `fastdelivery-frontend`
+   - Root Directory: `fast-delivery-frontend`
+   - Build Command: `npm run build`
+   - Publish Directory: `build`
+   - Auto-Deploy: Yes
+
+4. **Environment Variables:**
+   - `REACT_APP_API_URL=https://fastdelivery-hvff.onrender.com/api/v1`
+   - `REACT_APP_SOCKET_URL=https://fastdelivery-hvff.onrender.com`
+   - `REACT_APP_GOOGLE_MAPS_API_KEY=AIzaSyDUy3hiyc50qQv1ox6wyH4U9O_YsKyKdVE`
+   - `REACT_APP_FIREBASE_STORAGE_BUCKET=fast-delivery-10142.firebasestorage.app`
+
+5. Deploy and update backend `FRONTEND_URL` in Render dashboard
+
+**Benefits:**
+- ✅ Backend & Frontend in same Render dashboard
+- ✅ Consistent deployment workflow
+- ✅ Free SSL for both
+- ✅ 100GB bandwidth/month (Static Site free tier)
+- ✅ Auto-deploy from GitHub
+- ✅ No need for multiple platforms (Vercel/Netlify)
 
 ---
 
@@ -603,6 +623,7 @@ cd tests
 4. Implement role-based routing first
 5. Start with Admin dashboard (easiest to test)
 6. Add Socket.IO client for real-time features
+7. Deploy to Render.com as Static Site (same platform as backend)
 
 #### If User Reports "Route Not Found":
 1. Check if server is running (`netstat -ano | findstr ":5000"`)
