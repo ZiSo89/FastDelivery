@@ -1,12 +1,13 @@
-# Script για άνοιγμα πολλαπλών browser windows για testing
-# Κάθε window με διαφορετικό Chrome profile
+# Script for opening multiple browser windows for testing
+# Each window with different Chrome profile
+# Checks first for existing profiles
 
 $frontendUrl = "http://localhost:3000"
 
-Write-Host "🚀 Άνοιγμα Test Browsers..." -ForegroundColor Cyan
+Write-Host "Opening Test Browsers..." -ForegroundColor Cyan
 Write-Host ""
 
-# Browser path - Δοκιμάζουμε Chrome, Edge, Firefox
+# Browser path
 $browserPath = $null
 $browserName = ""
 
@@ -25,101 +26,109 @@ foreach ($path in $chromePaths) {
     }
 }
 
-# Try Edge if Chrome not found
-if (-not $browserPath) {
-    $edgePaths = @(
-        "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-        "C:\Program Files\Microsoft\Edge\Application\msedge.exe"
-    )
-    
-    foreach ($path in $edgePaths) {
-        if (Test-Path $path) {
-            $browserPath = $path
-            $browserName = "Edge"
-            break
+# Map to your existing Chrome profiles
+# Profile 4 = Admin, Profile 5 = Store, Profile 6 = Driver
+$chromeUserData = "$env:LOCALAPPDATA\Google\Chrome\User Data"
+$existingProfiles = @{
+    "Admin" = "Profile 4"
+    "Store" = "Profile 5"
+    "Driver" = "Profile 6"
+    "Customer" = "Default"
+}
+
+# Verify profiles exist
+Write-Host "Checking Chrome profiles..." -ForegroundColor Yellow
+$profilesFound = $false
+foreach ($role in @("Admin", "Store", "Driver", "Customer")) {
+    $profileName = $existingProfiles[$role]
+    if ($profileName) {
+        $profilePath = Join-Path $chromeUserData $profileName
+        if (Test-Path $profilePath) {
+            Write-Host "   Found $role profile: $profileName" -ForegroundColor Green
+            $profilesFound = $true
+        } else {
+            Write-Host "   Warning: $profileName not found" -ForegroundColor Yellow
+            $existingProfiles[$role] = $null
         }
     }
 }
-
-# Try Firefox if neither found
-if (-not $browserPath) {
-    $firefoxPaths = @(
-        "C:\Program Files\Mozilla Firefox\firefox.exe",
-        "C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
-    )
-    
-    foreach ($path in $firefoxPaths) {
-        if (Test-Path $path) {
-            $browserPath = $path
-            $browserName = "Firefox"
-            break
-        }
-    }
-}
+Write-Host ""
 
 if (-not $browserPath) {
-    Write-Host "❌ Δεν βρέθηκε Chrome, Edge, ή Firefox." -ForegroundColor Red
-    Write-Host "💡 Παρακαλώ εγκατέστησε έναν από αυτούς τους browsers." -ForegroundColor Yellow
+    Write-Host "Chrome not found." -ForegroundColor Red
     exit
 }
 
-Write-Host "✅ Χρήση browser: $browserName" -ForegroundColor Green
-Write-Host "   Path: $browserPath" -ForegroundColor Gray
+Write-Host "Using browser: $browserName" -ForegroundColor Green
 Write-Host ""
 
-# Δημιουργία temp profiles directory
+# Create temp profiles directory if needed
 $profilesDir = "$env:TEMP\FastDeliveryProfiles"
-if (-not (Test-Path $profilesDir)) {
-    New-Item -ItemType Directory -Path $profilesDir | Out-Null
+$useExisting = $profilesFound
+
+if ($useExisting) {
+    Write-Host "Using your Chrome profiles!" -ForegroundColor Cyan
+    Write-Host ""
+} else {
+    Write-Host "Creating new temp profiles..." -ForegroundColor Yellow
+    if (-not (Test-Path $profilesDir)) {
+        New-Item -ItemType Directory -Path $profilesDir | Out-Null
+    }
+    Write-Host ""
 }
 
-Write-Host "1️⃣  Admin Profile - http://localhost:3000/login" -ForegroundColor Green
-Start-Process $browserPath -ArgumentList `
-    "--user-data-dir=$profilesDir\Admin", `
-    "--new-window", `
-    "$frontendUrl/login", `
-    "--window-position=0,0", `
-    "--window-size=800,900"
+# Open Admin Profile
+Write-Host "1. Admin Profile" -ForegroundColor Green
+if ($existingProfiles["Admin"]) {
+    Write-Host "   Using: $($existingProfiles['Admin'])" -ForegroundColor Gray
+    Start-Process $browserPath -ArgumentList "--profile-directory=`"$($existingProfiles['Admin'])`"","$frontendUrl/login"
+} else {
+    Start-Process $browserPath -ArgumentList "--user-data-dir=`"$profilesDir\Admin`"","$frontendUrl/login"
+}
 
 Start-Sleep -Seconds 2
 
-Write-Host "2️⃣  Store Profile - http://localhost:3000/login" -ForegroundColor Blue
-Start-Process $browserPath -ArgumentList `
-    "--user-data-dir=$profilesDir\Store", `
-    "--new-window", `
-    "$frontendUrl/login", `
-    "--window-position=820,0", `
-    "--window-size=800,900"
+# Open Store Profile
+Write-Host "2. Store Profile" -ForegroundColor Blue
+if ($existingProfiles["Store"]) {
+    Write-Host "   Using: $($existingProfiles['Store'])" -ForegroundColor Gray
+    Start-Process $browserPath -ArgumentList "--profile-directory=`"$($existingProfiles['Store'])`"","$frontendUrl/login"
+} else {
+    Start-Process $browserPath -ArgumentList "--user-data-dir=`"$profilesDir\Store`"","$frontendUrl/login"
+}
 
 Start-Sleep -Seconds 2
 
-Write-Host "3️⃣  Driver Profile - http://localhost:3000/login" -ForegroundColor Yellow
-Start-Process $browserPath -ArgumentList `
-    "--user-data-dir=$profilesDir\Driver", `
-    "--new-window", `
-    "$frontendUrl/login", `
-    "--window-position=0,500", `
-    "--window-size=800,900"
+# Open Driver Profile
+Write-Host "3. Driver Profile" -ForegroundColor Yellow
+if ($existingProfiles["Driver"]) {
+    Write-Host "   Using: $($existingProfiles['Driver'])" -ForegroundColor Gray
+    Start-Process $browserPath -ArgumentList "--profile-directory=`"$($existingProfiles['Driver'])`"","$frontendUrl/login"
+} else {
+    Start-Process $browserPath -ArgumentList "--user-data-dir=`"$profilesDir\Driver`"","$frontendUrl/login"
+}
 
 Start-Sleep -Seconds 2
 
-Write-Host "4️⃣  Customer Profile - http://localhost:3000" -ForegroundColor Magenta
-Start-Process $browserPath -ArgumentList `
-    "--user-data-dir=$profilesDir\Customer", `
-    "--new-window", `
-    "$frontendUrl", `
-    "--window-position=820,500", `
-    "--window-size=800,900"
+# Open Customer Profile
+Write-Host "4. Customer Profile" -ForegroundColor Magenta
+if ($existingProfiles["Customer"]) {
+    Write-Host "   Using: $($existingProfiles['Customer'])" -ForegroundColor Gray
+    Start-Process $browserPath -ArgumentList "--profile-directory=`"$($existingProfiles['Customer'])`"","$frontendUrl"
+} else {
+    Start-Process $browserPath -ArgumentList "--user-data-dir=`"$profilesDir\Customer`"","$frontendUrl"
+}
 
 Write-Host ""
-Write-Host "✅ Όλα τα browser windows άνοιξαν!" -ForegroundColor Green
+Write-Host "All browser windows opened!" -ForegroundColor Green
 Write-Host ""
-Write-Host "📋 Credentials:" -ForegroundColor Cyan
-Write-Host "   Admin:    admin@fastdelivery.gr / admin123" -ForegroundColor Green
-Write-Host "   Store:    store@test.com / store123" -ForegroundColor Blue
-Write-Host "   Driver:   driver@test.com / driver123" -ForegroundColor Yellow
-Write-Host "   Customer: Χωρίς login (guest)" -ForegroundColor Magenta
-Write-Host ""
-Write-Host "💡 Κάνε login σε κάθε παράθυρο και τα profiles θα αποθηκευτούν!" -ForegroundColor White
-Write-Host "   Την επόμενη φορά θα είσαι ήδη logged in!" -ForegroundColor White
+
+if ($useExisting) {
+    Write-Host "Using your existing profiles - you should be logged in!" -ForegroundColor Cyan
+} else {
+    Write-Host "Credentials:" -ForegroundColor Cyan
+    Write-Host "   Admin:    admin@fastdelivery.gr / admin123" -ForegroundColor Green
+    Write-Host "   Store:    kafeteria@test.com / store123" -ForegroundColor Blue
+    Write-Host "   Driver:   driver1@test.com / driver123" -ForegroundColor Yellow
+}
 Write-Host ""

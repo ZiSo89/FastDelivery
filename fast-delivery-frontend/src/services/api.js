@@ -106,7 +106,9 @@ export const adminService = {
 
   // Approve/Reject store
   approveStore: async (storeId, approved) => {
-    const response = await api.put(`/admin/stores/${storeId}/approve`, { approved });
+    const response = await api.put(`/admin/stores/${storeId}/approve`, { 
+      action: approved ? 'approve' : 'reject' 
+    });
     return response.data;
   },
 
@@ -121,7 +123,9 @@ export const adminService = {
 
   // Approve/Reject driver
   approveDriver: async (driverId, approved) => {
-    const response = await api.put(`/admin/drivers/${driverId}/approve`, { approved });
+    const response = await api.put(`/admin/drivers/${driverId}/approve`, { 
+      action: approved ? 'approve' : 'reject' 
+    });
     return response.data;
   },
 

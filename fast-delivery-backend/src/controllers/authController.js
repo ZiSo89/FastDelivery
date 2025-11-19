@@ -58,12 +58,16 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check if approved (for store/driver)
-    if ((role === 'store' || role === 'driver') && !user.isApproved) {
-      return res.status(403).json({
-        success: false,
-        message: 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή'
-      });
+    // Check if approved (for store/driver) - must be both isApproved AND status='approved'
+    if (role === 'store' || role === 'driver') {
+      if (!user.isApproved || user.status !== 'approved') {
+        return res.status(403).json({
+          success: false,
+          message: user.status === 'rejected' 
+            ? 'Ο λογαριασμός σας απορρίφθηκε'
+            : 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή'
+        });
+      }
     }
 
     // Generate token

@@ -26,7 +26,11 @@ exports.getStores = async (req, res) => {
   try {
     const { serviceArea, storeType } = req.query;
 
-    const filter = { isApproved: true };
+    // Only show approved stores to customers
+    const filter = { 
+      isApproved: true,
+      status: 'approved'
+    };
 
     // Filter by service area (partial match)
     if (serviceArea) {
