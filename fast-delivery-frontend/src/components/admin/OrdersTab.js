@@ -12,8 +12,10 @@ const OrdersTab = () => {
   // Modals state
   const [showDeliveryFeeModal, setShowDeliveryFeeModal] = useState(false);
   const [showAssignDriverModal, setShowAssignDriverModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [deliveryFee, setDeliveryFee] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
   const [availableDrivers, setAvailableDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -207,6 +209,32 @@ const OrdersTab = () => {
     }
   };
 
+  // Cancel Order
+  const handleOpenCancelModal = (order) => {
+    setSelectedOrder(order);
+    setCancelReason('');
+    setShowCancelModal(true);
+  };
+
+  const handleCancelOrder = async () => {
+    if (!cancelReason || cancelReason.trim().length < 5) {
+      alert('Παρακαλώ εισάγετε λόγο ακύρωσης (τουλάχιστον 5 χαρακτήρες)');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await adminService.cancelOrder(selectedOrder._id, cancelReason.trim());
+      setShowCancelModal(false);
+      fetchOrders(); // Refresh list
+      // Success - real-time update will show the change
+    } catch (err) {
+      alert(err.response?.data?.message || 'Σφάλμα ακύρωσης παραγγελίας');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -322,6 +350,14 @@ const OrdersTab = () => {
                         🚗 Ανάθεση Οδηγού
                       </Button>
                     )}
+                    {!['completed', 'cancelled'].includes(order.status) && (
+                      <Button 
+                        variant="danger"
+                        onClick={() => handleOpenCancelModal(order)}
+                      >
+                        ❌ Ακύρωση Παραγγελίας
+                      </Button>
+                    )}
                   </div>
                 </Card.Body>
               </Card>
@@ -378,6 +414,7 @@ const OrdersTab = () => {
                         size="sm" 
                         variant="primary"
                         onClick={() => handleOpenDeliveryFeeModal(order)}
+                        className="me-1 mb-1"
                       >
                         💰 Μεταφορικά
                       </Button>
@@ -387,11 +424,22 @@ const OrdersTab = () => {
                         size="sm" 
                         variant="success"
                         onClick={() => handleOpenAssignDriverModal(order)}
+                        className="me-1 mb-1"
                       >
                         🚗 Ανάθεση
                       </Button>
                     )}
-                    {!['pending_admin', 'confirmed', 'rejected_driver'].includes(order.status) && (
+                    {!['completed', 'cancelled'].includes(order.status) && (
+                      <Button 
+                        size="sm" 
+                        variant="danger"
+                        onClick={() => handleOpenCancelModal(order)}
+                        className="mb-1"
+                      >
+                        ❌ Ακύρωση
+                      </Button>
+                    )}
+                    {['completed', 'cancelled'].includes(order.status) && (
                       <small className="text-muted">-</small>
                     )}
                   </td>
@@ -492,6 +540,54 @@ const OrdersTab = () => {
             disabled={actionLoading || !selectedDriver}
           >
             {actionLoading ? 'Ανάθεση...' : 'Ανάθεση Οδηγού'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal για Ακύρωση Παραγγελίας */}
+      <Modal show={showCancelModal} onHide={() => setShowCancelModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Ακύρωση Παραγγελίας</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedOrder && (
+            <>
+              <p><strong>Παραγγελία:</strong> {selectedOrder.orderNumber}</p>
+              <p><strong>Πελάτης:</strong> {selectedOrder.customer?.name}</p>
+              <p><strong>Κατάστημα:</strong> {selectedOrder.storeId?.businessName || selectedOrder.storeName}</p>
+              <p><strong>Κατάσταση:</strong> {getStatusBadge(selectedOrder.status)}</p>
+              
+              <Alert variant="warning">
+                <strong>Προσοχή!</strong> Η ακύρωση παραγγελίας είναι μη αναστρέψιμη ενέργεια.
+              </Alert>
+              
+              <Form.Group className="mt-3">
+                <Form.Label>Λόγος Ακύρωσης <span className="text-danger">*</span></Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Εισάγετε τον λόγο ακύρωσης (τουλάχιστον 5 χαρακτήρες)"
+                  maxLength={200}
+                />
+                <Form.Text className="text-muted">
+                  {cancelReason.length}/200 χαρακτήρες
+                </Form.Text>
+              </Form.Group>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCancelModal(false)}>
+            Κλείσιμο
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleCancelOrder}
+            disabled={actionLoading || !cancelReason || cancelReason.trim().length < 5}
+          >
+            {actionLoading ? 'Ακύρωση...' : 'Ακύρωση Παραγγελίας'}
           </Button>
         </Modal.Footer>
       </Modal>
