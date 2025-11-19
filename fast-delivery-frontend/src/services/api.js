@@ -275,6 +275,15 @@ export const customerService = {
       confirm: true 
     });
     return response.data;
+  },
+
+  // Cancel order
+  cancelOrder: async (orderId, customerPhone) => {
+    const response = await api.put(`/orders/${orderId}/confirm`, { 
+      phone: customerPhone,
+      confirm: false 
+    });
+    return response.data;
   }
 };
 

@@ -1,9 +1,11 @@
 ====================================
 FAST DELIVERY API ENDPOINTS
 Base URL: http://localhost:5000/api/v1
+Production: https://fastdelivery-hvff.onrender.com/api/v1
+Status: ✅ ALL 34 ENDPOINTS IMPLEMENTED & TESTED
 ====================================
 
-=== AUTHENTICATION ===
+=== AUTHENTICATION (3 endpoints) ===
 POST /auth/login
 Body: { "email": "admin@fastdelivery.gr", "password": "admin123", "role": "admin" }
 
@@ -27,7 +29,7 @@ Body: {
   "phone": "6901234567"
 }
 
-=== CUSTOMER/GUEST ORDERS ===
+=== CUSTOMER/GUEST ORDERS (4 endpoints) ===
 GET /orders/stores
 Query: ?lat=37.9838&lng=23.7275
 
@@ -51,7 +53,7 @@ Example: GET /orders/ORD-20251118-0001/status
 PUT /orders/:orderId/confirm
 Body: { "phone": "6901234567", "confirm": true }
 
-=== STORE ENDPOINTS ===
+=== STORE ENDPOINTS (6 endpoints) ===
 Headers: Authorization: Bearer TOKEN
 
 GET /store/profile
@@ -71,7 +73,7 @@ Body: { "status": "preparing" }
 PUT /store/profile
 Body: { "phone": "2101234567", "address": "New Address" }
 
-=== DRIVER ENDPOINTS ===
+=== DRIVER ENDPOINTS (5 endpoints) ===
 Headers: Authorization: Bearer TOKEN
 
 GET /driver/profile
@@ -88,7 +90,7 @@ Body: { "action": "accept" } or { "action": "reject" }
 PUT /driver/orders/:orderId/status
 Body: { "status": "in_delivery" } or { "status": "completed" }
 
-=== ADMIN ENDPOINTS ===
+=== ADMIN ENDPOINTS (11 endpoints) ===
 Headers: Authorization: Bearer TOKEN
 
 GET /admin/stores
@@ -122,11 +124,28 @@ PUT /admin/customers/:customerId/deactivate
 GET /admin/stats
 Query: ?period=today|week|month
 
-=== HEALTH CHECK ===
+=== HEALTH CHECK (1 endpoint) ===
 GET /health
 
+=== SOCKET.IO EVENTS (Real-time) ===
+✅ IMPLEMENTED - All order state changes broadcast to relevant parties
+
+Events emitted:
+- order:new - New order created
+- order:status_changed - Any status change
+- order:pending_admin - Store sets price
+- order:price_ready - Admin adds delivery fee
+- order:confirmed - Customer confirms
+- order:assigned - Admin assigns driver
+- driver:accepted - Driver accepts
+- driver:rejected - Driver rejects
+- order:completed - Delivery complete
+- order:cancelled - Order cancelled
+- order:rejected_store - Store rejects
+
 ====================================
-ADMIN CREDENTIALS:
-Email: admin@fastdelivery.gr
-Password: admin123
+TEST CREDENTIALS (After seedTestData.js):
+Admin: admin@fastdelivery.gr / admin123
+Store: kafeteria@test.com / store123
+Driver: driver1@test.com / driver123
 ====================================

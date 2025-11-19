@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Nav, Tab, Spinner, Alert } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { adminService } from '../../services/api';
+import socketService from '../../services/socket';
 import AdminNavbar from '../../components/admin/AdminNavbar';
 import StoresTab from '../../components/admin/StoresTab';
 import DriversTab from '../../components/admin/DriversTab';
 import OrdersTab from '../../components/admin/OrdersTab';
 import CustomersTab from '../../components/admin/CustomersTab';
+import NotificationToast from '../../components/NotificationToast';
 import '../../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -14,10 +16,44 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('stores');
+  const [activeTab, setActiveTab] = useState('orders');
 
   useEffect(() => {
     fetchStats();
+    
+    // Socket.IO listeners for auto-switching to relevant tabs
+    const handleNewOrder = (data) => {
+      setActiveTab('orders'); // Auto-switch to orders tab
+    };
+
+    const handleStoreRegistration = (data) => {
+      setActiveTab('stores'); // Auto-switch to stores tab
+    };
+
+    const handleDriverRegistration = (data) => {
+      setActiveTab('drivers'); // Auto-switch to drivers tab
+    };
+
+    const handleOrderStatusChange = (data) => {
+      // Check if it needs admin attention
+      if (data.status === 'pending_admin' || data.status === 'confirmed') {
+        setActiveTab('orders');
+      }
+    };
+
+    socketService.on('order:new', handleNewOrder);
+    socketService.on('store:registered', handleStoreRegistration);
+    socketService.on('driver:registered', handleDriverRegistration);
+    socketService.on('order:status_changed', handleOrderStatusChange);
+    socketService.on('order:pending_admin', handleOrderStatusChange);
+
+    return () => {
+      socketService.off('order:new', handleNewOrder);
+      socketService.off('store:registered', handleStoreRegistration);
+      socketService.off('driver:registered', handleDriverRegistration);
+      socketService.off('order:status_changed', handleOrderStatusChange);
+      socketService.off('order:pending_admin', handleOrderStatusChange);
+    };
   }, []);
 
   const fetchStats = async () => {
@@ -36,6 +72,7 @@ const AdminDashboard = () => {
   return (
     <div className="admin-dashboard">
       <AdminNavbar user={user} />
+      <NotificationToast />
       
       <Container fluid className="py-4">
         {/* Statistics Cards */}

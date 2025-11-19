@@ -7,6 +7,7 @@ import socketService from '../../services/socket';
 import StoreNavbar from '../../components/store/StoreNavbar';
 import StoreProfile from '../../components/store/StoreProfile';
 import StoreOrders from '../../components/store/StoreOrders';
+import NotificationToast from '../../components/NotificationToast';
 import '../../styles/StoreDashboard.css';
 
 const StoreDashboard = () => {
@@ -48,8 +49,6 @@ const StoreDashboard = () => {
 
     // Listen for store status changes
     const handleStatusChange = async (data) => {
-      console.log('🔔 Store status changed:', data);
-      
       // If approved, show message and reload page to get new token
       if (data.status === 'approved' && data.isApproved) {
         setStatusMessage('✅ Το κατάστημά σας εγκρίθηκε! Η σελίδα θα ανανεωθεί...');
@@ -79,10 +78,19 @@ const StoreDashboard = () => {
       }
     };
 
+    // Listen for new orders - auto switch to orders tab
+    const handleNewOrder = (data) => {
+      setActiveTab('orders'); // Auto-switch to orders tab
+      setStatusMessage(`📦 Νέα παραγγελία: ${data.orderNumber || ''}`);
+      setTimeout(() => setStatusMessage(''), 5000);
+    };
+
     socketService.on('store:status_changed', handleStatusChange);
+    socketService.on('order:new', handleNewOrder);
 
     return () => {
       socketService.off('store:status_changed', handleStatusChange);
+      socketService.off('order:new', handleNewOrder);
     };
   }, [fetchProfile, user, updateUser]);
 
@@ -99,6 +107,7 @@ const StoreDashboard = () => {
   return (
     <div className="store-dashboard">
       <StoreNavbar user={user} profile={profile} />
+      <NotificationToast />
       
       <Container fluid className="py-4">
         {statusMessage && (

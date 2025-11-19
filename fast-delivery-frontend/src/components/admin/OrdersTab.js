@@ -7,7 +7,7 @@ const OrdersTab = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('in_progress');
   
   // Modals state
   const [showDeliveryFeeModal, setShowDeliveryFeeModal] = useState(false);
@@ -31,9 +31,22 @@ const OrdersTab = () => {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await adminService.getOrders(filter === 'all' ? null : filter);
-      // Backend επιστρέφει { success: true, orders: [...] }
-      setOrders(response.orders || response.data?.orders || []);
+      // For in_progress, fetch all and filter client-side
+      const statusFilter = filter === 'in_progress' || filter === 'all' ? null : filter;
+      const response = await adminService.getOrders(statusFilter);
+      let allOrders = response.orders || response.data?.orders || [];
+      
+      // Filter for "Σε Εξέλιξη": all orders from last 3 hours except completed
+      if (filter === 'in_progress') {
+        const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+        allOrders = allOrders.filter(order => {
+          const isNotCompleted = order.status !== 'completed';
+          const isRecent = new Date(order.createdAt) >= threeHoursAgo;
+          return isNotCompleted && isRecent;
+        });
+      }
+      
+      setOrders(allOrders);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης παραγγελιών');
@@ -47,52 +60,42 @@ const OrdersTab = () => {
     
     // Socket.IO real-time listeners
     const handleNewOrder = (data) => {
-      console.log('🔔 New order received:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderStatusChanged = (data) => {
-      console.log('🔄 Order status changed:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleDriverAccepted = (data) => {
-      console.log('✅ Driver accepted order:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleDriverRejected = (data) => {
-      console.log('❌ Driver rejected order:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderCompleted = (data) => {
-      console.log('🎉 Order completed:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderPendingAdmin = (data) => {
-      console.log('💰 Store added price, pending admin:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderPriceReady = (data) => {
-      console.log('💵 Admin added delivery fee:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderAssigned = (data) => {
-      console.log('🚗 Order assigned to driver:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderRejectedStore = (data) => {
-      console.log('❌ Store rejected order:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderCancelled = (data) => {
-      console.log('🚫 Order cancelled:', data);
       fetchOrders(); // Refresh list
     };
 
@@ -130,7 +133,7 @@ const OrdersTab = () => {
       pending_store: { bg: 'warning', label: 'Αναμονή Καταστήματος' },
       pricing: { bg: 'info', label: 'Τιμολόγηση' },
       pending_admin: { bg: 'primary', label: 'Αναμονή Admin' },
-      pending_customer_confirm: { bg: 'warning', label: 'Αναμονή Πελάτη' },
+      pending_customer_confirm: { bg: 'warning', label: 'Αναμονή επιβεβαίωσης πελάτη' },
       confirmed: { bg: 'success', label: 'Επιβεβαιωμένη' },
       assigned: { bg: 'info', label: 'Ανατέθηκε' },
       accepted_driver: { bg: 'primary', label: 'Αποδοχή Οδηγού' },
@@ -162,7 +165,6 @@ const OrdersTab = () => {
       const response = await adminService.getDrivers('approved', true); // approved & online
       setAvailableDrivers(response.drivers || []);
     } catch (err) {
-      console.error('Error fetching drivers:', err);
       setAvailableDrivers([]);
     }
   };
@@ -215,7 +217,8 @@ const OrdersTab = () => {
           style={{ width: '300px' }}
           size="sm"
         >
-          <option value="all">Όλες οι Παραγγελίες</option>
+          <option value="in_progress">🔄 Σε Εξέλιξη</option>
+          <option value="all">📋 Όλες οι Παραγγελίες</option>
           <option value="pending_store">⏳ Αναμονή Καταστήματος</option>
           <option value="pricing">💰 Τιμολόγηση</option>
           <option value="pending_admin">👨‍💼 Εκκρεμείς (Admin)</option>
@@ -261,6 +264,11 @@ const OrdersTab = () => {
                   <div className="mb-2">
                     <small className="text-muted">Κατάστημα:</small><br />
                     <strong>{order.storeId?.businessName || order.storeName || 'N/A'}</strong>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <small className="text-muted">Περιγραφή Παραγγελίας:</small><br />
+                    {order.orderContent || (order.orderType === 'voice' ? '🎤 Φωνητική παραγγελία' : '-')}
                   </div>
                   
                   {(order.driverId?.name || order.driver?.name) && (
@@ -329,6 +337,7 @@ const OrdersTab = () => {
                 <th>Αριθμός</th>
                 <th>Πελάτης</th>
                 <th>Κατάστημα</th>
+                <th>Περιγραφή</th>
                 <th>Οδηγός</th>
                 <th>Τιμή Προϊόντος</th>
                 <th>Μεταφορικά</th>
@@ -349,6 +358,9 @@ const OrdersTab = () => {
                   </td>
                   <td>
                     {order.storeId?.businessName || order.storeName || 'N/A'}
+                  </td>
+                  <td>
+                    {order.orderContent || (order.orderType === 'voice' ? '🎤 Φωνητική' : '-')}
                   </td>
                   <td>{order.driverId?.name || order.driver?.name || '-'}</td>
                   <td>{order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}</td>

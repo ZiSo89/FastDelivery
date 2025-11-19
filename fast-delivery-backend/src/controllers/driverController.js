@@ -35,12 +35,13 @@ exports.toggleAvailability = async (req, res) => {
     driver.isOnline = isOnline;
     await driver.save();
 
-    // Notify admin
+    // Notify admin and all clients about driver availability change
     const io = req.app.get('io');
-    io.emit('driver:status_changed', {
+    io.emit('driver:availability_changed', {
       driverId: driver._id,
       name: driver.name,
-      isOnline: driver.isOnline
+      isOnline: driver.isOnline,
+      message: `${driver.name} είναι τώρα ${isOnline ? 'online' : 'offline'}`
     });
 
     res.json({

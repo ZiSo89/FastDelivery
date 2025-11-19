@@ -35,22 +35,18 @@ const DriverOrders = () => {
     
     // Socket.IO real-time listeners for driver (replaces 30s polling)
     const handleOrderAssigned = (data) => {
-      console.log('🚗 New order assigned to driver:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderStatusChanged = (data) => {
-      console.log('🔄 Order status changed:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderCancelled = (data) => {
-      console.log('🚫 Order cancelled:', data);
       fetchOrders(); // Refresh list
     };
 
     const handleOrderCompleted = (data) => {
-      console.log('🎉 Order completed:', data);
       fetchOrders(); // Refresh list
     };
 

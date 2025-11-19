@@ -17,8 +17,6 @@ try {
     if (fs.existsSync(serviceAccountPath)) {
       serviceAccount = require(serviceAccountPath);
       firebaseInitialized = true;
-    } else {
-      console.log('⚠️  Firebase service account not found - Firebase features disabled for local development');
     }
   }
 
@@ -75,14 +73,12 @@ const uploadToFirebase = async (file, folder = 'voice') => {
 // Delete file from Firebase Storage
 const deleteFromFirebase = async (fileUrl) => {
   if (!firebaseInitialized || !bucket) {
-    console.log('⚠️  Firebase not initialized - skipping file deletion');
     return;
   }
   
   try {
     const fileName = fileUrl.split(`${bucket.name}/`)[1];
     await bucket.file(fileName).delete();
-    console.log(`🗑️  File deleted: ${fileName}`);
   } catch (error) {
     console.error(`Firebase delete error: ${error.message}`);
   }

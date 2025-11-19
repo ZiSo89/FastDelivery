@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Badge, Alert, ListGroup, Button } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Row, Col, Card, Alert, ListGroup, Button } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/api';
 import socketService from '../../services/socket';
@@ -11,6 +11,20 @@ const OrderStatus = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const fetchOrderStatus = useCallback(async () => {
+    try {
+      const response = await customerService.getOrderStatus(orderNumber);
+      // Backend επιστρέφει { success: true, order: {...} }
+      const orderData = response.order || response.data || response;
+      setOrder(orderData);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Δεν βρέθηκε η παραγγελία');
+    } finally {
+      setLoading(false);
+    }
+  }, [orderNumber]);
 
   useEffect(() => {
     if (orderNumber) {
@@ -24,7 +38,6 @@ const OrderStatus = () => {
 
       // Listen to ALL order events
       const handleOrderUpdate = (data) => {
-        console.log('🔄 Order update received:', data);
         if (data.orderNumber === orderNumber || data.orderId === order?._id) {
           fetchOrderStatus(); // Refresh order data
         }
@@ -56,29 +69,18 @@ const OrderStatus = () => {
         socketService.off('order:rejected_store', handleOrderUpdate);
       };
     }
-  }, [orderNumber, order?._id]);
-
-  const fetchOrderStatus = async () => {
-    try {
-      const response = await customerService.getOrderStatus(orderNumber);
-      // Backend επιστρέφει { success: true, order: {...} }
-      const orderData = response.order || response.data || response;
-      setOrder(orderData);
-      setError('');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Δεν βρέθηκε η παραγγελία');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [orderNumber, order?._id, fetchOrderStatus]);
 
   const handleConfirmPrice = async () => {
     if (!order) return;
 
-    const phone = prompt('Εισάγετε το τηλέφωνό σας για επιβεβαίωση:');
-    if (!phone) return;
+    if (!window.confirm('Επιβεβαιώνετε την τιμή και θέλετε να συνεχίσει η παραγγελία;')) {
+      return;
+    }
 
     try {
+      // Χρησιμοποιούμε το τηλέφωνο που υπάρχει ήδη στην παραγγελία
+      const phone = order.customer?.phone || order.customerPhone;
       await customerService.confirmPrice(order._id, phone);
       alert('Η τιμή επιβεβαιώθηκε! Η παραγγελία θα ανατεθεί σε οδηγό.');
       fetchOrderStatus();
@@ -87,12 +89,35 @@ const OrderStatus = () => {
     }
   };
 
+  const handleCancelOrder = async () => {
+    if (!order) return;
+
+    if (!window.confirm('Είστε σίγουροι ότι θέλετε να ακυρώσετε την παραγγελία;')) {
+      return;
+    }
+
+    const phone = order.customer?.phone || order.customerPhone;
+    if (!phone) {
+      alert('Δεν βρέθηκε το τηλέφωνο της παραγγελίας');
+      return;
+    }
+
+    try {
+      // Καλούμε το backend να ακυρώσει την παραγγελία
+      await customerService.cancelOrder(order._id, phone);
+      alert('Η παραγγελία ακυρώθηκε.');
+      navigate('/');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Σφάλμα ακύρωσης');
+    }
+  };
+
   const getStatusInfo = (status) => {
     const statusMap = {
       pending_store: { color: 'warning', icon: '⏳', text: 'Αναμονή απόκρισης καταστήματος', progress: 10 },
       pricing: { color: 'info', icon: '💰', text: 'Το κατάστημα τιμολογεί την παραγγελία', progress: 25 },
       pending_admin: { color: 'primary', icon: '👨‍💼', text: 'Υπολογισμός μεταφορικών', progress: 40 },
-      pending_customer_confirm: { color: 'warning', icon: '⚠️', text: 'Αναμονή επιβεβαίωσης τιμής', progress: 50 },
+      pending_customer_confirm: { color: 'warning', icon: '⚠️', text: 'Αναμονή επιβεβαίωσης πελάτη', progress: 50 },
       confirmed: { color: 'success', icon: '✅', text: 'Επιβεβαιωμένη - Αναζήτηση οδηγού', progress: 60 },
       assigned: { color: 'info', icon: '🚗', text: 'Ανατέθηκε σε οδηγό', progress: 70 },
       accepted_driver: { color: 'primary', icon: '👍', text: 'Ο οδηγός αποδέχτηκε', progress: 75 },
@@ -155,9 +180,6 @@ const OrderStatus = () => {
                 <div className="text-center mb-4">
                   <div className="display-1 mb-3">{statusInfo.icon}</div>
                   <h3>{statusInfo.text}</h3>
-                  <Badge bg={statusInfo.color} className="fs-6">
-                    {order.status}
-                  </Badge>
                 </div>
 
                 <div className="progress mb-4" style={{ height: '30px' }}>
@@ -181,15 +203,23 @@ const OrderStatus = () => {
                       Μεταφορικά: <strong>€{order.deliveryFee?.toFixed(2)}</strong><br />
                       <strong>Σύνολο: €{order.totalPrice?.toFixed(2)}</strong>
                     </p>
-                    <Button variant="success" size="lg" onClick={handleConfirmPrice}>
-                      Επιβεβαίωση & Συνέχεια
-                    </Button>
+                    <div className="d-flex gap-2 justify-content-center">
+                      <Button variant="success" size="lg" onClick={handleConfirmPrice}>
+                        Επιβεβαίωση & Συνέχεια
+                      </Button>
+                      <Button variant="danger" size="lg" onClick={handleCancelOrder}>
+                        Ακύρωση Παραγγελίας
+                      </Button>
+                    </div>
                   </Alert>
                 )}
 
                 <ListGroup className="mb-4">
                   <ListGroup.Item>
                     <strong>Κατάστημα:</strong> {order.storeName || order.store?.businessName || order.store?.storeName || 'Μη διαθέσιμο'}
+                  </ListGroup.Item>
+                  <ListGroup.Item>
+                    <strong>Προϊόντα:</strong> {order.orderContent ? order.orderContent : (order.orderType === 'voice' ? '🎤 Φωνητική παραγγελία' : 'Δεν καταχωρήθηκε')}
                   </ListGroup.Item>
                   <ListGroup.Item>
                     <strong>Διεύθυνση Παράδοσης:</strong> {order.customer?.address || order.deliveryAddress || 'Μη διαθέσιμη'}

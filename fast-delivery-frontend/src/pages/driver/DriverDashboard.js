@@ -6,6 +6,7 @@ import { driverService } from '../../services/api';
 import socketService from '../../services/socket';
 import DriverNavbar from '../../components/driver/DriverNavbar';
 import DriverOrders from '../../components/driver/DriverOrders';
+import NotificationToast from '../../components/NotificationToast';
 import '../../styles/DriverDashboard.css';
 
 const DriverDashboard = () => {
@@ -49,8 +50,6 @@ const DriverDashboard = () => {
 
     // Listen for driver status changes
     const handleStatusChange = async (data) => {
-      console.log('🔔 Driver status changed:', data);
-      
       // If approved, show message and reload page to get new token
       if (data.status === 'approved' && data.isApproved) {
         setStatusMessage('✅ Η εγγραφή σας εγκρίθηκε! Η σελίδα θα ανανεωθεί...');
@@ -80,10 +79,18 @@ const DriverDashboard = () => {
       }
     };
 
+    // Listen for new order assignments - show notification
+    const handleOrderAssigned = (data) => {
+      setStatusMessage(`📦 Νέα παραγγελία ανατέθηκε: ${data.orderNumber || ''}`);
+      setTimeout(() => setStatusMessage(''), 5000);
+    };
+
     socketService.on('driver:status_changed', handleStatusChange);
+    socketService.on('order:assigned', handleOrderAssigned);
 
     return () => {
       socketService.off('driver:status_changed', handleStatusChange);
+      socketService.off('order:assigned', handleOrderAssigned);
     };
   }, [fetchProfile, user, updateUser]);
 
@@ -111,6 +118,7 @@ const DriverDashboard = () => {
   return (
     <div className="driver-dashboard">
       <DriverNavbar user={user} profile={profile} />
+      <NotificationToast />
       
       <Container fluid className="py-4">
         {statusMessage && (

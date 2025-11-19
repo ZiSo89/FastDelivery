@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col } from 'react-bootstrap';
 import { adminService } from '../../services/api';
+import socketService from '../../services/socket';
 
 const DriversTab = () => {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filter, setFilter] = useState('pending');
+  const [filter, setFilter] = useState('approved');
   const [processingId, setProcessingId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -32,6 +33,17 @@ const DriversTab = () => {
 
   useEffect(() => {
     fetchDrivers();
+    
+    // Socket.IO listener for driver online/offline status changes
+    const handleDriverStatusChange = (data) => {
+      fetchDrivers(); // Refresh driver list to show updated online status
+    };
+
+    socketService.on('driver:availability_changed', handleDriverStatusChange);
+
+    return () => {
+      socketService.off('driver:availability_changed', handleDriverStatusChange);
+    };
   }, [fetchDrivers]);
 
   const handleApprove = async (driverId, approved) => {

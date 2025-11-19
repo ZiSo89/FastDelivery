@@ -147,6 +147,17 @@ exports.registerStore = async (req, res) => {
       isApproved: false
     });
 
+    // Notify all admins about new store registration
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('store:registered', {
+        storeId: store._id,
+        businessName: store.businessName,
+        storeType: store.storeType,
+        message: `Νέο κατάστημα: ${store.businessName}`
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση από διαχειριστή.',
@@ -193,6 +204,16 @@ exports.registerDriver = async (req, res) => {
       isApproved: false,
       isOnline: false
     });
+
+    // Notify all admins about new driver registration
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('driver:registered', {
+        driverId: driver._id,
+        name: driver.name,
+        message: `Νέος οδηγός: ${driver.name}`
+      });
+    }
 
     res.status(201).json({
       success: true,

@@ -26,7 +26,7 @@ exports.getStores = async (req, res) => {
   try {
     const { serviceArea, storeType } = req.query;
 
-    const filter = { status: 'approved', isApproved: true };
+    const filter = { isApproved: true };
 
     // Filter by service area (partial match)
     if (serviceArea) {
@@ -182,6 +182,9 @@ exports.getOrderStatus = async (req, res) => {
         status: order.status,
         customer: order.customer,
         storeName: order.storeName,
+        orderType: order.orderType,
+        orderContent: order.orderContent,
+        orderVoiceUrl: order.orderVoiceUrl,
         productPrice: order.productPrice,
         deliveryFee: order.deliveryFee,
         totalPrice: order.totalPrice,
