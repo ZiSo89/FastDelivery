@@ -232,7 +232,7 @@ export const driverService = {
   // Accept/Reject assignment
   acceptOrder: async (orderId, accepted, rejectionReason = null) => {
     const response = await api.put(`/driver/orders/${orderId}/accept`, {
-      accepted,
+      action: accepted ? 'accept' : 'reject',
       rejectionReason
     });
     return response.data;
@@ -270,7 +270,10 @@ export const customerService = {
 
   // Confirm price
   confirmPrice: async (orderId, customerPhone) => {
-    const response = await api.put(`/orders/${orderId}/confirm`, { customerPhone });
+    const response = await api.put(`/orders/${orderId}/confirm`, { 
+      phone: customerPhone,
+      confirm: true 
+    });
     return response.data;
   }
 };

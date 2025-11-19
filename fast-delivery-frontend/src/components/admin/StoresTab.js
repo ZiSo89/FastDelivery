@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Badge, Spinner, Alert, ButtonGroup } from 'react-bootstrap';
+import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col } from 'react-bootstrap';
 import { adminService } from '../../services/api';
 
 const StoresTab = () => {
@@ -8,6 +8,13 @@ const StoresTab = () => {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('pending');
   const [processingId, setProcessingId] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchStores = useCallback(async () => {
     try {
@@ -105,7 +112,71 @@ const StoresTab = () => {
         <Alert variant="danger">{error}</Alert>
       ) : stores.length === 0 ? (
         <Alert variant="info">Δεν βρέθηκαν καταστήματα</Alert>
+      ) : isMobile ? (
+        // Mobile Card View
+        <Row className="g-3">
+          {stores.map((store) => (
+            <Col xs={12} key={store._id}>
+              <Card className="shadow-sm">
+                <Card.Header>
+                  <h6 className="mb-0 fw-bold">{store.businessName || store.storeName}</h6>
+                  <Badge bg="info" className="mt-1">{store.storeType}</Badge>
+                </Card.Header>
+                <Card.Body>
+                  <div className="mb-2">
+                    <small className="text-muted">📧 Email:</small><br />
+                    {store.email}
+                  </div>
+                  
+                  <div className="mb-2">
+                    <small className="text-muted">📞 Τηλέφωνο:</small><br />
+                    <strong>{store.phone}</strong>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <small className="text-muted">🏢 ΑΦΜ:</small><br />
+                    {store.afm}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <small className="text-muted">📍 Διεύθυνση:</small><br />
+                    {store.address}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <small className="text-muted">Κατάσταση:</small><br />
+                    {getStatusBadge(store.status)}
+                  </div>
+                  
+                  {store.status === 'pending' && (
+                    <div className="d-grid gap-2">
+                      <Button
+                        variant="success"
+                        onClick={() => handleApprove(store._id, true)}
+                        disabled={processingId === store._id}
+                      >
+                        {processingId === store._id ? (
+                          <Spinner animation="border" size="sm" />
+                        ) : (
+                          '✅ Έγκριση Καταστήματος'
+                        )}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleApprove(store._id, false)}
+                        disabled={processingId === store._id}
+                      >
+                        ❌ Απόρριψη
+                      </Button>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
       ) : (
+        // Desktop Table View
         <div className="table-responsive">
           <Table striped bordered hover>
             <thead>

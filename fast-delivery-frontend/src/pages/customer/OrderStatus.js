@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Badge, Alert, ListGroup, Button } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/api';
+import socketService from '../../services/socket';
 import '../../styles/Customer.css';
 
 const OrderStatus = () => {
@@ -14,11 +15,48 @@ const OrderStatus = () => {
   useEffect(() => {
     if (orderNumber) {
       fetchOrderStatus();
-      // Auto-refresh κάθε 10 δευτερόλεπτα
-      const interval = setInterval(fetchOrderStatus, 10000);
-      return () => clearInterval(interval);
+      
+      // Socket.IO real-time updates
+      // Connect socket for guest user (no authentication needed)
+      if (!socketService.isConnected()) {
+        socketService.connect(null);
+      }
+
+      // Listen to ALL order events
+      const handleOrderUpdate = (data) => {
+        console.log('🔄 Order update received:', data);
+        if (data.orderNumber === orderNumber || data.orderId === order?._id) {
+          fetchOrderStatus(); // Refresh order data
+        }
+      };
+
+      // Subscribe to all relevant events
+      socketService.on('order:status_changed', handleOrderUpdate);
+      socketService.on('order:pending_admin', handleOrderUpdate);
+      socketService.on('order:price_ready', handleOrderUpdate);
+      socketService.on('order:confirmed', handleOrderUpdate);
+      socketService.on('order:assigned', handleOrderUpdate);
+      socketService.on('driver:accepted', handleOrderUpdate);
+      socketService.on('driver:rejected', handleOrderUpdate);
+      socketService.on('order:completed', handleOrderUpdate);
+      socketService.on('order:cancelled', handleOrderUpdate);
+      socketService.on('order:rejected_store', handleOrderUpdate);
+
+      // Cleanup on unmount
+      return () => {
+        socketService.off('order:status_changed', handleOrderUpdate);
+        socketService.off('order:pending_admin', handleOrderUpdate);
+        socketService.off('order:price_ready', handleOrderUpdate);
+        socketService.off('order:confirmed', handleOrderUpdate);
+        socketService.off('order:assigned', handleOrderUpdate);
+        socketService.off('driver:accepted', handleOrderUpdate);
+        socketService.off('driver:rejected', handleOrderUpdate);
+        socketService.off('order:completed', handleOrderUpdate);
+        socketService.off('order:cancelled', handleOrderUpdate);
+        socketService.off('order:rejected_store', handleOrderUpdate);
+      };
     }
-  }, [orderNumber]);
+  }, [orderNumber, order?._id]);
 
   const fetchOrderStatus = async () => {
     try {
@@ -151,22 +189,27 @@ const OrderStatus = () => {
 
                 <ListGroup className="mb-4">
                   <ListGroup.Item>
-                    <strong>Κατάστημα:</strong> {order.store?.storeName}
+                    <strong>Κατάστημα:</strong> {order.storeName || order.store?.businessName || order.store?.storeName || 'Μη διαθέσιμο'}
                   </ListGroup.Item>
                   <ListGroup.Item>
-                    <strong>Διεύθυνση Παράδοσης:</strong> {order.deliveryAddress}
+                    <strong>Διεύθυνση Παράδοσης:</strong> {order.customer?.address || order.deliveryAddress || 'Μη διαθέσιμη'}
                   </ListGroup.Item>
                   <ListGroup.Item>
-                    <strong>Τηλέφωνο:</strong> {order.customerPhone}
+                    <strong>Τηλέφωνο:</strong> {order.customer?.phone || order.customerPhone || 'Μη διαθέσιμο'}
                   </ListGroup.Item>
-                  {order.driver && (
+                  {order.customer?.name && (
                     <ListGroup.Item>
-                      <strong>Οδηγός:</strong> {order.driver.name} ({order.driver.vehicleType})
+                      <strong>Όνομα Πελάτη:</strong> {order.customer.name}
                     </ListGroup.Item>
                   )}
-                  {order.productPrice && (
+                  {(order.driverName || order.driver) && (
                     <ListGroup.Item>
-                      <strong>Τελική Τιμή:</strong> €{order.totalPrice?.toFixed(2)}
+                      <strong>Οδηγός:</strong> {order.driverName || order.driver?.name} {order.driver?.vehicleType ? `(${order.driver.vehicleType})` : ''}
+                    </ListGroup.Item>
+                  )}
+                  {order.productPrice > 0 && (
+                    <ListGroup.Item>
+                      <strong>Τελική Τιμή:</strong> €{order.totalPrice?.toFixed(2) || '0.00'}
                     </ListGroup.Item>
                   )}
                 </ListGroup>
@@ -174,7 +217,7 @@ const OrderStatus = () => {
                 <small className="text-muted">
                   Δημιουργήθηκε: {new Date(order.createdAt).toLocaleString('el-GR')}
                   <br />
-                  Η σελίδα ανανεώνεται αυτόματα κάθε 10 δευτερόλεπτα
+                  Η σελίδα ενημερώνεται αυτόματα σε πραγματικό χρόνο
                 </small>
               </Card.Body>
             </Card>

@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authService } from '../services/api';
+import socketService from '../services/socket';
 
 const AuthContext = createContext();
 
@@ -20,6 +21,8 @@ export const AuthProvider = ({ children }) => {
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
       setUser(currentUser);
+      // Connect socket when user is restored from localStorage
+      socketService.connect(currentUser);
     }
     setLoading(false);
   }, []);
@@ -30,6 +33,10 @@ export const AuthProvider = ({ children }) => {
       // Backend επιστρέφει: { success: true, token: "...", user: { user object } }
       const userData = response.user || response.data?.user || response.data || response;
       setUser(userData);
+      
+      // Connect socket after successful login
+      socketService.connect(userData);
+      
       return { success: true, data: userData, user: userData };
     } catch (error) {
       return {
@@ -41,6 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     authService.logout();
+    socketService.disconnect(); // Disconnect socket on logout
     setUser(null);
   };
 

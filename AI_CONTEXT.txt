@@ -1268,7 +1268,263 @@ Status: ✅ ALL DATA IN GREEK (Ελληνικά)
 
 ---
 
-**END OF SESSION 2025-11-19**
-**Next AI Session: Continue from "How to Continue Tomorrow" section above**
-**All local changes committed and pushed to GitHub ✅**
-**This file should be provided to future AI sessions for project continuation**
+## 🆕 SESSION 2025-11-19 CONTINUED - REAL-TIME SOCKET.IO IMPLEMENTATION
+
+### Major Feature: Socket.IO Real-Time Updates ✅ COMPLETED
+
+**What Was Implemented:**
+1. ✅ Socket.IO client service (`socket.js`) - 150+ lines
+2. ✅ Backend broadcast helper (`socketHelpers.js`) - Centralized event broadcasting
+3. ✅ All controllers updated to use `broadcastOrderEvent()`
+4. ✅ All frontend components listen to Socket.IO events
+5. ✅ Customer OrderStatus page - Real-time tracking
+6. ✅ Admin, Store, Driver panels - Auto-refresh on any order change
+7. ✅ Removed success alerts (replaced by real-time UI updates)
+
+### Backend Socket.IO Implementation
+
+#### New File: `src/utils/socketHelpers.js`
+**Purpose:** Centralized function to broadcast events to ALL relevant parties
+```javascript
+broadcastOrderEvent(io, order, eventName, data)
+// Sends to:
+// 1. ALL admins (broadcast)
+// 2. Specific store (room: store:${storeId})
+// 3. Specific driver (room: driver:${driverId})
+```
+
+#### Controllers Updated (5 Files)
+**All now use `broadcastOrderEvent()` instead of individual `io.emit()` calls:**
+
+1. **`customerController.js`:**
+   - `order:new` - When customer creates order
+   - `order:confirmed` - When customer confirms price
+   - `order:cancelled` - When customer cancels
+
+2. **`storeController.js`:**
+   - `order:status_changed` - Store accepts (→ pricing)
+   - `order:rejected_store` - Store rejects
+   - `order:pending_admin` - Store sets price
+   - `order:status_changed` - Store marks preparing
+
+3. **`adminController.js`:**
+   - `order:price_ready` - Admin adds delivery fee
+   - `order:assigned` - Admin assigns driver
+   - `order:cancelled` - Admin cancels order
+
+4. **`driverController.js`:**
+   - `driver:accepted` - Driver accepts assignment
+   - `driver:rejected` - Driver rejects assignment
+   - `order:status_changed` - Driver updates status (in_delivery, completed)
+   - `order:completed` - Driver completes delivery
+
+5. **`server.js`:**
+   - Fixed room join handler to accept both string and object formats
+   - Handles: `{role: 'admin', userId: '...'}` format from frontend
+
+### Frontend Socket.IO Implementation
+
+#### New File: `src/services/socket.js` (165 lines)
+**Key Features:**
+- Singleton pattern - One socket connection per app
+- Automatic reconnection
+- Event queueing - Listeners can be added before connection
+- Logging - All events logged to console for debugging
+- Room management - Auto-joins role-specific rooms
+
+**Methods:**
+```javascript
+socketService.connect(user)           // Connect with user credentials
+socketService.disconnect()            // Clean disconnect
+socketService.on(event, callback)     // Subscribe to event
+socketService.off(event, callback)    // Unsubscribe
+socketService.isConnected()           // Check connection status
+```
+
+**Pending Listener System:**
+- Components can call `socketService.on()` BEFORE socket connects
+- Listeners are queued in `pendingListeners` Map
+- Once socket connects, all pending listeners attach automatically
+- Prevents "Socket not connected" errors during hot-reloads
+
+#### AuthContext Integration
+**File:** `src/context/AuthContext.js`
+- Auto-connects socket on login
+- Auto-connects socket on page reload (if user in localStorage)
+- Disconnects socket on logout
+
+#### Components Updated (8 Files)
+
+**Admin Panel (`OrdersTab.js`):**
+Listens to 11 events:
+- `order:new`, `order:status_changed`, `order:pending_admin`
+- `order:price_ready`, `order:assigned`, `order:rejected_store`
+- `order:cancelled`, `order:confirmed`
+- `driver:accepted`, `driver:rejected`, `order:completed`
+
+**Store Panel (`StoreOrders.js`):**
+Listens to 8 events:
+- `order:new`, `order:cancelled`, `order:status_changed`
+- `order:pending_admin`, `order:price_ready`, `order:assigned`
+- `driver:accepted`, `order:completed`
+- **Fixed:** Used `useRef` to prevent filter dependency issues
+
+**Driver Panel (`DriverOrders.js`):**
+Listens to 4 events:
+- `order:assigned`, `order:status_changed`
+- `order:cancelled`, `order:completed`
+
+**Customer Tracking (`OrderStatus.js`):**
+Listens to 10 events (ALL order events):
+- `order:status_changed`, `order:pending_admin`, `order:price_ready`
+- `order:confirmed`, `order:assigned`, `driver:accepted`
+- `driver:rejected`, `order:completed`, `order:cancelled`
+- `order:rejected_store`
+- Updates message: "Η σελίδα ενημερώνεται αυτόματα σε πραγματικό χρόνο"
+
+### UI/UX Improvements
+
+#### Success Alerts Removed
+**Files Modified:**
+- `StoreOrders.js` - Removed 4 success alerts (accept, reject, price, preparing)
+- `OrdersTab.js` - Removed 2 success alerts (delivery fee, assign driver)
+- `DriverOrders.js` - Removed 4 success alerts (accept, reject, pickup, complete)
+
+**Kept:**
+- ⚠️ Validation alerts (e.g., "Παρακαλώ εισάγετε έγκυρη τιμή")
+- ❌ Error alerts (API errors)
+- ❓ Confirmation prompts (e.g., driver reject reason, delivery complete confirm)
+
+**Result:** Clean UX - Changes appear instantly without annoying popups! 🎉
+
+#### Filter State Management Fix
+**File:** `StoreOrders.js`
+**Problem:** `fetchOrders` dependency on `filter` caused Socket.IO listeners to recreate on every filter change
+**Solution:** 
+```javascript
+const filterRef = useRef(filter);
+const fetchOrders = useCallback(async (currentFilter = null) => {
+  const filterToUse = currentFilter !== null ? currentFilter : filterRef.current;
+  // ... fetch with filterToUse
+}, []); // No dependencies!
+```
+**Result:** Socket.IO listeners created ONCE, never recreate
+
+### Admin Order Actions Implementation
+
+#### Missing Features Added
+**File:** `OrdersTab.js`
+
+1. **Assign Driver Modal:**
+   - Button appears for orders with status `confirmed` OR `rejected_driver`
+   - Dropdown lists only ONLINE & APPROVED drivers
+   - Shows driver name, vehicle, license plate
+   - Calls `adminService.assignDriver(orderId, driverId)`
+
+2. **Both features send real-time events to all parties**
+
+### Bug Fixes Applied
+
+#### 1. Customer OrderStatus Not Updating
+**Problem:** Only listened to `order:status_changed`, missed other events
+**Solution:** Added listeners for ALL 10 order-related events
+**Result:** Real-time tracking works for every state change
+
+#### 2. Store "Δεν βρέθηκαν παραγγελίες" Flash
+**Problem:** Filter state change caused `fetchOrders` to recreate, Socket.IO re-subscribed
+**Solution:** `useRef` for filter, `useCallback` without dependencies
+**Result:** Smooth real-time updates without flickering
+
+#### 3. Driver Reject Not Allowing Reassignment
+**Problem:** Admin couldn't assign to new driver after rejection
+**Solution:** Changed condition from `status === 'confirmed'` to `['confirmed', 'rejected_driver'].includes(status)`
+**File:** `adminController.js` line 294
+**Result:** Admin can reassign rejected orders
+
+### Database Cleanup
+**Script:** `deleteOrdersBySakis.js`
+**Purpose:** Delete test orders by customer name "Σακης"
+**Result:** Deleted 10 orders (ORD-20251119-0007 through 0017)
+
+### Testing Results (2025-11-19 Evening)
+
+**Socket.IO Connection:**
+- ✅ Backend accepts connections from `http://localhost:3000`
+- ✅ Frontend connects on page load
+- ✅ Auto-reconnects after server restart
+- ✅ Joins correct rooms based on user role
+
+**Real-Time Events:**
+- ✅ Admin sees new orders instantly
+- ✅ Store sees driver acceptance instantly
+- ✅ Driver sees new assignments instantly
+- ✅ Customer tracking updates instantly
+- ✅ All panels refresh automatically on ANY change
+
+**Event Flow Example (Full Workflow):**
+1. Customer creates order → Admin & Store see `order:new` instantly
+2. Store accepts → Admin sees status change to `pricing`
+3. Store sets price → Admin sees `pending_admin` status
+4. Admin adds delivery fee → Customer sees price ready instantly
+5. Customer confirms → Admin sees `confirmed` status
+6. Admin assigns driver → Driver sees `order:assigned` instantly
+7. Driver accepts → Admin & Store see `driver:accepted` instantly
+8. Store marks preparing → Driver sees status change instantly
+9. Driver picks up → Store & Admin see `in_delivery` instantly
+10. Driver completes → Everyone sees `completed` instantly
+
+**Performance:**
+- No noticeable lag
+- Console logs confirm all events received
+- UI updates smooth (no flickering with filter fix)
+
+### Files Modified (Socket.IO Session)
+
+**Backend:**
+1. `src/utils/socketHelpers.js` - NEW FILE (52 lines)
+2. `src/controllers/customerController.js` - Added `broadcastOrderEvent` import & usage
+3. `src/controllers/storeController.js` - Added `broadcastOrderEvent` for all actions
+4. `src/controllers/adminController.js` - Added `broadcastOrderEvent` for delivery fee, assign, cancel
+5. `src/controllers/driverController.js` - Added `broadcastOrderEvent` for accept/reject/status changes
+6. `server.js` - Fixed room join handler (lines 42-58)
+7. `tests/deleteOrdersBySakis.js` - NEW FILE (cleanup script)
+
+**Frontend:**
+1. `src/services/socket.js` - NEW FILE (165 lines) - Complete Socket.IO client
+2. `src/context/AuthContext.js` - Added socket connect/disconnect
+3. `src/components/admin/OrdersTab.js` - 11 event listeners, removed success alerts, added assign driver for rejected orders
+4. `src/components/store/StoreOrders.js` - 8 event listeners, useRef fix, removed success alerts
+5. `src/components/driver/DriverOrders.js` - 4 event listeners, removed success alerts
+6. `src/pages/customer/OrderStatus.js` - 10 event listeners, updated message
+
+### Current State (2025-11-19 End of Day)
+
+**Backend:** ✅ FULLY WORKING WITH REAL-TIME
+- All 34 endpoints working
+- Socket.IO broadcasting to all parties
+- `broadcastOrderEvent()` used everywhere
+- Rooms: `admin` (broadcast), `store:${id}`, `driver:${id}`
+
+**Frontend:** ✅ FULLY WORKING WITH REAL-TIME
+- Socket.IO client connected
+- All panels update automatically
+- No manual refresh needed
+- Success alerts removed (clean UX)
+- Filter state fix prevents flickering
+
+**Database:** ✅ CLEAN
+- Test orders deleted (10 Σακης orders removed)
+- Ready for fresh testing
+
+**What's Left:** 
+❌ **PRODUCTION DEPLOYMENT** - All changes are LOCAL ONLY
+- Need to commit & push to GitHub
+- Render will auto-deploy (~5 minutes)
+- Test production real-time updates
+
+---
+
+**END OF SESSION 2025-11-19 (REAL-TIME UPDATES COMPLETE)**
+**Next Steps: Deploy to Production & Test**
+**Status: LOCAL DEVELOPMENT 100% COMPLETE ✅**
+**Socket.IO: WORKING PERFECTLY IN LOCAL ENVIRONMENT 🚀**

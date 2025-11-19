@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Modal, Form } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Modal, Form, Card, Row, Col } from 'react-bootstrap';
 import { storeService } from '../../services/api';
+import socketService from '../../services/socket';
 
 const StoreOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -11,11 +12,25 @@ const StoreOrders = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [productPrice, setProductPrice] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const filterRef = useRef(filter);
 
-  const fetchOrders = useCallback(async () => {
+  // Keep filterRef in sync with filter state
+  useEffect(() => {
+    filterRef.current = filter;
+  }, [filter]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const fetchOrders = useCallback(async (currentFilter = null) => {
     try {
       setLoading(true);
-      const response = await storeService.getOrders(filter === 'all' ? null : filter);
+      const filterToUse = currentFilter !== null ? currentFilter : filterRef.current;
+      const response = await storeService.getOrders(filterToUse === 'all' ? null : filterToUse);
       // Backend επιστρέφει { success: true, orders: [...] }
       setOrders(response.orders || response.data || []);
       setError('');
@@ -24,18 +39,86 @@ const StoreOrders = () => {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, []);
 
+  // Fetch orders when filter changes
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    fetchOrders(filter);
+  }, [filter, fetchOrders]);
+
+  // Socket.IO listeners (setup once, never recreate)
+  useEffect(() => {
+    
+    // Socket.IO real-time listeners for store
+    const handleNewOrder = (data) => {
+      console.log('🔔 New order for store:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    const handleOrderCancelled = (data) => {
+      console.log('❌ Order cancelled:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    const handleDriverAccepted = (data) => {
+      console.log('✅ Driver accepted order:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    const handleOrderStatusChanged = (data) => {
+      console.log('🔄 Order status changed:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    const handleOrderPendingAdmin = (data) => {
+      console.log('💰 Price sent to admin:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    const handleOrderPriceReady = (data) => {
+      console.log('💵 Admin added delivery fee:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    const handleOrderAssigned = (data) => {
+      console.log('🚗 Order assigned to driver:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    const handleOrderCompleted = (data) => {
+      console.log('🎉 Order completed:', data);
+      fetchOrders(); // Refresh list
+    };
+
+    // Subscribe to events
+    socketService.on('order:new', handleNewOrder);
+    socketService.on('order:cancelled', handleOrderCancelled);
+    socketService.on('order:status_changed', handleOrderStatusChanged);
+    socketService.on('order:pending_admin', handleOrderPendingAdmin);
+    socketService.on('order:price_ready', handleOrderPriceReady);
+    socketService.on('order:assigned', handleOrderAssigned);
+    socketService.on('driver:accepted', handleDriverAccepted);
+    socketService.on('order:completed', handleOrderCompleted);
+
+    // Cleanup on unmount
+    return () => {
+      socketService.off('order:new', handleNewOrder);
+      socketService.off('order:cancelled', handleOrderCancelled);
+      socketService.off('order:status_changed', handleOrderStatusChanged);
+      socketService.off('order:pending_admin', handleOrderPendingAdmin);
+      socketService.off('order:price_ready', handleOrderPriceReady);
+      socketService.off('order:assigned', handleOrderAssigned);
+      socketService.off('driver:accepted', handleDriverAccepted);
+      socketService.off('order:completed', handleOrderCompleted);
+    };
+  }, [fetchOrders]); // Only recreate if fetchOrders changes (which it won't)
 
   const handleAccept = async (orderId) => {
     try {
       setProcessingId(orderId);
       await storeService.acceptOrder(orderId, true);
       await fetchOrders();
-      alert('Η παραγγελία έγινε αποδεκτή!');
+      // Success - real-time update will show the change
     } catch (err) {
       alert(err.response?.data?.message || 'Σφάλμα');
     } finally {
@@ -51,7 +134,7 @@ const StoreOrders = () => {
       setProcessingId(orderId);
       await storeService.acceptOrder(orderId, false, reason);
       await fetchOrders();
-      alert('Η παραγγελία απορρίφθηκε');
+      // Success - real-time update will show the change
     } catch (err) {
       alert(err.response?.data?.message || 'Σφάλμα');
     } finally {
@@ -75,7 +158,7 @@ const StoreOrders = () => {
       await storeService.setPrice(selectedOrder._id, parseFloat(productPrice));
       setShowModal(false);
       await fetchOrders();
-      alert('Η τιμή καταχωρήθηκε!');
+      // Success - real-time update will show the change
     } catch (err) {
       alert(err.response?.data?.message || 'Σφάλμα');
     }
@@ -86,7 +169,7 @@ const StoreOrders = () => {
       setProcessingId(orderId);
       await storeService.updateStatus(orderId, 'preparing');
       await fetchOrders();
-      alert('Η παραγγελία είναι σε προετοιμασία!');
+      // Success - real-time update will show the change
     } catch (err) {
       alert(err.response?.data?.message || 'Σφάλμα');
     } finally {
@@ -155,7 +238,85 @@ const StoreOrders = () => {
         <Alert variant="danger">{error}</Alert>
       ) : orders.length === 0 ? (
         <Alert variant="info">Δεν βρέθηκαν παραγγελίες</Alert>
+      ) : isMobile ? (
+        // Mobile Card View
+        <Row className="g-3">
+          {orders.map((order) => (
+            <Col xs={12} key={order._id}>
+              <Card className="shadow-sm">
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <strong>{order.orderNumber}</strong>
+                  {getStatusBadge(order.status)}
+                </Card.Header>
+                <Card.Body>
+                  <div className="mb-2">
+                    <small className="text-muted">Πελάτης:</small><br />
+                    <strong>{order.customer?.name || 'N/A'}</strong><br />
+                    <small>📞 {order.customer?.phone || order.customerPhone || 'N/A'}</small><br />
+                    <small>📍 {order.customer?.address || order.deliveryAddress || 'N/A'}</small>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <small className="text-muted">Παραγγελία:</small><br />
+                    {order.orderType === 'voice' ? (
+                      <span>🎤 Φωνητική παραγγελία</span>
+                    ) : (
+                      order.orderContent
+                    )}
+                  </div>
+                  
+                  {order.productPrice && (
+                    <div className="mb-3">
+                      <small className="text-muted">Τιμή:</small><br />
+                      <h5 className="text-primary mb-0">€{order.productPrice.toFixed(2)}</h5>
+                    </div>
+                  )}
+                  
+                  {/* Action Buttons */}
+                  <div className="d-grid gap-2">
+                    {order.status === 'pending_store' && (
+                      <>
+                        <Button
+                          variant="success"
+                          onClick={() => handleAccept(order._id)}
+                          disabled={processingId === order._id}
+                        >
+                          ✅ Αποδοχή
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => handleReject(order._id)}
+                          disabled={processingId === order._id}
+                        >
+                          ❌ Απόρριψη
+                        </Button>
+                      </>
+                    )}
+                    {order.status === 'pricing' && (
+                      <Button
+                        variant="primary"
+                        onClick={() => handleSetPrice(order)}
+                      >
+                        💰 Καθορισμός Τιμής
+                      </Button>
+                    )}
+                    {order.status === 'accepted_driver' && (
+                      <Button
+                        variant="warning"
+                        onClick={() => handlePreparing(order._id)}
+                        disabled={processingId === order._id}
+                      >
+                        👨‍🍳 Προετοιμασία
+                      </Button>
+                    )}
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
       ) : (
+        // Desktop Table View
         <div className="table-responsive">
           <Table striped bordered hover>
             <thead>

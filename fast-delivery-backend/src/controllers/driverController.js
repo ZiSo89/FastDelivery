@@ -1,5 +1,6 @@
 const Driver = require('../models/Driver');
 const Order = require('../models/Order');
+const { broadcastOrderEvent } = require('../utils/socketHelpers');
 
 // @desc    Get driver profile
 // @route   GET /api/v1/driver/profile
@@ -122,11 +123,12 @@ exports.acceptRejectAssignment = async (req, res) => {
       driver.currentOrder = order._id;
       await driver.save();
 
-      // Notify admin and store
-      io.emit('driver:accepted', {
+      // Broadcast acceptance to everyone
+      broadcastOrderEvent(io, order, 'driver:accepted', {
         orderId: order._id,
         orderNumber: order.orderNumber,
-        driverName: driver.name
+        driverName: driver.name,
+        newStatus: 'accepted_driver'
       });
 
       res.json({
@@ -144,11 +146,12 @@ exports.acceptRejectAssignment = async (req, res) => {
       order._updatedBy = 'driver';
       await order.save();
 
-      // Notify admin
-      io.emit('driver:rejected', {
+      // Broadcast rejection to everyone
+      broadcastOrderEvent(io, order, 'driver:rejected', {
         orderId: order._id,
         orderNumber: order.orderNumber,
-        driverName: driver.name
+        driverName: driver.name,
+        newStatus: 'rejected_driver'
       });
 
       res.json({
@@ -227,16 +230,16 @@ exports.updateOrderStatus = async (req, res) => {
 
     await order.save();
 
-    // Notify all participants
+    // Broadcast to everyone
     const io = req.app.get('io');
-    io.to(`order:${order._id}`).emit('order:status_changed', {
+    broadcastOrderEvent(io, order, 'order:status_changed', {
       orderId: order._id,
       orderNumber: order.orderNumber,
       newStatus: status
     });
 
     if (status === 'completed') {
-      io.emit('order:completed', {
+      broadcastOrderEvent(io, order, 'order:completed', {
         orderId: order._id,
         orderNumber: order.orderNumber
       });

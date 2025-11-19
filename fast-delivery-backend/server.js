@@ -43,9 +43,22 @@ io.on('connection', (socket) => {
 
   // Join room based on user role and ID
   socket.on('join', (data) => {
-    const { role, userId } = data;
-    socket.join(`${role}:${userId}`);
-    console.log(`👤 ${role} ${userId} joined`);
+    // Handle both formats: string "admin" or object {role, userId}
+    let room;
+    
+    if (typeof data === 'string') {
+      // Old format: just room name
+      room = data;
+    } else if (data && data.role && data.userId) {
+      // New format: {role, userId}
+      room = `${data.role}:${data.userId}`;
+    } else {
+      console.log('⚠️ Invalid join data:', data);
+      return;
+    }
+    
+    socket.join(room);
+    console.log(`👤 User joined room: ${room}`);
   });
 
   // Join order room

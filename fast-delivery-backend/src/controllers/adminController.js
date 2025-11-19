@@ -2,6 +2,7 @@ const Store = require('../models/Store');
 const Driver = require('../models/Driver');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const { broadcastOrderEvent } = require('../utils/socketHelpers');
 
 // @desc    Get all stores
 // @route   GET /api/v1/admin/stores
@@ -242,13 +243,14 @@ exports.addDeliveryFee = async (req, res) => {
     order._updatedBy = 'admin';
     await order.save();
 
-    // Notify customer
+    // Broadcast to everyone
     const io = req.app.get('io');
-    io.emit('order:price_ready', {
+    broadcastOrderEvent(io, order, 'order:price_ready', {
       orderId: order._id,
       orderNumber: order.orderNumber,
       customerPhone: order.customer.phone,
       totalPrice: order.totalPrice,
+      newStatus: 'pending_customer_confirm',
       breakdown: {
         productPrice: order.productPrice,
         deliveryFee: order.deliveryFee
@@ -292,7 +294,8 @@ exports.assignDriver = async (req, res) => {
       });
     }
 
-    if (order.status !== 'confirmed') {
+    // Allow assignment for confirmed orders OR orders rejected by driver
+    if (!['confirmed', 'rejected_driver'].includes(order.status)) {
       return res.status(400).json({
         success: false,
         message: 'Η παραγγελία δεν είναι έτοιμη για ανάθεση'
@@ -328,11 +331,13 @@ exports.assignDriver = async (req, res) => {
     order._updatedBy = 'admin';
     await order.save();
 
-    // Notify driver
+    // Broadcast to everyone
     const io = req.app.get('io');
-    io.to(`driver:${driver._id}`).emit('order:assigned', {
+    broadcastOrderEvent(io, order, 'order:assigned', {
       orderId: order._id,
       orderNumber: order.orderNumber,
+      driverName: driver.name,
+      newStatus: 'assigned',
       pickup: {
         storeName: order.storeName,
         address: order.customer.address // Will add store address later
@@ -394,9 +399,9 @@ exports.cancelOrder = async (req, res) => {
     order._updatedBy = 'admin';
     await order.save();
 
-    // Notify all participants
+    // Broadcast to everyone
     const io = req.app.get('io');
-    io.to(`order:${order._id}`).emit('order:cancelled', {
+    broadcastOrderEvent(io, order, 'order:cancelled', {
       orderId: order._id,
       orderNumber: order.orderNumber,
       reason

@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Badge, Spinner, Alert } from 'react-bootstrap';
+import { Table, Badge, Spinner, Alert, Card, Row, Col } from 'react-bootstrap';
 import { adminService } from '../../services/api';
 
 const CustomersTab = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -40,7 +47,55 @@ const CustomersTab = () => {
         <Alert variant="danger">{error}</Alert>
       ) : customers.length === 0 ? (
         <Alert variant="info">Δεν βρέθηκαν πελάτες</Alert>
+      ) : isMobile ? (
+        // Mobile Card View
+        <Row className="g-3">
+          {customers.map((customer) => (
+            <Col xs={12} key={customer._id}>
+              <Card className="shadow-sm">
+                <Card.Body>
+                  <h6 className="fw-bold mb-2">{customer.name || 'N/A'}</h6>
+                  
+                  <div className="mb-2">
+                    <small className="text-muted">📞 Τηλέφωνο:</small><br />
+                    <strong>{customer.phone}</strong>
+                  </div>
+                  
+                  {customer.address && (
+                    <div className="mb-2">
+                      <small className="text-muted">📍 Διεύθυνση:</small><br />
+                      {customer.address}
+                    </div>
+                  )}
+                  
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                      <small className="text-muted">Παραγγελίες:</small><br />
+                      <Badge bg="primary" className="fs-6">
+                        {customer.totalOrders || customer.orderCount || 0}
+                      </Badge>
+                    </div>
+                    <div>
+                      {customer.isActive ? (
+                        <Badge bg="success">Ενεργός</Badge>
+                      ) : (
+                        <Badge bg="danger">Ανενεργός</Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2">
+                    <small className="text-muted">
+                      Εγγραφή: {new Date(customer.createdAt).toLocaleDateString('el-GR')}
+                    </small>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
       ) : (
+        // Desktop Table View
         <div className="table-responsive">
           <Table striped bordered hover>
             <thead>

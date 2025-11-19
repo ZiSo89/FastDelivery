@@ -3,6 +3,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const multer = require('multer');
 const { uploadToFirebase } = require('../config/firebase');
+const { broadcastOrderEvent } = require('../utils/socketHelpers');
 
 // Multer config για voice files (in-memory storage)
 const storage = multer.memoryStorage();
@@ -122,11 +123,12 @@ exports.createOrder = async (req, res) => {
       status: 'pending_store'
     });
 
-    // Emit Socket.IO event to store
+    // Broadcast new order to everyone
     const io = req.app.get('io');
-    io.to(`store:${storeId}`).emit('order:new', {
+    broadcastOrderEvent(io, order, 'order:new', {
       orderId: order._id,
       orderNumber: order.orderNumber,
+      storeName: order.storeName,
       customer: order.customer,
       orderType: order.orderType,
       orderContent: order.orderContent,
@@ -175,6 +177,7 @@ exports.getOrderStatus = async (req, res) => {
     res.json({
       success: true,
       order: {
+        _id: order._id,
         orderNumber: order.orderNumber,
         status: order.status,
         customer: order.customer,
@@ -258,8 +261,8 @@ exports.confirmOrderPrice = async (req, res) => {
       order.status = 'cancelled';
       await order.save();
 
-      // Notify store and admin
-      io.to(`store:${order.storeId}`).emit('order:cancelled', {
+      // Broadcast cancellation to everyone
+      broadcastOrderEvent(io, order, 'order:cancelled', {
         orderId: order._id,
         orderNumber: order.orderNumber
       });

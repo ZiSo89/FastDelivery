@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Store = require('../models/Store');
+const { broadcastOrderEvent } = require('../utils/socketHelpers');
 
 // @desc    Get store orders
 // @route   GET /api/v1/store/orders
@@ -70,6 +71,13 @@ exports.acceptRejectOrder = async (req, res) => {
       order._updatedBy = 'store';
       await order.save();
 
+      // Broadcast acceptance to everyone
+      broadcastOrderEvent(io, order, 'order:status_changed', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        newStatus: 'pricing'
+      });
+
       res.json({
         success: true,
         message: 'Η παραγγελία έγινε αποδεκτή. Προσθέστε την τιμή προϊόντων.',
@@ -83,11 +91,12 @@ exports.acceptRejectOrder = async (req, res) => {
       order._updatedBy = 'store';
       await order.save();
 
-      // Notify customer
-      io.emit('order:rejected_store', {
+      // Broadcast rejection to everyone
+      broadcastOrderEvent(io, order, 'order:rejected_store', {
         orderId: order._id,
         orderNumber: order.orderNumber,
-        customerPhone: order.customer.phone
+        customerPhone: order.customer.phone,
+        newStatus: 'rejected_store'
       });
 
       res.json({
@@ -150,12 +159,13 @@ exports.addProductPrice = async (req, res) => {
     order._updatedBy = 'store';
     await order.save();
 
-    // Notify admin
+    // Broadcast to everyone
     const io = req.app.get('io');
-    io.emit('order:pending_admin', {
+    broadcastOrderEvent(io, order, 'order:pending_admin', {
       orderId: order._id,
       orderNumber: order.orderNumber,
-      productPrice: order.productPrice
+      productPrice: order.productPrice,
+      newStatus: 'pending_admin'
     });
 
     res.json({
@@ -213,9 +223,9 @@ exports.updateOrderStatus = async (req, res) => {
     order._updatedBy = 'store';
     await order.save();
 
-    // Notify customer and driver
+    // Broadcast to everyone (admin, driver, store)
     const io = req.app.get('io');
-    io.to(`order:${order._id}`).emit('order:status_changed', {
+    broadcastOrderEvent(io, order, 'order:status_changed', {
       orderId: order._id,
       orderNumber: order.orderNumber,
       newStatus: status
