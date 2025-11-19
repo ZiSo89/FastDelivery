@@ -13,7 +13,8 @@ const DriversTab = () => {
     try {
       setLoading(true);
       const response = await adminService.getDrivers(filter === 'all' ? null : filter);
-      setDrivers(response.data || []);
+      // Backend επιστρέφει { success: true, drivers: [...] }
+      setDrivers(response.drivers || response.data || []);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης οδηγών');
@@ -122,8 +123,8 @@ const DriversTab = () => {
                   <td className="fw-bold">{driver.name}</td>
                   <td>{driver.email}</td>
                   <td>{driver.phone}</td>
-                  <td>{driver.vehicleType}</td>
-                  <td>{driver.vehiclePlate}</td>
+                  <td>{driver.vehicle || driver.vehicleType || '-'}</td>
+                  <td>{driver.licensePlate || driver.vehiclePlate || '-'}</td>
                   <td>
                     {driver.isOnline ? (
                       <Badge bg="success">Online</Badge>

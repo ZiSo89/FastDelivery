@@ -13,7 +13,8 @@ const StoresTab = () => {
     try {
       setLoading(true);
       const response = await adminService.getStores(filter === 'all' ? null : filter);
-      setStores(response.data || []);
+      // Backend επιστρέφει { success: true, stores: [...] }
+      setStores(response.stores || response.data || []);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης καταστημάτων');
@@ -122,7 +123,7 @@ const StoresTab = () => {
             <tbody>
               {stores.map((store) => (
                 <tr key={store._id}>
-                  <td className="fw-bold">{store.storeName}</td>
+                  <td className="fw-bold">{store.businessName || store.storeName}</td>
                   <td>{store.storeType}</td>
                   <td>{store.email}</td>
                   <td>{store.phone}</td>

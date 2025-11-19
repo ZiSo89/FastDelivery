@@ -1,26 +1,47 @@
 const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
 
 // Initialize Firebase Admin
 let serviceAccount;
+let firebaseInitialized = false;
 
-if (process.env.FIREBASE_CREDENTIALS) {
-  // Production - from environment variable
-  serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
-} else {
-  // Development - from file
-  serviceAccount = require(path.join(__dirname, '../../firebase-service-account.json'));
+try {
+  if (process.env.FIREBASE_CREDENTIALS) {
+    // Production - from environment variable
+    serviceAccount = JSON.parse(process.env.FIREBASE_CREDENTIALS);
+    firebaseInitialized = true;
+  } else {
+    // Development - from file (if exists)
+    const serviceAccountPath = path.join(__dirname, '../../firebase-service-account.json');
+    if (fs.existsSync(serviceAccountPath)) {
+      serviceAccount = require(serviceAccountPath);
+      firebaseInitialized = true;
+    } else {
+      console.log('⚠️  Firebase service account not found - Firebase features disabled for local development');
+    }
+  }
+
+  if (firebaseInitialized) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+    });
+    console.log('✅ Firebase initialized successfully');
+  }
+} catch (error) {
+  console.error('⚠️  Firebase initialization failed:', error.message);
+  firebaseInitialized = false;
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET
-});
-
-const bucket = admin.storage().bucket();
+const bucket = firebaseInitialized ? admin.storage().bucket() : null;
 
 // Upload file to Firebase Storage
 const uploadToFirebase = async (file, folder = 'voice') => {
+  if (!firebaseInitialized || !bucket) {
+    throw new Error('Firebase Storage is not initialized');
+  }
+  
   try {
     const fileName = `${folder}/${Date.now()}_${file.originalname}`;
     const fileUpload = bucket.file(fileName);
@@ -53,6 +74,11 @@ const uploadToFirebase = async (file, folder = 'voice') => {
 
 // Delete file from Firebase Storage
 const deleteFromFirebase = async (fileUrl) => {
+  if (!firebaseInitialized || !bucket) {
+    console.log('⚠️  Firebase not initialized - skipping file deletion');
+    return;
+  }
+  
   try {
     const fileName = fileUrl.split(`${bucket.name}/`)[1];
     await bucket.file(fileName).delete();

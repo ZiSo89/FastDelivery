@@ -120,16 +120,34 @@ orderSchema.index({ 'customer.phone': 1 });
 
 // Auto-generate order number
 orderSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const date = new Date();
-    const dateStr = date.toISOString().split('T')[0].replace(/-/g, '');
-    const count = await mongoose.model('Order').countDocuments({
-      createdAt: {
-        $gte: new Date(date.setHours(0, 0, 0, 0)),
-        $lt: new Date(date.setHours(23, 59, 59, 999))
-      }
-    });
-    this.orderNumber = `ORD-${dateStr}-${String(count + 1).padStart(4, '0')}`;
+  if (this.isNew && !this.orderNumber) {
+    const now = new Date();
+    // Use local date instead of UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}${month}${day}`;
+    
+    // Get today's start and end (local timezone)
+    const todayStart = new Date(year, now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(year, now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    
+    // Find the last order number for today
+    const lastOrder = await mongoose.model('Order')
+      .findOne({
+        orderNumber: new RegExp(`^ORD-${dateStr}-`),
+        createdAt: { $gte: todayStart, $lt: todayEnd }
+      })
+      .sort({ orderNumber: -1 })
+      .select('orderNumber');
+    
+    let nextNumber = 1;
+    if (lastOrder && lastOrder.orderNumber) {
+      const lastNum = parseInt(lastOrder.orderNumber.split('-')[2]);
+      nextNumber = lastNum + 1;
+    }
+    
+    this.orderNumber = `ORD-${dateStr}-${String(nextNumber).padStart(4, '0')}`;
   }
   next();
 });

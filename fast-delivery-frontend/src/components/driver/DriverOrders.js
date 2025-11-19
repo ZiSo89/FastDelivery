@@ -1,0 +1,191 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Table, Button, Badge, Spinner, Alert, ButtonGroup } from 'react-bootstrap';
+import { driverService } from '../../services/api';
+
+const DriverOrders = () => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [processingId, setProcessingId] = useState(null);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await driverService.getOrders();
+      // Backend επιστρέφει { success: true, orders: [...] }
+      setOrders(response.orders || []);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Σφάλμα φόρτωσης παραγγελιών');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+    // Auto-refresh κάθε 30 δευτερόλεπτα
+    const interval = setInterval(fetchOrders, 30000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
+
+  const handleAccept = async (orderId) => {
+    try {
+      setProcessingId(orderId);
+      await driverService.acceptOrder(orderId, true);
+      await fetchOrders();
+      alert('Αποδεχτήκατε την παραγγελία!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Σφάλμα');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleReject = async (orderId) => {
+    const reason = prompt('Λόγος απόρριψης:');
+    if (!reason) return;
+
+    try {
+      setProcessingId(orderId);
+      await driverService.acceptOrder(orderId, false, reason);
+      await fetchOrders();
+      alert('Απορρίψατε την παραγγελία');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Σφάλμα');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handlePickup = async (orderId) => {
+    try {
+      setProcessingId(orderId);
+      await driverService.updateStatus(orderId, 'in_delivery');
+      await fetchOrders();
+      alert('Ξεκίνησε η παράδοση!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Σφάλμα');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleComplete = async (orderId) => {
+    if (!window.confirm('Είστε σίγουρος ότι ολοκληρώθηκε η παράδοση;')) return;
+
+    try {
+      setProcessingId(orderId);
+      await driverService.updateStatus(orderId, 'completed');
+      await fetchOrders();
+      alert('Η παραγγελία ολοκληρώθηκε! 🎉');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Σφάλμα');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const config = {
+      assigned: { bg: 'warning', label: 'Ανάθεση' },
+      accepted_driver: { bg: 'info', label: 'Αποδοχή' },
+      preparing: { bg: 'warning', label: 'Προετοιμασία' },
+      in_delivery: { bg: 'primary', label: 'Σε Παράδοση' },
+      completed: { bg: 'success', label: 'Ολοκληρώθηκε' },
+      rejected_driver: { bg: 'danger', label: 'Απορρίφθηκε' }
+    };
+    const c = config[status] || { bg: 'secondary', label: status };
+    return <Badge bg={c.bg}>{c.label}</Badge>;
+  };
+
+  return (
+    <>
+      {loading ? (
+        <div className="text-center py-5">
+          <Spinner animation="border" variant="primary" />
+        </div>
+      ) : error ? (
+        <Alert variant="danger">{error}</Alert>
+      ) : orders.length === 0 ? (
+        <Alert variant="info">Δεν έχετε ανατεθειμένες παραγγελίες</Alert>
+      ) : (
+        <div className="table-responsive">
+          <Table striped bordered hover>
+            <thead>
+              <tr>
+                <th>Αριθμός</th>
+                <th>Κατάστημα</th>
+                <th>Διεύθυνση Παράδοσης</th>
+                <th>Τηλέφωνο</th>
+                <th>Αξία</th>
+                <th>Κατάσταση</th>
+                <th>Ενέργειες</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order._id}>
+                  <td className="fw-bold">{order.orderNumber}</td>
+                  <td>
+                    {order.store?.storeName}<br />
+                    <small className="text-muted">{order.store?.address}</small>
+                  </td>
+                  <td>{order.deliveryAddress}</td>
+                  <td>{order.customerPhone}</td>
+                  <td className="fw-bold">€{order.totalPrice?.toFixed(2)}</td>
+                  <td>{getStatusBadge(order.status)}</td>
+                  <td>
+                    {order.status === 'assigned' && (
+                      <ButtonGroup size="sm">
+                        <Button
+                          variant="success"
+                          onClick={() => handleAccept(order._id)}
+                          disabled={processingId === order._id}
+                        >
+                          ✅ Αποδοχή
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => handleReject(order._id)}
+                          disabled={processingId === order._id}
+                        >
+                          ❌ Απόρριψη
+                        </Button>
+                      </ButtonGroup>
+                    )}
+                    {order.status === 'preparing' && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handlePickup(order._id)}
+                        disabled={processingId === order._id}
+                      >
+                        🚗 Παραλαβή & Αποστολή
+                      </Button>
+                    )}
+                    {order.status === 'in_delivery' && (
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={() => handleComplete(order._id)}
+                        disabled={processingId === order._id}
+                      >
+                        ✅ Ολοκλήρωση
+                      </Button>
+                    )}
+                    {order.status === 'completed' && (
+                      <Badge bg="success">Ολοκληρώθηκε</Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default DriverOrders;

@@ -12,7 +12,8 @@ const OrdersTab = () => {
     try {
       setLoading(true);
       const response = await adminService.getOrders(filter === 'all' ? null : filter);
-      setOrders(response.data?.orders || []);
+      // Backend επιστρέφει { success: true, orders: [...] }
+      setOrders(response.orders || response.data?.orders || []);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης παραγγελιών');
@@ -94,9 +95,15 @@ const OrdersTab = () => {
               {orders.map((order) => (
                 <tr key={order._id}>
                   <td className="fw-bold">{order.orderNumber}</td>
-                  <td>{order.customerPhone}</td>
-                  <td>{order.store?.storeName || 'N/A'}</td>
-                  <td>{order.driver?.name || '-'}</td>
+                  <td>
+                    {order.customer?.name || 'N/A'}
+                    <br />
+                    <small className="text-muted">{order.customer?.phone || order.customerPhone}</small>
+                  </td>
+                  <td>
+                    {order.storeId?.businessName || order.storeName || 'N/A'}
+                  </td>
+                  <td>{order.driverId?.name || order.driver?.name || '-'}</td>
                   <td>{order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}</td>
                   <td>{order.deliveryFee ? `€${order.deliveryFee.toFixed(2)}` : '-'}</td>
                   <td className="fw-bold">

@@ -47,7 +47,9 @@ export const authService = {
     const response = await api.post('/auth/login', credentials);
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.data));
+      // Backend επιστρέφει: { success: true, token: "...", user: {...} }
+      const userData = response.data.user || response.data.data;
+      localStorage.setItem('user', JSON.stringify(userData));
     }
     return response.data;
   },
@@ -61,7 +63,16 @@ export const authService = {
   // Get current user
   getCurrentUser: () => {
     const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    if (!user || user === 'undefined' || user === 'null') {
+      return null;
+    }
+    try {
+      return JSON.parse(user);
+    } catch (error) {
+      console.error('Error parsing user from localStorage:', error);
+      localStorage.removeItem('user');
+      return null;
+    }
   },
 
   // Store Registration
@@ -178,7 +189,7 @@ export const storeService = {
   // Accept/Reject order
   acceptOrder: async (orderId, accepted, rejectionReason = null) => {
     const response = await api.put(`/store/orders/${orderId}/accept`, {
-      accepted,
+      action: accepted ? 'accept' : 'reject',
       rejectionReason
     });
     return response.data;
@@ -203,7 +214,7 @@ export const driverService = {
   // Get driver profile
   getProfile: async () => {
     const response = await api.get('/driver/profile');
-    return response.data;
+    return response.data; // Backend επιστρέφει { success, driver }
   },
 
   // Set availability

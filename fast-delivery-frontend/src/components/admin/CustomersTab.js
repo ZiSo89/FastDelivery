@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Badge, Spinner, Alert } from 'react-bootstrap';
 import { adminService } from '../../services/api';
 
@@ -7,22 +7,23 @@ const CustomersTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
       const response = await adminService.getCustomers();
-      setCustomers(response.data || []);
+      // Backend επιστρέφει { success: true, customers: [...] }
+      setCustomers(response.customers || response.data || []);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης πελατών');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   return (
     <div>
@@ -44,6 +45,7 @@ const CustomersTab = () => {
           <Table striped bordered hover>
             <thead>
               <tr>
+                <th>Όνομα</th>
                 <th>Τηλέφωνο</th>
                 <th>Διεύθυνση</th>
                 <th>Σύνολο Παραγγελιών</th>
@@ -54,10 +56,11 @@ const CustomersTab = () => {
             <tbody>
               {customers.map((customer) => (
                 <tr key={customer._id}>
-                  <td className="fw-bold">{customer.phone}</td>
+                  <td className="fw-bold">{customer.name || 'N/A'}</td>
+                  <td>{customer.phone}</td>
                   <td>{customer.address || 'N/A'}</td>
                   <td className="text-center">
-                    <Badge bg="primary">{customer.orderCount || 0}</Badge>
+                    <Badge bg="primary">{customer.totalOrders || customer.orderCount || 0}</Badge>
                   </td>
                   <td>
                     {customer.isActive ? (

@@ -27,8 +27,10 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authService.login(credentials);
-      setUser(response.data);
-      return { success: true, data: response.data };
+      // Backend επιστρέφει: { success: true, token: "...", user: { user object } }
+      const userData = response.user || response.data?.user || response.data || response;
+      setUser(userData);
+      return { success: true, data: userData, user: userData };
     } catch (error) {
       return {
         success: false,

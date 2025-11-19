@@ -41,7 +41,10 @@ const Login = () => {
     
     if (result.success) {
       // Redirect based on role
-      switch (result.data.role) {
+      const userData = result.user || result.data;
+      const userRole = userData?.role;
+      
+      switch (userRole) {
         case 'admin':
           navigate('/admin');
           break;
@@ -126,9 +129,9 @@ const Login = () => {
                 <div className="mt-4 text-center">
                   <small className="text-muted">
                     Δεν έχετε λογαριασμό;{' '}
-                    <a href="/register" className="text-primary">
+                    <span className="text-primary" style={{ cursor: 'pointer' }} onClick={() => navigate('/register')}>
                       Εγγραφή
-                    </a>
+                    </span>
                   </small>
                 </div>
               </Card.Body>

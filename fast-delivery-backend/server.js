@@ -9,9 +9,15 @@ const app = express();
 const server = http.createServer(app);
 
 // Socket.IO setup
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://fastdeliveryfontend.onrender.com',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
   }
@@ -22,7 +28,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());

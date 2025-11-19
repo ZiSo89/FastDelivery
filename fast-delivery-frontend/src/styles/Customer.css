@@ -1,0 +1,23 @@
+.customer-home {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+.customer-page {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.hover-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.hover-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}

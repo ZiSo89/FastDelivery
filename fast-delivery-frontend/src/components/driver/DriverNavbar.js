@@ -1,9 +1,9 @@
 import React from 'react';
-import { Navbar, Container, Nav, Dropdown } from 'react-bootstrap';
+import { Navbar, Container, Nav, Dropdown, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const AdminNavbar = ({ user }) => {
+const DriverNavbar = ({ user, profile }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -13,20 +13,27 @@ const AdminNavbar = ({ user }) => {
   };
 
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="shadow-sm">
+    <Navbar bg="primary" variant="dark" expand="lg" className="shadow-sm">
       <Container fluid>
-        <Navbar.Brand onClick={() => navigate('/admin')} style={{ cursor: 'pointer' }}>
-          <span className="fw-bold">🚚 Fast Delivery</span>
-          <span className="ms-2 badge bg-primary">Admin</span>
+        <Navbar.Brand onClick={() => navigate('/driver')} style={{ cursor: 'pointer' }}>
+          <span className="fw-bold">🚗 Fast Delivery</span>
+          <span className="ms-2 badge bg-light text-primary">Οδηγός</span>
         </Navbar.Brand>
         
-        <Navbar.Toggle aria-controls="admin-navbar" />
+        <Navbar.Toggle aria-controls="driver-navbar" />
         
-        <Navbar.Collapse id="admin-navbar" className="justify-content-end">
+        <Navbar.Collapse id="driver-navbar" className="justify-content-end">
           <Nav>
+            {profile && (
+              <Nav.Item className="me-3 d-flex align-items-center">
+                <Badge bg={profile.isOnline ? 'success' : 'secondary'}>
+                  {profile.isOnline ? '🟢 Online' : '⚫ Offline'}
+                </Badge>
+              </Nav.Item>
+            )}
             <Dropdown align="end">
               <Dropdown.Toggle variant="outline-light" id="user-dropdown">
-                👤 {user?.name || user?.email}
+                👤 {profile?.name || user?.email}
               </Dropdown.Toggle>
 
               <Dropdown.Menu>
@@ -46,4 +53,4 @@ const AdminNavbar = ({ user }) => {
   );
 };
 
-export default AdminNavbar;
+export default DriverNavbar;

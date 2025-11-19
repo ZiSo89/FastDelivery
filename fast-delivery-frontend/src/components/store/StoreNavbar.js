@@ -3,7 +3,7 @@ import { Navbar, Container, Nav, Dropdown } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const AdminNavbar = ({ user }) => {
+const StoreNavbar = ({ user, profile }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -13,20 +13,20 @@ const AdminNavbar = ({ user }) => {
   };
 
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="shadow-sm">
+    <Navbar bg="success" variant="dark" expand="lg" className="shadow-sm">
       <Container fluid>
-        <Navbar.Brand onClick={() => navigate('/admin')} style={{ cursor: 'pointer' }}>
-          <span className="fw-bold">🚚 Fast Delivery</span>
-          <span className="ms-2 badge bg-primary">Admin</span>
+        <Navbar.Brand onClick={() => navigate('/store')} style={{ cursor: 'pointer' }}>
+          <span className="fw-bold">🏪 Fast Delivery</span>
+          <span className="ms-2 badge bg-light text-success">Κατάστημα</span>
         </Navbar.Brand>
         
-        <Navbar.Toggle aria-controls="admin-navbar" />
+        <Navbar.Toggle aria-controls="store-navbar" />
         
-        <Navbar.Collapse id="admin-navbar" className="justify-content-end">
+        <Navbar.Collapse id="store-navbar" className="justify-content-end">
           <Nav>
             <Dropdown align="end">
               <Dropdown.Toggle variant="outline-light" id="user-dropdown">
-                👤 {user?.name || user?.email}
+                🏪 {profile?.storeName || user?.email}
               </Dropdown.Toggle>
 
               <Dropdown.Menu>
@@ -46,4 +46,4 @@ const AdminNavbar = ({ user }) => {
   );
 };
 
-export default AdminNavbar;
+export default StoreNavbar;

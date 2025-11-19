@@ -23,6 +23,14 @@ const driverSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Το τηλέφωνο είναι υποχρεωτικό']
   },
+  vehicle: {
+    type: String,
+    default: 'Μοτοσυκλέτα'
+  },
+  licensePlate: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['pending', 'approved', 'rejected', 'inactive'],

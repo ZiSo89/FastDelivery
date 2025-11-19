@@ -11,6 +11,10 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Το τηλέφωνο είναι υποχρεωτικό'],
     match: [/^\d{10}$/, 'Το τηλέφωνο πρέπει να είναι 10ψήφιο']
   },
+  address: {
+    type: String,
+    default: ''
+  },
   isActive: {
     type: Boolean,
     default: true
