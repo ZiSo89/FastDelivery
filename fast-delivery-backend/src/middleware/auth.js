@@ -56,13 +56,8 @@ exports.protect = async (req, res, next) => {
       });
     }
 
-    // Check if store/driver is approved
-    if ((decoded.role === 'store' || decoded.role === 'driver') && !user.isApproved) {
-      return res.status(403).json({
-        success: false,
-        message: 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή'
-      });
-    }
+    // NOTE: Removed global isApproved check - each endpoint will check this individually
+    // This allows unapproved users to still access their profile and see approval status
 
     // Attach user and role to request
     req.user = user;
