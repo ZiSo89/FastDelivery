@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Badge, Form, Alert } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../services/api';
 import socketService from '../../services/socket';
@@ -8,7 +9,8 @@ import DriverOrders from '../../components/driver/DriverOrders';
 import '../../styles/DriverDashboard.css';
 
 const DriverDashboard = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,25 +48,33 @@ const DriverDashboard = () => {
     fetchProfile();
 
     // Listen for driver status changes
-    const handleStatusChange = (data) => {
+    const handleStatusChange = async (data) => {
       console.log('🔔 Driver status changed:', data);
-      setStatusMessage(data.message);
       
-      // Refresh profile to get updated status
-      fetchProfile();
-      
-      // Update user in context
-      if (user) {
-        const updatedUser = {
-          ...user,
-          status: data.status,
-          isApproved: data.isApproved
-        };
-        updateUser(updatedUser);
-      }
+      // If approved, logout and redirect to login with success message
+      if (data.status === 'approved' && data.isApproved) {
+        alert('✅ Η εγγραφή σας εγκρίθηκε! Παρακαλώ συνδεθείτε ξανά.');
+        logout();
+        navigate('/login');
+      } else {
+        setStatusMessage(data.message);
+        
+        // Refresh profile to get updated status
+        fetchProfile();
+        
+        // Update user in context
+        if (user) {
+          const updatedUser = {
+            ...user,
+            status: data.status,
+            isApproved: data.isApproved
+          };
+          updateUser(updatedUser);
+        }
 
-      // Clear message after 5 seconds
-      setTimeout(() => setStatusMessage(''), 5000);
+        // Clear message after 5 seconds
+        setTimeout(() => setStatusMessage(''), 5000);
+      }
     };
 
     socketService.on('driver:status_changed', handleStatusChange);
