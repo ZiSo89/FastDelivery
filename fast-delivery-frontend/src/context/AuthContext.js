@@ -52,10 +52,32 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const refreshUser = () => {
+    // Refresh user from localStorage (in case it was updated by API responses)
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+      // Reconnect socket with updated user data
+      socketService.disconnect();
+      socketService.connect(currentUser);
+    }
+  };
+
+  const updateUser = (updatedUserData) => {
+    // Update user in state and localStorage
+    setUser(updatedUserData);
+    localStorage.setItem('user', JSON.stringify(updatedUserData));
+    // Reconnect socket with updated user data
+    socketService.disconnect();
+    socketService.connect(updatedUserData);
+  };
+
   const value = {
     user,
     login,
     logout,
+    refreshUser,
+    updateUser,
     loading,
     isAuthenticated: !!user
   };

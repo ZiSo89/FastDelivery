@@ -64,6 +64,16 @@ exports.approveRejectStore = async (req, res) => {
 
     await store.save();
 
+    // Broadcast store approval/rejection to the store
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`store:${store._id}`).emit('store:status_changed', {
+        status: store.status,
+        isApproved: store.isApproved,
+        message: `Το κατάστημά σας ${action === 'approve' ? 'εγκρίθηκε' : 'απορρίφθηκε'}.`
+      });
+    }
+
     res.json({
       success: true,
       message: `Το κατάστημα ${action === 'approve' ? 'εγκρίθηκε' : 'απορρίφθηκε'}.`,
@@ -148,6 +158,16 @@ exports.approveRejectDriver = async (req, res) => {
     }
 
     await driver.save();
+
+    // Broadcast driver approval/rejection to the driver
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`driver:${driver._id}`).emit('driver:status_changed', {
+        status: driver.status,
+        isApproved: driver.isApproved,
+        message: `Η εγγραφή σας ${action === 'approve' ? 'εγκρίθηκε' : 'απορρίφθηκε'}.`
+      });
+    }
 
     res.json({
       success: true,

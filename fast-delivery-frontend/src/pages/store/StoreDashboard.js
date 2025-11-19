@@ -2,17 +2,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Nav, Tab, Badge, Alert } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/api';
+import socketService from '../../services/socket';
 import StoreNavbar from '../../components/store/StoreNavbar';
 import StoreProfile from '../../components/store/StoreProfile';
 import StoreOrders from '../../components/store/StoreOrders';
 import '../../styles/StoreDashboard.css';
 
 const StoreDashboard = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('orders');
+  const [statusMessage, setStatusMessage] = useState('');
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -41,7 +43,35 @@ const StoreDashboard = () => {
 
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
+
+    // Listen for store status changes
+    const handleStatusChange = (data) => {
+      console.log('🔔 Store status changed:', data);
+      setStatusMessage(data.message);
+      
+      // Refresh profile to get updated status
+      fetchProfile();
+      
+      // Update user in context
+      if (user) {
+        const updatedUser = {
+          ...user,
+          status: data.status,
+          isApproved: data.isApproved
+        };
+        updateUser(updatedUser);
+      }
+
+      // Clear message after 5 seconds
+      setTimeout(() => setStatusMessage(''), 5000);
+    };
+
+    socketService.on('store:status_changed', handleStatusChange);
+
+    return () => {
+      socketService.off('store:status_changed', handleStatusChange);
+    };
+  }, [fetchProfile, user, updateUser]);
 
   if (loading) {
     return (
@@ -58,6 +88,12 @@ const StoreDashboard = () => {
       <StoreNavbar user={user} profile={profile} />
       
       <Container fluid className="py-4">
+        {statusMessage && (
+          <Alert variant="info" dismissible onClose={() => setStatusMessage('')}>
+            {statusMessage}
+          </Alert>
+        )}
+        
         {error && (
           <Alert variant="warning" dismissible onClose={() => setError('')}>
             {error}

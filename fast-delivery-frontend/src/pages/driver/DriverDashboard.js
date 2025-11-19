@@ -2,16 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Badge, Form, Alert } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../services/api';
+import socketService from '../../services/socket';
 import DriverNavbar from '../../components/driver/DriverNavbar';
 import DriverOrders from '../../components/driver/DriverOrders';
 import '../../styles/DriverDashboard.css';
 
 const DriverDashboard = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -42,7 +44,35 @@ const DriverDashboard = () => {
 
   useEffect(() => {
     fetchProfile();
-  }, [fetchProfile]);
+
+    // Listen for driver status changes
+    const handleStatusChange = (data) => {
+      console.log('🔔 Driver status changed:', data);
+      setStatusMessage(data.message);
+      
+      // Refresh profile to get updated status
+      fetchProfile();
+      
+      // Update user in context
+      if (user) {
+        const updatedUser = {
+          ...user,
+          status: data.status,
+          isApproved: data.isApproved
+        };
+        updateUser(updatedUser);
+      }
+
+      // Clear message after 5 seconds
+      setTimeout(() => setStatusMessage(''), 5000);
+    };
+
+    socketService.on('driver:status_changed', handleStatusChange);
+
+    return () => {
+      socketService.off('driver:status_changed', handleStatusChange);
+    };
+  }, [fetchProfile, user, updateUser]);
 
   const handleToggleOnline = async () => {
     try {
@@ -70,6 +100,12 @@ const DriverDashboard = () => {
       <DriverNavbar user={user} profile={profile} />
       
       <Container fluid className="py-4">
+        {statusMessage && (
+          <Alert variant="info" dismissible onClose={() => setStatusMessage('')}>
+            {statusMessage}
+          </Alert>
+        )}
+        
         {error && (
           <Alert variant="warning" dismissible onClose={() => setError('')}>
             {error}
