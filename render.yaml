@@ -25,5 +25,19 @@ services:
       - key: FIREBASE_CREDENTIALS
         sync: false
       - key: FRONTEND_URL
-        value: https://fastdelivery.onrender.com
+        value: https://fastdeliveryfontend.onrender.com
     healthCheckPath: /api/v1/health
+
+  # Frontend Static Site
+  - type: web
+    name: fastdeliveryfontend
+    env: static
+    region: frankfurt
+    plan: free
+    buildCommand: cd fast-delivery-frontend && npm install && npm run build
+    staticPublishPath: fast-delivery-frontend/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://fastdelivery-hvff.onrender.com/api/v1
+      - key: REACT_APP_SOCKET_URL
+        value: https://fastdelivery-hvff.onrender.com
