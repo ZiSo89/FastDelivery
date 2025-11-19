@@ -46,6 +46,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const reLogin = async () => {
+    // Silent re-login to refresh token
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser) return false;
+
+    try {
+      // Get fresh user data from API
+      const token = localStorage.getItem('token');
+      if (!token) return false;
+
+      // Just reconnect socket with current user (token is still valid in localStorage)
+      socketService.disconnect();
+      socketService.connect(currentUser);
+      
+      return true;
+    } catch (error) {
+      console.error('Re-login failed:', error);
+      return false;
+    }
+  };
+
   const logout = () => {
     authService.logout();
     socketService.disconnect(); // Disconnect socket on logout
@@ -78,6 +99,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshUser,
     updateUser,
+    reLogin,
     loading,
     isAuthenticated: !!user
   };

@@ -50,11 +50,14 @@ const StoreDashboard = () => {
     const handleStatusChange = async (data) => {
       console.log('🔔 Store status changed:', data);
       
-      // If approved, logout and redirect to login with success message
+      // If approved, show message and reload page to get new token
       if (data.status === 'approved' && data.isApproved) {
-        alert('✅ Το κατάστημά σας εγκρίθηκε! Παρακαλώ συνδεθείτε ξανά.');
-        logout();
-        navigate('/login');
+        setStatusMessage('✅ Το κατάστημά σας εγκρίθηκε! Η σελίδα θα ανανεωθεί...');
+        
+        // Wait 2 seconds to show message, then reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       } else {
         setStatusMessage(data.message);
         
