@@ -3,6 +3,7 @@ const Driver = require('../models/Driver');
 const Admin = require('../models/Admin');
 const Customer = require('../models/Customer');
 const jwt = require('jsonwebtoken');
+const { generateToken } = require('../utils/jwt');
 
 // @desc    Login (Store/Driver/Admin)
 // @route   POST /api/v1/auth/login
@@ -61,9 +62,7 @@ exports.login = async (req, res) => {
         return res.status(401).json({ success: false, message: 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή.' });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role || role }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE
-    });
+    const token = generateToken(user._id, user.role || role);
 
     // Prepare user object for response
     const userResponse = {
@@ -221,9 +220,7 @@ exports.registerCustomer = async (req, res, next) => {
     });
 
     // Create token
-    const token = jwt.sign({ id: customer._id, role: 'customer' }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRE
-    });
+    const token = generateToken(customer._id, 'customer');
 
     res.status(201).json({
       success: true,
