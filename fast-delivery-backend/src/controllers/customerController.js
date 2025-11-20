@@ -24,7 +24,7 @@ const upload = multer({
 // @access  Public
 exports.getStores = async (req, res) => {
   try {
-    const { serviceArea, storeType } = req.query;
+    const { serviceArea, storeType, latitude, longitude, maxDistance } = req.query;
 
     // Only show approved stores to customers
     const filter = { 
@@ -42,6 +42,19 @@ exports.getStores = async (req, res) => {
       filter.storeType = storeType;
     }
 
+    // Geospatial query if coordinates are provided
+    if (latitude && longitude) {
+      filter.location = {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
+          },
+          $maxDistance: parseInt(maxDistance) || 5000 // Default 5km
+        }
+      };
+    }
+
     const stores = await Store.find(filter).select('-password');
 
     res.json({
@@ -54,7 +67,8 @@ exports.getStores = async (req, res) => {
         address: store.address,
         workingHours: store.workingHours,
         serviceAreas: store.serviceAreas,
-        location: store.location
+        location: store.location,
+        image: store.image || 'https://via.placeholder.com/150' // Add placeholder if no image
       }))
     });
   } catch (error) {
@@ -117,6 +131,7 @@ exports.createOrder = async (req, res) => {
       customer: {
         name: customer.name,
         phone: customer.phone,
+        email: customer.email, // Save email if provided
         address: customer.address
       },
       storeId,
@@ -288,6 +303,84 @@ exports.confirmOrderPrice = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Σφάλμα επιβεβαίωσης παραγγελίας'
+    });
+  }
+};
+
+// @desc    Get my orders (logged in customer)
+// @route   GET /api/v1/orders/my-orders
+// @access  Private (Customer)
+exports.getMyOrders = async (req, res) => {
+  try {
+    // Strict check: Find orders where BOTH customer.phone matches user's phone AND customer.email matches user's email
+    // This ensures users only see their own orders and prevents phone number spoofing/collisions
+    
+    if (!req.user.phone || !req.user.email) {
+       return res.status(400).json({
+        success: false,
+        message: 'Λείπουν στοιχεία ταυτοποίησης (τηλέφωνο ή email) από το προφίλ σας'
+      });
+    }
+
+    const query = {
+      'customer.phone': req.user.phone,
+      'customer.email': req.user.email
+    };
+
+    const orders = await Order.find(query)
+    .sort({ createdAt: -1 })
+    .populate('storeId', 'businessName image');
+
+    res.json({
+      success: true,
+      count: orders.length,
+      orders
+    });
+  } catch (error) {
+    console.error('Get my orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ανάκτησης ιστορικού παραγγελιών'
+    });
+  }
+};
+
+// @desc    Get active order by phone
+// @route   GET /api/v1/orders/active-by-phone/:phone
+// @access  Public
+exports.getActiveOrderByPhone = async (req, res) => {
+  try {
+    const { phone } = req.params;
+
+    // Find the most recent active order
+    const order = await Order.findOne({
+      'customer.phone': phone,
+      status: { $nin: ['completed', 'cancelled', 'rejected_store', 'rejected_driver'] }
+    })
+    .sort({ createdAt: -1 })
+    .populate('storeId', 'businessName');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Δεν βρέθηκε ενεργή παραγγελία με αυτό το τηλέφωνο'
+      });
+    }
+
+    res.json({
+      success: true,
+      order: {
+        orderNumber: order.orderNumber,
+        status: order.status,
+        storeName: order.storeName,
+        createdAt: order.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Get active order by phone error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα αναζήτησης'
     });
   }
 };

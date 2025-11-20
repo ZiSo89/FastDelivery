@@ -29,11 +29,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Don't redirect if it's a login attempt that failed
+    if (error.response?.status === 401 && !error.config.url.includes('/login')) {
       // Αν το token έληξε, διαγραφή και redirect στο login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Only redirect to partner login if we are not in customer portal
+      if (!window.location.pathname.startsWith('/order') && window.location.pathname !== '/') {
+          window.location.href = '/login';
+      } else {
+          // For customer portal, maybe redirect to home?
+          window.location.href = '/';
+      }
     }
     return Promise.reject(error);
   }
@@ -84,6 +91,17 @@ export const authService = {
   // Driver Registration
   registerDriver: async (driverData) => {
     const response = await api.post('/auth/driver/register', driverData);
+    return response.data;
+  },
+
+  // Customer Registration
+  registerCustomer: async (customerData) => {
+    const response = await api.post('/auth/customer/register', customerData);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      const userData = response.data.user;
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
     return response.data;
   }
 };
@@ -253,10 +271,19 @@ export const driverService = {
 
 export const customerService = {
   // Get nearby stores
-  getStores: async (latitude, longitude, maxDistance = 5000) => {
-    const response = await api.get(
-      `/orders/stores?latitude=${latitude}&longitude=${longitude}&maxDistance=${maxDistance}`
-    );
+  getStores: async (params = {}) => {
+    const { latitude, longitude, maxDistance, storeType, serviceArea } = params;
+    let url = '/orders/stores?';
+    
+    if (latitude && longitude) {
+      url += `latitude=${latitude}&longitude=${longitude}&`;
+      if (maxDistance) url += `maxDistance=${maxDistance}&`;
+    }
+    
+    if (storeType) url += `storeType=${encodeURIComponent(storeType)}&`;
+    if (serviceArea) url += `serviceArea=${encodeURIComponent(serviceArea)}&`;
+    
+    const response = await api.get(url);
     return response.data;
   },
 
@@ -288,7 +315,19 @@ export const customerService = {
       confirm: false 
     });
     return response.data;
-  }
+  },
+
+  // Get my orders
+  getMyOrders: async () => {
+    const response = await api.get('/orders/my-orders');
+    return response.data;
+  },
+
+  // Get active order by phone
+  getActiveOrderByPhone: async (phone) => {
+    const response = await api.get(`/orders/active-by-phone/${phone}`);
+    return response.data;
+  },
 };
 
 export default api;

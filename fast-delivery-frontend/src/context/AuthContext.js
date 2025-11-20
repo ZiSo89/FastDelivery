@@ -46,6 +46,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (customerData) => {
+    try {
+      const response = await authService.registerCustomer(customerData);
+      const userData = response.user;
+      setUser(userData);
+      socketService.connect(userData);
+      return { success: true, data: userData, user: userData };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Σφάλμα κατά την εγγραφή'
+      };
+    }
+  };
+
   const reLogin = async () => {
     // Silent re-login to refresh token
     const currentUser = authService.getCurrentUser();
@@ -96,6 +111,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     login,
+    register,
     logout,
     refreshUser,
     updateUser,

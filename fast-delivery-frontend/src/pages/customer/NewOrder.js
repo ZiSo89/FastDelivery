@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
 import '../../styles/Customer.css';
 
 const NewOrder = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  
   const [stores, setStores] = useState([]);
   const [selectedStore, setSelectedStore] = useState(null);
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: '',
+    customerEmail: '', // Added email field
     deliveryAddress: '',
     orderContent: '',
     orderType: 'text'
@@ -20,13 +25,30 @@ const NewOrder = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    fetchStores();
-  }, []);
+    if (location.state?.store) {
+      setSelectedStore(location.state.store);
+    } else {
+      fetchStores();
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (user) {
+      console.log('👤 Auto-filling form with user data:', user);
+      setFormData(prev => ({
+        ...prev,
+        customerName: user.name || '',
+        customerPhone: user.phone || '',
+        customerEmail: user.email || '', // Auto-fill email
+        deliveryAddress: user.address || ''
+      }));
+    }
+  }, [user]);
 
   const fetchStores = async () => {
     try {
-      // Default coordinates (Athens center) - σε production θα χρησιμοποιούσες geolocation
-      const response = await customerService.getStores(37.9838, 23.7275, 10000);
+      // Default coordinates (Thessaloniki center for demo)
+      const response = await customerService.getStores({ latitude: 40.6401, longitude: 22.9444, maxDistance: 10000 });
       // Backend επιστρέφει { success: true, stores: [...] }
       setStores(response.stores || response.data || []);
     } catch (err) {
@@ -43,15 +65,18 @@ const NewOrder = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🖱️ Clicked Submit Order');
     setError('');
     setSuccess('');
 
     if (!selectedStore) {
+      console.log('❌ No store selected');
       setError('Παρακαλώ επιλέξτε κατάστημα');
       return;
     }
 
     if (!formData.customerName || !formData.customerPhone || !formData.deliveryAddress || !formData.orderContent) {
+      console.log('❌ Missing fields', formData);
       setError('Παρακαλώ συμπληρώστε όλα τα πεδία');
       return;
     }
@@ -63,6 +88,7 @@ const NewOrder = () => {
         customer: {
           name: formData.customerName,
           phone: formData.customerPhone,
+          email: formData.customerEmail, // Send email to backend
           address: formData.deliveryAddress
         },
         storeId: selectedStore._id,
@@ -70,13 +96,16 @@ const NewOrder = () => {
         orderContent: formData.orderContent
       };
 
+      console.log('📤 Sending Order Data:', orderData);
       const response = await customerService.createOrder(orderData);
+      console.log('✅ Order Created:', response);
       setSuccess(`Η παραγγελία σας καταχωρήθηκε! Αριθμός: ${response.order.orderNumber}`);
       
       setTimeout(() => {
         navigate(`/order-status/${response.order.orderNumber}`);
       }, 2000);
     } catch (err) {
+      console.error('❌ Order Error:', err);
       setError(err.response?.data?.message || 'Σφάλμα δημιουργίας παραγγελίας');
     } finally {
       setLoading(false);
@@ -84,129 +113,128 @@ const NewOrder = () => {
   };
 
   return (
-    <div className="customer-page">
-      <Container className="py-5">
-        <Row>
-          <Col lg={10} xl={8} className="mx-auto">
-            <Card className="shadow-lg">
-              <Card.Header className="bg-primary text-white">
-                <h3 className="mb-0">📦 Νέα Παραγγελία</h3>
-              </Card.Header>
-              <Card.Body className="p-4">
-                <Button
-                  variant="link"
-                  className="mb-3 p-0"
-                  onClick={() => navigate('/')}
-                >
-                  ← Πίσω
-                </Button>
+    <div className="app-container">
+      <header className="app-header">
+        <div className="header-content">
+          <button className="btn-icon" onClick={() => navigate('/order')}>
+            <i className="fas fa-arrow-left"></i>
+          </button>
+          <h3>Νέα Παραγγελία</h3>
+          <div style={{ width: 32 }}></div>
+        </div>
+      </header>
 
-                {error && <Alert variant="danger">{error}</Alert>}
-                {success && <Alert variant="success">{success}</Alert>}
+      <div className="main-content" style={{ padding: '20px' }}>
+        {error && <div className="alert alert-danger">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
 
-                <Form onSubmit={handleSubmit}>
-                  <h5 className="mb-3">1. Επιλογή Καταστήματος</h5>
-                  <ListGroup className="mb-4">
-                    {stores.length === 0 ? (
-                      <Alert variant="info">Δεν βρέθηκαν διαθέσιμα καταστήματα</Alert>
-                    ) : (
-                      stores.map((store) => (
-                        <ListGroup.Item
-                          key={store._id}
-                          action
-                          active={selectedStore?._id === store._id}
-                          onClick={() => setSelectedStore(store)}
-                          className="cursor-pointer"
-                        >
-                          <div className="d-flex justify-content-between align-items-center">
-                            <div>
-                              <h6 className="mb-1">{store.storeName}</h6>
-                              <small>{store.storeType} · {store.address}</small>
-                            </div>
-                            {selectedStore?._id === store._id && (
-                              <span className="badge bg-success">✓</span>
-                            )}
-                          </div>
-                        </ListGroup.Item>
-                      ))
-                    )}
-                  </ListGroup>
+        <form onSubmit={handleSubmit}>
+          <h5 className="mb-3">1. Επιλογή Καταστήματος</h5>
+          {selectedStore ? (
+            <div className="selected-store-card mb-4 p-3 border rounded bg-light">
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 className="mb-1">{selectedStore.businessName || selectedStore.storeName}</h6>
+                  <small>{selectedStore.storeType} · {selectedStore.address}</small>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <ListGroup className="mb-4">
+              {stores.length === 0 ? (
+                <Alert variant="info">Δεν βρέθηκαν διαθέσιμα καταστήματα</Alert>
+              ) : (
+                stores.map((store) => (
+                  <ListGroup.Item
+                    key={store._id}
+                    action
+                    active={selectedStore?._id === store._id}
+                    onClick={() => setSelectedStore(store)}
+                    className="cursor-pointer"
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h6 className="mb-1">{store.businessName || store.storeName}</h6>
+                        <small>{store.storeType} · {store.address}</small>
+                      </div>
+                      {selectedStore?._id === store._id && (
+                        <span className="badge bg-success">✓</span>
+                      )}
+                    </div>
+                  </ListGroup.Item>
+                ))
+              )}
+            </ListGroup>
+          )}
 
-                  <h5 className="mb-3">2. Στοιχεία Παραγγελίας</h5>
-                  
-                  <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Όνομα *</Form.Label>
-                        <Form.Control
-                          type="text"
-                          name="customerName"
-                          placeholder="Γιάννης Παπαδόπουλος"
-                          value={formData.customerName}
-                          onChange={handleChange}
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Τηλέφωνο Επικοινωνίας *</Form.Label>
-                        <Form.Control
-                          type="tel"
-                          name="customerPhone"
-                          placeholder="6912345678"
-                          value={formData.customerPhone}
-                          onChange={handleChange}
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+          <h5 className="mb-3">2. Στοιχεία Παραγγελίας</h5>
+          
+          <div className="mb-3">
+            <label className="form-label">Όνομα *</label>
+            <input
+              type="text"
+              name="customerName"
+              className="form-control app-input"
+              placeholder="Γιάννης Παπαδόπουλος"
+              value={formData.customerName}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Διεύθυνση Παράδοσης *</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="deliveryAddress"
-                      placeholder="Λεωφόρος Δημοκρατίας 25, Αλεξανδρούπολη"
-                      value={formData.deliveryAddress}
-                      onChange={handleChange}
-                      required
-                    />
-                  </Form.Group>
+          <div className="mb-3">
+            <label className="form-label">Τηλέφωνο *</label>
+            <input
+              type="tel"
+              name="customerPhone"
+              className="form-control app-input"
+              placeholder="6912345678"
+              value={formData.customerPhone}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-                  <Form.Group className="mb-4">
-                    <Form.Label>Περιγραφή Παραγγελίας *</Form.Label>
-                    <Form.Control
-                      as="textarea"
-                      rows={4}
-                      name="orderContent"
-                      placeholder="Περιγράψτε τι θέλετε να παραγγείλετε..."
-                      value={formData.orderContent}
-                      onChange={handleChange}
-                      required
-                    />
-                    <Form.Text className="text-muted">
-                      Αναφέρετε με λεπτομέρεια τα προϊόντα που θέλετε
-                    </Form.Text>
-                  </Form.Group>
+          <div className="mb-3">
+            <label className="form-label">Διεύθυνση *</label>
+            <input
+              type="text"
+              name="deliveryAddress"
+              className="form-control app-input"
+              placeholder="Λεωφόρος Δημοκρατίας 25"
+              value={formData.deliveryAddress}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-                  <div className="d-grid">
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="lg"
-                      disabled={loading || !selectedStore}
-                    >
-                      {loading ? 'Αποστολή...' : 'Υποβολή Παραγγελίας'}
-                    </Button>
-                  </div>
-                </Form>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+          <div className="mb-4">
+            <label className="form-label">Περιγραφή Παραγγελίας *</label>
+            <textarea
+              rows={4}
+              name="orderContent"
+              className="form-control app-input"
+              placeholder="Περιγράψτε τι θέλετε να παραγγείλετε..."
+              value={formData.orderContent}
+              onChange={handleChange}
+              required
+            />
+            <div className="form-text">
+              Αναφέρετε με λεπτομέρεια τα προϊόντα που θέλετε
+            </div>
+          </div>
+
+          <div className="d-grid">
+            <button
+              type="submit"
+              className="btn-primary-app"
+              disabled={loading || !selectedStore}
+            >
+              {loading ? 'Αποστολή...' : 'Υποβολή Παραγγελίας'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

@@ -16,6 +16,10 @@ const orderSchema = new mongoose.Schema({
       required: true,
       match: [/^\d{10}$/, 'Το τηλέφωνο πρέπει να είναι 10ψήφιο']
     },
+    email: {
+      type: String,
+      match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Παρακαλώ δώστε έγκυρο email']
+    },
     address: {
       type: String,
       required: true

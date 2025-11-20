@@ -46,7 +46,7 @@ const storeSchema = new mongoose.Schema({
   storeType: {
     type: String,
     required: true,
-    enum: ['Mini Market', 'Φαρμακείο', 'Ταβέρνα', 'Καφετέρια', 'Άλλο']
+    enum: ['Mini Market', 'Φαρμακείο', 'Ταβέρνα', 'Καφετέρια', 'Γλυκά', 'Άλλο']
   },
   workingHours: {
     type: String,

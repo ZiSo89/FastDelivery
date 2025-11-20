@@ -2,6 +2,7 @@ const { verifyToken } = require('../utils/jwt');
 const Store = require('../models/Store');
 const Driver = require('../models/Driver');
 const Admin = require('../models/Admin');
+const Customer = require('../models/Customer');
 
 // Protect routes - verify JWT
 exports.protect = async (req, res, next) => {
@@ -41,6 +42,9 @@ exports.protect = async (req, res, next) => {
         break;
       case 'admin':
         user = await Admin.findById(decoded.id);
+        break;
+      case 'customer':
+        user = await Customer.findById(decoded.id);
         break;
       default:
         return res.status(401).json({

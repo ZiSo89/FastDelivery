@@ -6,7 +6,7 @@ const Admin = require('../src/models/Admin');
 const Store = require('../src/models/Store');
 const Driver = require('../src/models/Driver');
 const Order = require('../src/models/Order');
-const User = require('../src/models/User');
+const Customer = require('../src/models/Customer');
 
 const seedTestData = async () => {
   try {
@@ -28,22 +28,24 @@ const seedTestData = async () => {
     console.log('✅ Δημιουργήθηκε Admin: admin@fastdelivery.gr');
 
     // 2. Δημιουργία Καταστημάτων (ένα-ένα για να τρέξουν τα pre-save hooks)
-    await Store.deleteMany({ email: { $in: ['kafeteria@test.com', 'minimarket@test.com', 'farmakeio@test.com', 'taverna@test.com', 'pending@test.com'] } });
+    await Store.deleteMany({});
     
     const store1 = await Store.create({
       email: 'kafeteria@test.com',
       password: 'store123',
       businessName: 'Καφετέρια Κεντρική',
       ownerName: 'Γιάννης Παπαδόπουλος',
-      phone: '2310123456',
-      address: 'Τσιμισκή 25, Θεσσαλονίκη',
+      phone: '2551012345',
+      address: 'Λεωφόρος Δημοκρατίας 25, Αλεξανδρούπολη',
       afm: '123456789',
       storeType: 'Καφετέρια',
       location: {
         type: 'Point',
-        coordinates: [22.9444, 40.6401]
+        coordinates: [25.8739, 40.8457]
       },
-      isApproved: true
+      isApproved: true,
+      status: 'approved',
+      workingHours: '08:00 - 22:00'
     });
     
     const store2 = await Store.create({
@@ -51,15 +53,17 @@ const seedTestData = async () => {
       password: 'store123',
       businessName: 'Mini Market Αγορά',
       ownerName: 'Μαρία Κωνσταντίνου',
-      phone: '2310234567',
-      address: 'Εγνατία 100, Θεσσαλονίκη',
+      phone: '2551023456',
+      address: '14ης Μαΐου 10, Αλεξανδρούπολη',
       afm: '987654321',
       storeType: 'Mini Market',
       location: {
         type: 'Point',
-        coordinates: [22.9500, 40.6450]
+        coordinates: [25.8750, 40.8460]
       },
-      isApproved: true
+      isApproved: true,
+      status: 'approved',
+      workingHours: '07:00 - 23:00'
     });
     
     const store3 = await Store.create({
@@ -67,15 +71,17 @@ const seedTestData = async () => {
       password: 'store123',
       businessName: 'Φαρμακείο Υγεία',
       ownerName: 'Δημήτρης Γεωργίου',
-      phone: '2310345678',
-      address: 'Μητροπόλεως 15, Θεσσαλονίκη',
+      phone: '2551034567',
+      address: 'Βενιζέλου 15, Αλεξανδρούπολη',
       afm: '456789123',
       storeType: 'Φαρμακείο',
       location: {
         type: 'Point',
-        coordinates: [22.9430, 40.6380]
+        coordinates: [25.8720, 40.8440]
       },
-      isApproved: true
+      isApproved: true,
+      status: 'approved',
+      workingHours: '08:30 - 21:00'
     });
     
     const store4 = await Store.create({
@@ -83,38 +89,58 @@ const seedTestData = async () => {
       password: 'store123',
       businessName: 'Ταβέρνα Ο Γιώργος',
       ownerName: 'Γιώργος Νικολάου',
-      phone: '2310456789',
-      address: 'Προξένου Κορομηλά 30, Θεσσαλονίκη',
+      phone: '2551045678',
+      address: 'Παραλιακή Οδός 30, Αλεξανδρούπολη',
       afm: '789123456',
       storeType: 'Ταβέρνα',
       location: {
         type: 'Point',
-        coordinates: [22.9480, 40.6420]
+        coordinates: [25.8700, 40.8430]
       },
-      isApproved: true
+      isApproved: true,
+      status: 'approved',
+      workingHours: '12:00 - 00:00'
+    });
+
+    const store5 = await Store.create({
+      email: 'sweets@test.com',
+      password: 'store123',
+      businessName: 'Γλυκοπωλείο Η Απόλαυση',
+      ownerName: 'Ελένη Παπαδοπούλου',
+      phone: '2551056789',
+      address: 'Ιωακείμ Καβύρη 5, Αλεξανδρούπολη',
+      afm: '321654987',
+      storeType: 'Γλυκά', // Updated to specific type
+      location: {
+        type: 'Point',
+        coordinates: [25.8745, 40.8455]
+      },
+      isApproved: true,
+      status: 'approved',
+      workingHours: '09:00 - 22:00'
     });
     
-    const store5 = await Store.create({
+    const store6 = await Store.create({
       email: 'pending@test.com',
       password: 'store123',
       businessName: 'Νέο Κατάστημα Σε Αναμονή',
       ownerName: 'Ελένη Αθανασίου',
-      phone: '2310567890',
-      address: 'Βασιλίσσης Όλγας 50, Θεσσαλονίκη',
-      afm: '321654987',
+      phone: '2551067890',
+      address: 'Μαζαράκη 50, Αλεξανδρούπολη',
+      afm: '147258369',
       storeType: 'Άλλο',
       location: {
         type: 'Point',
-        coordinates: [22.9520, 40.6390]
+        coordinates: [25.8760, 40.8470]
       },
       isApproved: false
     });
     
-    const stores = [store1, store2, store3, store4, store5];
+    const stores = [store1, store2, store3, store4, store5, store6];
     console.log(`✅ Δημιουργήθηκαν ${stores.length} Καταστήματα`);
 
     // 3. Δημιουργία Οδηγών (ένα-ένα για να τρέξουν τα pre-save hooks)
-    await Driver.deleteMany({ email: { $in: ['driver1@test.com', 'driver2@test.com', 'driver3@test.com', 'pendingdriver@test.com'] } });
+    await Driver.deleteMany({});
     
     const driver1 = await Driver.create({
       email: 'driver1@test.com',
@@ -168,39 +194,57 @@ const seedTestData = async () => {
     console.log(`✅ Δημιουργήθηκαν ${drivers.length} Οδηγοί`);
 
     // 4. Δημιουργία Πελατών
-    const customers = await User.create([
-      {
-        name: 'Σάκης',
-        phone: '6978799299',
-        isActive: true
-      },
-      {
-        name: 'Μαρία Κωνσταντίνου',
-        phone: '6975123456',
-        isActive: true
-      },
-      {
-        name: 'Νίκος Αθανασίου',
-        phone: '6976234567',
-        isActive: true
-      },
-      {
-        name: 'Ελένη Δημητρίου',
-        phone: '6977345678',
-        isActive: false
-      }
-    ]);
+    await Customer.deleteMany({});
+    
+    const customer1 = await Customer.create({
+      name: 'Σάκης Ζήσογλου',
+      email: 'sakis@test.com',
+      password: 'password123',
+      phone: '6978799299',
+      address: 'Αγίου Δημητρίου 9, Αλεξανδρούπολη',
+      isActive: true
+    });
+
+    const customer2 = await Customer.create({
+      name: 'Μαρία Κωνσταντίνου',
+      email: 'maria@test.com',
+      password: 'password123',
+      phone: '6975123456',
+      address: '14ης Μαΐου 45, Αλεξανδρούπολη',
+      isActive: true
+    });
+
+    const customer3 = await Customer.create({
+      name: 'Νίκος Αθανασίου',
+      email: 'nikos@test.com',
+      password: 'password123',
+      phone: '6976234567',
+      address: 'Λεωφόρος Δημοκρατίας 200, Αλεξανδρούπολη',
+      isActive: true
+    });
+
+    const customer4 = await Customer.create({
+      name: 'Ελένη Δημητρίου',
+      email: 'eleni@test.com',
+      password: 'password123',
+      phone: '6977345678',
+      address: 'Βενιζέλου 30, Αλεξανδρούπολη',
+      isActive: false
+    });
+
+    const customers = [customer1, customer2, customer3, customer4];
     console.log(`✅ Δημιουργήθηκαν ${customers.length} Πελάτες`);
 
     // 5. Δημιουργία Παραγγελιών με διαφορετικές καταστάσεις
-    // ΣΗΜΕΙΩΣΗ: Το orderNumber δημιουργείται αυτόματα από το pre-save hook
+    await Order.deleteMany({});
     
     // Παραγγελία 1: Ολοκληρωμένη
     const order1 = await Order.create({
       customer: {
-        name: 'Σάκης',
-        phone: '6978799299',
-        address: 'Αγιου Δημητρίου 9'
+        name: customer1.name,
+        phone: customer1.phone,
+        email: customer1.email,
+        address: customer1.address
       },
       storeId: stores[0]._id,
       storeName: stores[0].businessName,
@@ -219,9 +263,10 @@ const seedTestData = async () => {
     // Παραγγελία 2: Σε παράδοση
     const order2 = await Order.create({
       customer: {
-        name: 'Μαρία Κωνσταντίνου',
-        phone: '6975123456',
-        address: 'Βασιλίσσης Όλγας 45'
+        name: customer2.name,
+        phone: customer2.phone,
+        email: customer2.email,
+        address: customer2.address
       },
       storeId: stores[1]._id,
       storeName: stores[1].businessName,
@@ -239,9 +284,10 @@ const seedTestData = async () => {
     // Παραγγελία 3: Προετοιμασία
     const order3 = await Order.create({
       customer: {
-        name: 'Νίκος Αθανασίου',
-        phone: '6976234567',
-        address: 'Εγνατία 200'
+        name: customer3.name,
+        phone: customer3.phone,
+        email: customer3.email,
+        address: customer3.address
       },
       storeId: stores[3]._id,
       storeName: stores[3].businessName,
@@ -259,9 +305,10 @@ const seedTestData = async () => {
     // Παραγγελία 4: Αναμονή επιβεβαίωσης πελάτη
     const order4 = await Order.create({
       customer: {
-        name: 'Σάκης',
-        phone: '6978799299',
-        address: 'Αγιου Δημητρίου 9'
+        name: customer1.name,
+        phone: customer1.phone,
+        email: customer1.email,
+        address: customer1.address
       },
       storeId: stores[0]._id,
       storeName: stores[0].businessName,
@@ -277,9 +324,10 @@ const seedTestData = async () => {
     // Παραγγελία 5: Εκκρεμεί Admin (να προσθέσει μεταφορικά)
     const order5 = await Order.create({
       customer: {
-        name: 'Μαρία Κωνσταντίνου',
-        phone: '6975123456',
-        address: 'Τσιμισκή 100'
+        name: customer2.name,
+        phone: customer2.phone,
+        email: customer2.email,
+        address: customer2.address
       },
       storeId: stores[2]._id,
       storeName: stores[2].businessName,
@@ -293,9 +341,10 @@ const seedTestData = async () => {
     // Παραγγελία 6: Τιμολόγηση (κατάστημα να βάλει τιμή)
     const order6 = await Order.create({
       customer: {
-        name: 'Νίκος Αθανασίου',
-        phone: '6976234567',
-        address: 'Προξένου Κορομηλά 50'
+        name: customer3.name,
+        phone: customer3.phone,
+        email: customer3.email,
+        address: customer3.address
       },
       storeId: stores[1]._id,
       storeName: stores[1].businessName,
@@ -308,9 +357,10 @@ const seedTestData = async () => {
     // Παραγγελία 7: Νέα (αναμονή καταστήματος)
     const order7 = await Order.create({
       customer: {
-        name: 'Ελένη Δημητρίου',
-        phone: '6977345678',
-        address: 'Μητροπόλεως 30'
+        name: customer4.name,
+        phone: customer4.phone,
+        email: customer4.email,
+        address: customer4.address
       },
       storeId: stores[0]._id,
       storeName: stores[0].businessName,
@@ -323,9 +373,10 @@ const seedTestData = async () => {
     // Παραγγελία 8: Ακυρωμένη
     const order8 = await Order.create({
       customer: {
-        name: 'Σάκης',
-        phone: '6978799299',
-        address: 'Αγιου Δημητρίου 9'
+        name: customer1.name,
+        phone: customer1.phone,
+        email: customer1.email,
+        address: customer1.address
       },
       storeId: stores[3]._id,
       storeName: stores[3].businessName,
@@ -349,20 +400,13 @@ const seedTestData = async () => {
     console.log(`🚗 Οδηγοί: ${drivers.length} (${drivers.filter(d => d.isApproved).length} εγκεκριμένοι, ${drivers.filter(d => d.isOnline).length} online)`);
     console.log(`👥 Πελάτες: ${customers.length}`);
     console.log(`📦 Παραγγελίες: ${createdOrders.length}`);
-    console.log('   - Ολοκληρωμένες: 1');
-    console.log('   - Σε παράδοση: 1');
-    console.log('   - Προετοιμασία: 1');
-    console.log('   - Αναμονή πελάτη: 1');
-    console.log('   - Εκκρεμεί Admin: 1');
-    console.log('   - Τιμολόγηση: 1');
-    console.log('   - Νέες: 1');
-    console.log('   - Ακυρωμένες: 1');
     console.log('─────────────────────────');
     console.log('\n✅ Test data δημιουργήθηκαν επιτυχώς!');
     console.log('\n📝 Credentials:');
     console.log('Admin: admin@fastdelivery.gr / admin123');
     console.log('Store: kafeteria@test.com / store123');
     console.log('Driver: driver1@test.com / driver123');
+    console.log('Customer: sakis@test.com / password123');
     
     await mongoose.connection.close();
     process.exit(0);

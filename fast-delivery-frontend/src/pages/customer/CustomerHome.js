@@ -1,109 +1,230 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Card, Button, Form, Alert } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
-import '../../styles/Customer.css';
+import '../../styles/CustomerPortal.css';
 
 const CustomerHome = () => {
   const navigate = useNavigate();
-  const [orderNumber, setOrderNumber] = useState('');
-  const [error, setError] = useState('');
+  const { user, logout } = useAuth();
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [stores, setStores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
-  const handleTrackOrder = () => {
-    if (!orderNumber.trim()) {
-      setError('Παρακαλώ εισάγετε αριθμό παραγγελίας');
-      return;
+  const categories = [
+    { id: 'all', label: 'Όλα', icon: '🍽️' },
+    { id: 'coffee', label: 'Καφές', icon: '☕' },
+    { id: 'food', label: 'Φαγητό', icon: '🍔' },
+    { id: 'market', label: 'Market', icon: '🛒' },
+    { id: 'sweets', label: 'Γλυκά', icon: '🍰' },
+    { id: 'pharmacy', label: 'Φαρμακείο', icon: '💊' },
+    { id: 'other', label: 'Άλλο', icon: '🏪' },
+  ];
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      setLoading(true);
+      try {
+        const params = {};
+        if (activeCategory !== 'all') {
+           // Map category to storeType
+           const typeMap = {
+             'coffee': 'Καφετέρια',
+             'food': 'Ταβέρνα',
+             'market': 'Mini Market',
+             'sweets': 'Γλυκά', // Changed from 'Άλλο' to 'Γλυκά'
+             'pharmacy': 'Φαρμακείο',
+             'other': 'Άλλο'
+           };
+           params.storeType = typeMap[activeCategory];
+        }
+        
+        // Use user's address as service area filter if available
+        if (user?.address) {
+            // Simple extraction of city/area from address could go here
+            // For now, we rely on the backend's regex match if we pass it
+            // params.serviceArea = user.address; 
+        }
+
+        const data = await customerService.getStores(params);
+        if (data.success) {
+          setStores(data.stores);
+        }
+      } catch (error) {
+        console.error('Error fetching stores:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStores();
+  }, [activeCategory, user]);
+
+  const handleStoreClick = (store) => {
+    console.log('🖱️ Clicked Store:', store.businessName);
+    navigate('/new-order', { state: { store } });
+  };
+
+  const handleCategoryClick = (catId) => {
+    console.log('🖱️ Clicked Category:', catId);
+    setActiveCategory(catId);
+  };
+
+  const handleNavClick = (action) => {
+    console.log('🖱️ Clicked Nav Item:', action);
+    if (action === 'search') {
+      setShowSearch(!showSearch);
+    } else if (action === 'orders') {
+      if (user) {
+        navigate('/my-orders');
+      } else {
+        navigate('/order-status/track');
+      }
+    } else if (action === 'profile') {
+      // Navigate to profile or show modal
+    } else if (action === 'home') {
+      navigate('/order');
+      setShowSearch(false);
+      setActiveCategory('all');
     }
-    navigate(`/order-status/${orderNumber.trim()}`);
+  };
+
+  const filteredStores = stores.filter(store => 
+    store.businessName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const handleLogout = () => {
+    console.log('🖱️ Clicked Logout');
+    logout();
+    setShowDropdown(false);
+    navigate('/');
   };
 
   return (
-    <div className="customer-home">
-      <Container>
-        <Row className="min-vh-100 align-items-center">
-          <Col lg={10} xl={8} className="mx-auto">
-            <div className="text-center mb-5">
-              <h1 className="display-4 fw-bold text-white mb-3">
-                🚚 Fast Delivery
-              </h1>
-              <p className="lead text-white">
-                Παράγγειλε από το αγαπημένο σου κατάστημα
-              </p>
+    <div className="app-container">
+      {/* Header */}
+      <header className="app-header">
+        <div className="header-content">
+          <div className="location-pill">
+            <span className="icon">📍</span>
+            <span className="text">{user?.address || 'Αλεξανδρούπολη'}</span>
+          </div>
+          {user ? (
+            <div className="user-profile-container" style={{ position: 'relative' }}>
+              <div className="user-profile" onClick={() => setShowDropdown(!showDropdown)}>
+                <div className="avatar">{user.name[0]}</div>
+              </div>
+              {showDropdown && (
+                <div className="profile-dropdown" style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  backgroundColor: 'white',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                  borderRadius: '8px',
+                  padding: '8px 0',
+                  zIndex: 1000,
+                  minWidth: '150px'
+                }}>
+                  <div className="dropdown-item" style={{ padding: '8px 16px', cursor: 'pointer' }} onClick={handleLogout}>
+                    <i className="fas fa-sign-out-alt me-2"></i> Αποσύνδεση
+                  </div>
+                </div>
+              )}
             </div>
+          ) : (
+            <button className="btn-small" onClick={() => { console.log('🖱️ Clicked Login'); navigate('/'); }}>Σύνδεση</button>
+          )}
+        </div>
+        {showSearch && (
+          <div className="search-bar-container" style={{ padding: '10px 0' }}>
+            <input 
+              type="text" 
+              placeholder="Αναζήτηση καταστήματος..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="form-control"
+              style={{ borderRadius: '20px' }}
+              autoFocus
+            />
+          </div>
+        )}
+      </header>
 
-            {error && <Alert variant="danger">{error}</Alert>}
+      {/* Categories */}
+      <div className="categories-scroll">
+        {categories.map(cat => (
+          <div 
+            key={cat.id} 
+            className={`category-chip ${activeCategory === cat.id ? 'active' : ''}`}
+            onClick={() => handleCategoryClick(cat.id)}
+          >
+            <span className="cat-icon">{cat.icon}</span>
+            <span className="cat-label">{cat.label}</span>
+          </div>
+        ))}
+      </div>
 
-            <Row className="g-4">
-              <Col md={6}>
-                <Card className="shadow-lg h-100 hover-card">
-                  <Card.Body className="text-center p-5">
-                    <div className="mb-4">
-                      <span className="display-1">📦</span>
+      {/* Main Content */}
+      <div className="main-content">
+        <h2 className="section-title">Κοντά σας</h2>
+        
+        {loading ? (
+          <div className="loading-spinner">Φόρτωση...</div>
+        ) : (
+          <div className="stores-list">
+            {filteredStores.length > 0 ? (
+              filteredStores.map(store => (
+                <div key={store._id} className="store-card" onClick={() => handleStoreClick(store)}>
+                  <div className="store-image-placeholder">
+                    {store.storeType === 'Καφετέρια' ? '☕' : 
+                     store.storeType === 'Mini Market' ? '🛒' : 
+                     store.storeType === 'Ταβέρνα' ? '🍔' : 
+                     store.storeType === 'Γλυκά' ? '🍰' :
+                     store.storeType === 'Φαρμακείο' ? '💊' : '🏪'}
+                  </div>
+                  <div className="store-info">
+                    <div className="store-header">
+                      <h3>{store.businessName}</h3>
+                      <span className="rating">★ 4.5</span>
                     </div>
-                    <h3 className="mb-3">Νέα Παραγγελία</h3>
-                    <p className="text-muted mb-4">
-                      Δημιούργησε μια νέα παραγγελία από κοντινά καταστήματα
-                    </p>
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      className="w-100"
-                      onClick={() => navigate('/new-order')}
-                    >
-                      Παραγγελία Τώρα
-                    </Button>
-                  </Card.Body>
-                </Card>
-              </Col>
-
-              <Col md={6}>
-                <Card className="shadow-lg h-100 hover-card">
-                  <Card.Body className="text-center p-5">
-                    <div className="mb-4">
-                      <span className="display-1">🔍</span>
+                    <div className="store-meta">
+                      <span className="delivery-time">{store.workingHours || '09:00 - 23:00'}</span>
                     </div>
-                    <h3 className="mb-3">Παρακολούθηση</h3>
-                    <p className="text-muted mb-4">
-                      Δες την κατάσταση της παραγγελίας σου
-                    </p>
-                    <Form.Group className="mb-3">
-                      <Form.Control
-                        type="text"
-                        placeholder="Αριθμός Παραγγελίας (π.χ. ORD-20251118-0001)"
-                        value={orderNumber}
-                        onChange={(e) => {
-                          setOrderNumber(e.target.value);
-                          setError('');
-                        }}
-                        onKeyPress={(e) => e.key === 'Enter' && handleTrackOrder()}
-                      />
-                    </Form.Group>
-                    <Button
-                      variant="success"
-                      size="lg"
-                      className="w-100"
-                      onClick={handleTrackOrder}
-                    >
-                      Παρακολούθηση
-                    </Button>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
+                    <div className="store-address-hint">{store.address}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="no-stores">Δεν βρέθηκαν καταστήματα {searchTerm && `για "${searchTerm}"`}</div>
+            )}
+          </div>
+        )}
+      </div>
 
-            <div className="text-center mt-5">
-              <p className="text-white-50">
-                <small>
-                  Έχεις λογαριασμό καταστήματος ή οδηγού;{' '}
-                  <span className="text-white" style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => navigate('/login')}>
-                    Σύνδεση
-                  </span>
-                </small>
-              </p>
-            </div>
-          </Col>
-        </Row>
-      </Container>
+      {/* Bottom Navigation */}
+      <nav className="bottom-nav">
+        <div className={`nav-item ${!showSearch ? 'active' : ''}`} onClick={() => handleNavClick('home')}>
+          <span className="icon">🏠</span>
+          <span className="label">Αρχική</span>
+        </div>
+        <div className={`nav-item ${showSearch ? 'active' : ''}`} onClick={() => handleNavClick('search')}>
+          <span className="icon">🔍</span>
+          <span className="label">Αναζήτηση</span>
+        </div>
+        <div className="nav-item" onClick={() => handleNavClick('orders')}>
+          <span className="icon">📦</span>
+          <span className="label">Παραγγελίες</span>
+        </div>
+        <div className="nav-item" onClick={() => handleNavClick('profile')}>
+          <span className="icon">👤</span>
+          <span className="label">Προφίλ</span>
+        </div>
+      </nav>
     </div>
   );
 };

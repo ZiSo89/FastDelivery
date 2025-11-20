@@ -74,27 +74,20 @@ const OrderStatus = () => {
   const handleConfirmPrice = async () => {
     if (!order) return;
 
-    if (!window.confirm('Επιβεβαιώνετε την τιμή και θέλετε να συνεχίσει η παραγγελία;')) {
-      return;
-    }
-
     try {
       // Χρησιμοποιούμε το τηλέφωνο που υπάρχει ήδη στην παραγγελία
       const phone = order.customer?.phone || order.customerPhone;
       await customerService.confirmPrice(order._id, phone);
-      alert('Η τιμή επιβεβαιώθηκε! Η παραγγελία θα ανατεθεί σε οδηγό.');
+      // No alert needed, UI will update via socket or re-fetch
       fetchOrderStatus();
     } catch (err) {
+      // Keep error alert if something goes wrong
       alert(err.response?.data?.message || 'Σφάλμα επιβεβαίωσης');
     }
   };
 
   const handleCancelOrder = async () => {
     if (!order) return;
-
-    if (!window.confirm('Είστε σίγουροι ότι θέλετε να ακυρώσετε την παραγγελία;')) {
-      return;
-    }
 
     const phone = order.customer?.phone || order.customerPhone;
     if (!phone) {
@@ -105,7 +98,6 @@ const OrderStatus = () => {
     try {
       // Καλούμε το backend να ακυρώσει την παραγγελία
       await customerService.cancelOrder(order._id, phone);
-      alert('Η παραγγελία ακυρώθηκε.');
       navigate('/');
     } catch (err) {
       alert(err.response?.data?.message || 'Σφάλμα ακύρωσης');
@@ -114,26 +106,26 @@ const OrderStatus = () => {
 
   const getStatusInfo = (status) => {
     const statusMap = {
-      pending_store: { color: 'warning', icon: '⏳', text: 'Αναμονή απόκρισης καταστήματος', progress: 10 },
-      pricing: { color: 'info', icon: '💰', text: 'Το κατάστημα τιμολογεί την παραγγελία', progress: 25 },
-      pending_admin: { color: 'primary', icon: '👨‍💼', text: 'Υπολογισμός μεταφορικών', progress: 40 },
-      pending_customer_confirm: { color: 'warning', icon: '⚠️', text: 'Αναμονή επιβεβαίωσης πελάτη', progress: 50 },
-      confirmed: { color: 'success', icon: '✅', text: 'Επιβεβαιωμένη - Αναζήτηση οδηγού', progress: 60 },
-      assigned: { color: 'info', icon: '🚗', text: 'Ανατέθηκε σε οδηγό', progress: 70 },
-      accepted_driver: { color: 'primary', icon: '👍', text: 'Ο οδηγός αποδέχτηκε', progress: 75 },
-      preparing: { color: 'warning', icon: '👨‍🍳', text: 'Το κατάστημα προετοιμάζει', progress: 80 },
-      in_delivery: { color: 'primary', icon: '🚚', text: 'Σε παράδοση', progress: 90 },
-      completed: { color: 'success', icon: '🎉', text: 'Ολοκληρώθηκε!', progress: 100 },
-      cancelled: { color: 'danger', icon: '❌', text: 'Ακυρώθηκε', progress: 0 },
-      rejected_store: { color: 'danger', icon: '❌', text: 'Απορρίφθηκε από το κατάστημα', progress: 0 },
-      rejected_driver: { color: 'danger', icon: '❌', text: 'Απορρίφθηκε από τον οδηγό', progress: 0 }
+      pending_store: { color: '#f0ad4e', icon: '⏳', title: 'Αναμονή', subtitle: 'Περιμένουμε το κατάστημα', progress: 10 },
+      pricing: { color: '#5bc0de', icon: '💰', title: 'Τιμολόγηση', subtitle: 'Το κατάστημα ελέγχει την παραγγελία', progress: 25 },
+      pending_admin: { color: '#0275d8', icon: '👨‍💼', title: 'Έλεγχος', subtitle: 'Υπολογισμός κόστους μεταφοράς', progress: 40 },
+      pending_customer_confirm: { color: '#f0ad4e', icon: '🔔', title: 'Επιβεβαίωση', subtitle: 'Απαιτείται η έγκρισή σας', progress: 50 },
+      confirmed: { color: '#5cb85c', icon: '✅', title: 'Επιβεβαιώθηκε', subtitle: 'Αναζήτηση διανομέα', progress: 60 },
+      assigned: { color: '#5bc0de', icon: '🚗', title: 'Ανατέθηκε', subtitle: 'Βρέθηκε οδηγός', progress: 70 },
+      accepted_driver: { color: '#0275d8', icon: '👍', title: 'Αποδοχή', subtitle: 'Ο οδηγός έρχεται', progress: 75 },
+      preparing: { color: '#f0ad4e', icon: '👨‍🍳', title: 'Προετοιμασία', subtitle: 'Το φαγητό ετοιμάζεται', progress: 80 },
+      in_delivery: { color: '#0275d8', icon: '🚚', title: 'Στο δρόμο', subtitle: 'Η παραγγελία έρχεται σε εσάς', progress: 90 },
+      completed: { color: '#5cb85c', icon: '🎉', title: 'Παραδόθηκε', subtitle: 'Καλή απόλαυση!', progress: 100 },
+      cancelled: { color: '#d9534f', icon: '❌', title: 'Ακυρώθηκε', subtitle: 'Η παραγγελία ακυρώθηκε', progress: 0 },
+      rejected_store: { color: '#d9534f', icon: '❌', title: 'Απορρίφθηκε', subtitle: 'Από το κατάστημα', progress: 0 },
+      rejected_driver: { color: '#d9534f', icon: '❌', title: 'Απορρίφθηκε', subtitle: 'Δεν βρέθηκε οδηγός', progress: 0 }
     };
-    return statusMap[status] || { color: 'secondary', icon: '❓', text: status, progress: 0 };
+    return statusMap[status] || { color: '#777', icon: '❓', title: 'Άγνωστο', subtitle: status, progress: 0 };
   };
 
   if (loading) {
     return (
-      <div className="customer-page d-flex justify-content-center align-items-center min-vh-100">
+      <div className="app-container d-flex justify-content-center align-items-center min-vh-100">
         <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Φόρτωση...</span>
         </div>
@@ -143,20 +135,25 @@ const OrderStatus = () => {
 
   if (error) {
     return (
-      <div className="customer-page">
-        <Container className="py-5">
-          <Row>
-            <Col lg={8} className="mx-auto">
-              <Alert variant="danger">
-                <h4>Σφάλμα</h4>
-                <p>{error}</p>
-                <Button variant="primary" onClick={() => navigate('/')}>
-                  Επιστροφή
-                </Button>
-              </Alert>
-            </Col>
-          </Row>
-        </Container>
+      <div className="app-container">
+        <header className="app-header">
+          <div className="header-content">
+            <button className="btn-icon" onClick={() => navigate('/order')}>
+              <i className="fas fa-arrow-left"></i>
+            </button>
+            <h3>Σφάλμα</h3>
+            <div style={{ width: 32 }}></div>
+          </div>
+        </header>
+        <div className="main-content p-4">
+          <Alert variant="danger">
+            <h4>Σφάλμα</h4>
+            <p>{error}</p>
+            <Button variant="primary" onClick={() => navigate('/order')}>
+              Επιστροφή
+            </Button>
+          </Alert>
+        </div>
       </div>
     );
   }
@@ -164,96 +161,131 @@ const OrderStatus = () => {
   const statusInfo = getStatusInfo(order.status);
 
   return (
-    <div className="customer-page">
-      <Container className="py-5">
-        <Row>
-          <Col lg={8} className="mx-auto">
-            <Button variant="link" className="mb-3 p-0" onClick={() => navigate('/')}>
-              ← Πίσω στην Αρχική
-            </Button>
+    <div className="app-container bg-light">
+      <header className="app-header bg-white shadow-sm">
+        <div className="header-content">
+          <button className="btn-icon" onClick={() => navigate('/order')}>
+            <i className="fas fa-arrow-left"></i>
+          </button>
+          <h3 className="fw-bold">Παραγγελία {order.orderNumber.split('-').pop()}</h3>
+          <div style={{ width: 32 }}></div>
+        </div>
+      </header>
 
-            <Card className="shadow-lg mb-4">
-              <Card.Header className="bg-primary text-white">
-                <h4 className="mb-0">Παραγγελία {order.orderNumber}</h4>
-              </Card.Header>
-              <Card.Body>
-                <div className="text-center mb-4">
-                  <div className="display-1 mb-3">{statusInfo.icon}</div>
-                  <h3>{statusInfo.text}</h3>
+      <div className="main-content p-0">
+        {/* Status Hero Section */}
+        <div className="bg-white p-4 mb-3 text-center shadow-sm" style={{ borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
+          <div className="mb-3" style={{ fontSize: '3rem' }}>{statusInfo.icon}</div>
+          <h2 className="fw-bold mb-1">{statusInfo.title}</h2>
+          <p className="text-muted mb-4">{statusInfo.subtitle}</p>
+          
+          <div className="progress" style={{ height: '8px', borderRadius: '4px', backgroundColor: '#f0f0f0' }}>
+            <div
+              className="progress-bar"
+              role="progressbar"
+              style={{ 
+                width: `${statusInfo.progress}%`, 
+                backgroundColor: statusInfo.color,
+                borderRadius: '4px',
+                transition: 'width 0.5s ease-in-out'
+              }}
+              aria-valuenow={statusInfo.progress}
+              aria-valuemin="0"
+              aria-valuemax="100"
+            ></div>
+          </div>
+        </div>
+
+        {/* Action Card for Confirmation */}
+        {order.status === 'pending_customer_confirm' && (
+          <div className="px-3 mb-3">
+            <Card className="border-0 shadow-sm" style={{ borderRadius: '15px', overflow: 'hidden' }}>
+              <div className="p-3 bg-warning bg-opacity-10 border-bottom border-warning border-opacity-25">
+                <h5 className="mb-0 text-warning text-dark fw-bold">🔔 Απαιτείται Ενέργεια</h5>
+              </div>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between mb-2">
+                  <span className="text-muted">Προϊόντα</span>
+                  <span className="fw-bold">€{order.productPrice?.toFixed(2)}</span>
                 </div>
-
-                <div className="progress mb-4" style={{ height: '30px' }}>
-                  <div
-                    className={`progress-bar bg-${statusInfo.color}`}
-                    role="progressbar"
-                    style={{ width: `${statusInfo.progress}%` }}
-                    aria-valuenow={statusInfo.progress}
-                    aria-valuemin="0"
-                    aria-valuemax="100"
+                <div className="d-flex justify-content-between mb-3">
+                  <span className="text-muted">Μεταφορικά</span>
+                  <span className="fw-bold">€{order.deliveryFee?.toFixed(2)}</span>
+                </div>
+                <hr className="my-3" />
+                <div className="d-flex justify-content-between mb-4">
+                  <span className="h5 mb-0">Σύνολο</span>
+                  <span className="h4 mb-0 text-primary fw-bold">€{order.totalPrice?.toFixed(2)}</span>
+                </div>
+                
+                <div className="d-grid gap-2">
+                  <Button 
+                    size="lg" 
+                    style={{ backgroundColor: '#5cb85c', borderColor: '#5cb85c', borderRadius: '12px' }} 
+                    onClick={handleConfirmPrice}
                   >
-                    {statusInfo.progress}%
-                  </div>
+                    Αποδοχή & Συνέχεια
+                  </Button>
+                  <Button 
+                    variant="outline-danger" 
+                    size="lg" 
+                    style={{ borderRadius: '12px', borderWidth: '0' }}
+                    onClick={handleCancelOrder}
+                  >
+                    Ακύρωση Παραγγελίας
+                  </Button>
                 </div>
-
-                {order.status === 'pending_customer_confirm' && (
-                  <Alert variant="warning" className="text-center">
-                    <h5>Επιβεβαίωση Τιμής</h5>
-                    <p className="mb-3">
-                      Τιμή Προϊόντων: <strong>€{order.productPrice?.toFixed(2)}</strong><br />
-                      Μεταφορικά: <strong>€{order.deliveryFee?.toFixed(2)}</strong><br />
-                      <strong>Σύνολο: €{order.totalPrice?.toFixed(2)}</strong>
-                    </p>
-                    <div className="d-flex gap-2 justify-content-center">
-                      <Button variant="success" size="lg" onClick={handleConfirmPrice}>
-                        Επιβεβαίωση & Συνέχεια
-                      </Button>
-                      <Button variant="danger" size="lg" onClick={handleCancelOrder}>
-                        Ακύρωση Παραγγελίας
-                      </Button>
-                    </div>
-                  </Alert>
-                )}
-
-                <ListGroup className="mb-4">
-                  <ListGroup.Item>
-                    <strong>Κατάστημα:</strong> {order.storeName || order.store?.businessName || order.store?.storeName || 'Μη διαθέσιμο'}
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    <strong>Προϊόντα:</strong> {order.orderContent ? order.orderContent : (order.orderType === 'voice' ? '🎤 Φωνητική παραγγελία' : 'Δεν καταχωρήθηκε')}
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    <strong>Διεύθυνση Παράδοσης:</strong> {order.customer?.address || order.deliveryAddress || 'Μη διαθέσιμη'}
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    <strong>Τηλέφωνο:</strong> {order.customer?.phone || order.customerPhone || 'Μη διαθέσιμο'}
-                  </ListGroup.Item>
-                  {order.customer?.name && (
-                    <ListGroup.Item>
-                      <strong>Όνομα Πελάτη:</strong> {order.customer.name}
-                    </ListGroup.Item>
-                  )}
-                  {(order.driverName || order.driver) && (
-                    <ListGroup.Item>
-                      <strong>Οδηγός:</strong> {order.driverName || order.driver?.name} {order.driver?.vehicleType ? `(${order.driver.vehicleType})` : ''}
-                    </ListGroup.Item>
-                  )}
-                  {order.productPrice > 0 && (
-                    <ListGroup.Item>
-                      <strong>Τελική Τιμή:</strong> €{order.totalPrice?.toFixed(2) || '0.00'}
-                    </ListGroup.Item>
-                  )}
-                </ListGroup>
-
-                <small className="text-muted">
-                  Δημιουργήθηκε: {new Date(order.createdAt).toLocaleString('el-GR')}
-                  <br />
-                  Η σελίδα ενημερώνεται αυτόματα σε πραγματικό χρόνο
-                </small>
               </Card.Body>
             </Card>
-          </Col>
-        </Row>
-      </Container>
+          </div>
+        )}
+
+        {/* Order Details */}
+        <div className="px-3 pb-4">
+          <Card className="border-0 shadow-sm" style={{ borderRadius: '15px' }}>
+            <Card.Body className="p-0">
+              <ListGroup variant="flush">
+                <ListGroup.Item className="p-3 border-bottom-0">
+                  <small className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>ΚΑΤΑΣΤΗΜΑ</small>
+                  <div className="fw-bold mt-1">{order.storeName || order.store?.businessName || 'Μη διαθέσιμο'}</div>
+                </ListGroup.Item>
+                
+                <ListGroup.Item className="p-3 border-bottom-0 border-top">
+                  <small className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>ΠΑΡΑΓΓΕΛΙΑ</small>
+                  <div className="mt-1">
+                    {order.orderContent ? order.orderContent : (order.orderType === 'voice' ? '🎤 Φωνητική παραγγελία' : 'Δεν καταχωρήθηκε')}
+                  </div>
+                </ListGroup.Item>
+                
+                <ListGroup.Item className="p-3 border-bottom-0 border-top">
+                  <small className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>ΠΑΡΑΔΟΣΗ ΣΕ</small>
+                  <div className="fw-bold mt-1">{order.customer?.address || order.deliveryAddress}</div>
+                  <div className="text-muted small">{order.customer?.phone || order.customerPhone}</div>
+                </ListGroup.Item>
+
+                {(order.driverName || order.driver) && (
+                  <ListGroup.Item className="p-3 border-bottom-0 border-top">
+                    <small className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>ΔΙΑΝΟΜΕΑΣ</small>
+                    <div className="d-flex align-items-center mt-2">
+                      <div className="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: '40px', height: '40px' }}>
+                        🚗
+                      </div>
+                      <div>
+                        <div className="fw-bold">{order.driverName || order.driver?.name}</div>
+                        <div className="text-muted small">{order.driver?.vehicleType || 'Όχημα'}</div>
+                      </div>
+                    </div>
+                  </ListGroup.Item>
+                )}
+              </ListGroup>
+            </Card.Body>
+          </Card>
+          
+          <div className="text-center mt-4 text-muted small">
+            Κωδικός: #{order.orderNumber} • {new Date(order.createdAt).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

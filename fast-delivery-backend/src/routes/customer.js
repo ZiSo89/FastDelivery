@@ -1,15 +1,24 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
 const {
   getStores,
   createOrder,
   getOrderStatus,
   confirmOrderPrice,
-  uploadVoice
+  uploadVoice,
+  getMyOrders,
+  getActiveOrderByPhone
 } = require('../controllers/customerController');
 
 // @route   GET /api/v1/orders/stores
 router.get('/stores', getStores);
+
+// @route   GET /api/v1/orders/my-orders
+router.get('/my-orders', protect, getMyOrders);
+
+// @route   GET /api/v1/orders/active-by-phone/:phone
+router.get('/active-by-phone/:phone', getActiveOrderByPhone);
 
 // @route   POST /api/v1/orders
 router.post('/', uploadVoice, createOrder);

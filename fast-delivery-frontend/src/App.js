@@ -6,11 +6,16 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import StoreDashboard from './pages/store/StoreDashboard';
 import DriverDashboard from './pages/driver/DriverDashboard';
+import CustomerPortal from './pages/customer/CustomerPortal';
+import Register from './pages/customer/Register';
 import CustomerHome from './pages/customer/CustomerHome';
 import NewOrder from './pages/customer/NewOrder';
 import OrderStatus from './pages/customer/OrderStatus';
+import TrackOrder from './pages/customer/TrackOrder';
+import CustomerOrders from './pages/customer/CustomerOrders';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import './styles/CustomerPortal.css';
 
 function App() {
   return (
@@ -19,8 +24,12 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<CustomerHome />} />
+          <Route path="/" element={<CustomerPortal />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/order" element={<CustomerHome />} />
           <Route path="/new-order" element={<NewOrder />} />
+          <Route path="/my-orders" element={<CustomerOrders />} />
+          <Route path="/order-status/track" element={<TrackOrder />} />
           <Route path="/order-status/:orderNumber" element={<OrderStatus />} />
           
           {/* Protected Admin Routes */}

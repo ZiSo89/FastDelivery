@@ -1,7 +1,8 @@
 const Store = require('../models/Store');
 const Driver = require('../models/Driver');
 const Admin = require('../models/Admin');
-const { generateToken } = require('../utils/jwt');
+const Customer = require('../models/Customer');
+const jwt = require('jsonwebtoken');
 
 // @desc    Login (Store/Driver/Admin)
 // @route   POST /api/v1/auth/login
@@ -32,11 +33,11 @@ exports.login = async (req, res) => {
       case 'admin':
         Model = Admin;
         break;
+      case 'customer':
+        Model = Customer;
+        break;
       default:
-        return res.status(400).json({
-          success: false,
-          message: 'Μη έγκυρος ρόλος'
-        });
+        return res.status(400).json({ success: false, message: 'Μη έγκυρος ρόλος χρήστη' });
     }
 
     user = await Model.findOne({ email }).select('+password');
@@ -52,58 +53,36 @@ exports.login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Λάθος email ή κωδικός'
-      });
+      return res.status(401).json({ success: false, message: 'Μη έγκυρα διαπιστευτήρια' });
     }
 
-    // Check if approved (for store/driver) - must be both isApproved AND status='approved'
-    if (role === 'store' || role === 'driver') {
-      if (!user.isApproved || user.status !== 'approved') {
-        return res.status(403).json({
-          success: false,
-          message: user.status === 'rejected' 
-            ? 'Ο λογαριασμός σας απορρίφθηκε'
-            : 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή'
-        });
-      }
+    // For Store and Driver, check if they are approved
+    if ((role === 'store' || role === 'driver') && !user.isApproved) {
+        return res.status(401).json({ success: false, message: 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή.' });
     }
 
-    // Generate token
-    const token = generateToken(user._id, role);
+    const token = jwt.sign({ id: user._id, role: user.role || role }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRE
+    });
 
-    // Remove password from response
-    user.password = undefined;
-
-    res.json({
-      success: true,
-      token,
-      user: {
+    // Prepare user object for response
+    const userResponse = {
         _id: user._id,
         email: user.email,
-        role,
-        ...(role === 'store' && { 
-          businessName: user.businessName,
-          storeType: user.storeType,
-          isApproved: user.isApproved
-        }),
-        ...(role === 'driver' && {
-          name: user.name,
-          isOnline: user.isOnline,
-          isApproved: user.isApproved
-        }),
-        ...(role === 'admin' && {
-          name: user.name
-        })
-      }
+        role: user.role || role,
+        name: user.name || user.businessName,
+        phone: user.phone,
+        address: user.address
+    };
+
+    res.status(200).json({
+        success: true,
+        token,
+        user: userResponse
     });
+
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Σφάλμα σύνδεσης'
-    });
+    res.status(500).json({ success: false, message: 'Server Error: ' + error.message });
   }
 };
 
@@ -181,10 +160,10 @@ exports.registerStore = async (req, res) => {
   }
 };
 
-// @desc    Register Driver
+// @desc    Register a new driver
 // @route   POST /api/v1/auth/driver/register
 // @access  Public
-exports.registerDriver = async (req, res) => {
+exports.registerDriver = async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
 
@@ -219,21 +198,47 @@ exports.registerDriver = async (req, res) => {
       });
     }
 
+    res.status(201).json({ success: true, message: 'Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση.', driver });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Register a new customer
+// @route   POST /api/v1/auth/customer/register
+// @access  Public
+exports.registerCustomer = async (req, res, next) => {
+  try {
+    const { name, email, password, phone, address } = req.body;
+
+    // Create customer
+    const customer = await Customer.create({
+      name,
+      email,
+      password,
+      phone,
+      address
+    });
+
+    // Create token
+    const token = jwt.sign({ id: customer._id, role: 'customer' }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRE
+    });
+
     res.status(201).json({
       success: true,
-      message: 'Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση.',
-      driver: {
-        _id: driver._id,
-        name: driver.name,
-        email: driver.email,
-        status: driver.status
+      message: 'Η εγγραφή σας ολοκληρώθηκε με επιτυχία!',
+      token,
+      user: {
+        _id: customer._id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address,
+        role: 'customer'
       }
     });
   } catch (error) {
-    console.error('Driver registration error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Σφάλμα εγγραφής'
-    });
+    res.status(400).json({ success: false, message: 'Κάτι πήγε στραβά. ' + error.message });
   }
 };
