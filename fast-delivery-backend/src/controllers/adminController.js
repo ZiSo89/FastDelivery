@@ -2,6 +2,7 @@ const Store = require('../models/Store');
 const Driver = require('../models/Driver');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Customer = require('../models/Customer');
 const { broadcastOrderEvent } = require('../utils/socketHelpers');
 
 // @desc    Get all stores
@@ -356,6 +357,8 @@ exports.assignDriver = async (req, res) => {
     broadcastOrderEvent(io, order, 'order:assigned', {
       orderId: order._id,
       orderNumber: order.orderNumber,
+      storeId: order.storeId,
+      driverId: order.driverId,
       driverName: driver.name,
       newStatus: 'assigned',
       pickup: {
@@ -449,7 +452,7 @@ exports.cancelOrder = async (req, res) => {
 // @access  Private (Admin)
 exports.getCustomers = async (req, res) => {
   try {
-    const customers = await User.find().sort({ createdAt: -1 });
+    const customers = await Customer.find().select('-password').sort({ createdAt: -1 });
 
     // Get order count for each customer
     const customersWithOrders = await Promise.all(
@@ -485,7 +488,7 @@ exports.deactivateCustomer = async (req, res) => {
   try {
     const { customerId } = req.params;
 
-    const customer = await User.findById(customerId);
+    const customer = await Customer.findById(customerId);
 
     if (!customer) {
       return res.status(404).json({

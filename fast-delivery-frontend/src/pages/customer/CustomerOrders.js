@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Card, Badge, Button, Spinner, Alert } from 'react-bootstrap';
 import { customerService } from '../../services/api';
+import socketService from '../../services/socket';
 import '../../styles/Customer.css';
 
 const CustomerOrders = () => {
@@ -12,6 +13,34 @@ const CustomerOrders = () => {
 
   useEffect(() => {
     fetchOrders();
+    
+    // Socket.IO real-time updates for customer orders
+    const handleOrderUpdate = (data) => {
+      // Refresh orders when any order event is received
+      // The backend sends all events globally, so we'll refresh to get latest state
+      fetchOrders();
+    };
+
+    // Subscribe to all order events
+    socketService.on('order:status_changed', handleOrderUpdate);
+    socketService.on('order:pending_admin', handleOrderUpdate);
+    socketService.on('order:price_ready', handleOrderUpdate);
+    socketService.on('order:confirmed', handleOrderUpdate);
+    socketService.on('order:assigned', handleOrderUpdate);
+    socketService.on('driver:accepted', handleOrderUpdate);
+    socketService.on('order:completed', handleOrderUpdate);
+    socketService.on('order:cancelled', handleOrderUpdate);
+
+    return () => {
+      socketService.off('order:status_changed', handleOrderUpdate);
+      socketService.off('order:pending_admin', handleOrderUpdate);
+      socketService.off('order:price_ready', handleOrderUpdate);
+      socketService.off('order:confirmed', handleOrderUpdate);
+      socketService.off('order:assigned', handleOrderUpdate);
+      socketService.off('driver:accepted', handleOrderUpdate);
+      socketService.off('order:completed', handleOrderUpdate);
+      socketService.off('order:cancelled', handleOrderUpdate);
+    };
   }, []);
 
   const fetchOrders = async () => {

@@ -75,7 +75,9 @@ exports.acceptRejectOrder = async (req, res) => {
       broadcastOrderEvent(io, order, 'order:status_changed', {
         orderId: order._id,
         orderNumber: order.orderNumber,
-        newStatus: 'pricing'
+        newStatus: 'pricing',
+        storeId: order.storeId?.toString(),
+        driverId: order.driverId?.toString()
       });
 
       res.json({
@@ -96,7 +98,9 @@ exports.acceptRejectOrder = async (req, res) => {
         orderId: order._id,
         orderNumber: order.orderNumber,
         customerPhone: order.customer.phone,
-        newStatus: 'rejected_store'
+        newStatus: 'rejected_store',
+        storeId: order.storeId?.toString(),
+        driverId: order.driverId?.toString()
       });
 
       res.json({
@@ -165,7 +169,9 @@ exports.addProductPrice = async (req, res) => {
       orderId: order._id,
       orderNumber: order.orderNumber,
       productPrice: order.productPrice,
-      newStatus: 'pending_admin'
+      newStatus: 'pending_admin',
+      storeId: order.storeId?.toString(),
+      driverId: order.driverId?.toString()
     });
 
     res.json({
@@ -228,7 +234,9 @@ exports.updateOrderStatus = async (req, res) => {
     broadcastOrderEvent(io, order, 'order:status_changed', {
       orderId: order._id,
       orderNumber: order.orderNumber,
-      newStatus: status
+      newStatus: status,
+      storeId: order.storeId?.toString(),
+      driverId: order.driverId?.toString()
     });
 
     res.json({

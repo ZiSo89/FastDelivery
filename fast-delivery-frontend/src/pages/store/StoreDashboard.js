@@ -80,9 +80,12 @@ const StoreDashboard = () => {
 
     // Listen for new orders - auto switch to orders tab
     const handleNewOrder = (data) => {
-      setActiveTab('orders'); // Auto-switch to orders tab
-      setStatusMessage(`📦 Νέα παραγγελία: ${data.orderNumber || ''}`);
-      setTimeout(() => setStatusMessage(''), 5000);
+      // FILTER: Only show notification if this order is for THIS store
+      if (data.storeId && user?._id && data.storeId.toString() === user._id.toString()) {
+        setActiveTab('orders'); // Auto-switch to orders tab
+        setStatusMessage(`📦 Νέα παραγγελία: ${data.orderNumber || ''}`);
+        setTimeout(() => setStatusMessage(''), 5000);
+      }
     };
 
     socketService.on('store:status_changed', handleStatusChange);

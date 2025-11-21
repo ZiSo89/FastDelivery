@@ -6,6 +6,17 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Το όνομα είναι υποχρεωτικό'],
     trim: true
   },
+  email: {
+    type: String,
+    sparse: true, // Allows multiple null values
+    lowercase: true,
+    trim: true,
+    match: [/^\S+@\S+\.\S+$/, 'Μη έγκυρο email']
+  },
+  password: {
+    type: String,
+    minlength: [6, 'Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες']
+  },
   phone: {
     type: String,
     required: [true, 'Το τηλέφωνο είναι υποχρεωτικό'],
@@ -25,5 +36,6 @@ const userSchema = new mongoose.Schema({
 
 // Index για γρήγορη αναζήτηση
 userSchema.index({ phone: 1 });
+userSchema.index({ email: 1 }, { unique: true, sparse: true }); // Unique email but allows null
 
 module.exports = mongoose.model('User', userSchema);

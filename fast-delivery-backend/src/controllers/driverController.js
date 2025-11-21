@@ -35,9 +35,9 @@ exports.toggleAvailability = async (req, res) => {
     driver.isOnline = isOnline;
     await driver.save();
 
-    // Notify admin and all clients about driver availability change
+    // Notify admin only about driver availability change
     const io = req.app.get('io');
-    io.emit('driver:availability_changed', {
+    io.to('admin').emit('driver:availability_changed', {
       driverId: driver._id,
       name: driver.name,
       isOnline: driver.isOnline,
@@ -128,6 +128,8 @@ exports.acceptRejectAssignment = async (req, res) => {
       broadcastOrderEvent(io, order, 'driver:accepted', {
         orderId: order._id,
         orderNumber: order.orderNumber,
+        storeId: order.storeId,
+        driverId: order.driverId,
         driverName: driver.name,
         newStatus: 'accepted_driver'
       });
@@ -151,6 +153,8 @@ exports.acceptRejectAssignment = async (req, res) => {
       broadcastOrderEvent(io, order, 'driver:rejected', {
         orderId: order._id,
         orderNumber: order.orderNumber,
+        storeId: order.storeId,
+        driverId: driverId,
         driverName: driver.name,
         newStatus: 'rejected_driver'
       });
@@ -236,13 +240,17 @@ exports.updateOrderStatus = async (req, res) => {
     broadcastOrderEvent(io, order, 'order:status_changed', {
       orderId: order._id,
       orderNumber: order.orderNumber,
+      storeId: order.storeId,
+      driverId: order.driverId,
       newStatus: status
     });
 
     if (status === 'completed') {
       broadcastOrderEvent(io, order, 'order:completed', {
         orderId: order._id,
-        orderNumber: order.orderNumber
+        orderNumber: order.orderNumber,
+        storeId: order.storeId,
+        driverId: order.driverId
       });
     }
 

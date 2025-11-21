@@ -323,6 +323,12 @@ export const customerService = {
     return response.data;
   },
 
+  // Update profile
+  updateProfile: async (data) => {
+    const response = await api.put('/orders/profile', data);
+    return response.data;
+  },
+
   // Get active order by phone
   getActiveOrderByPhone: async (phone) => {
     const response = await api.get(`/orders/active-by-phone/${phone}`);

@@ -40,6 +40,14 @@ body {
     letter-spacing: -0.5px;
 }
 
+.app-main-logo {
+    width: 150px;
+    height: auto;
+    margin-bottom: 1.5rem;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+}
+
 .brand-header p {
     color: #707070;
     font-size: 16px;

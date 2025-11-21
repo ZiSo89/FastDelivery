@@ -84,6 +84,29 @@ const NewOrder = () => {
     setLoading(true);
 
     try {
+      // Check if user info has changed and update profile if logged in
+      if (user) {
+        const hasChanges = 
+          formData.customerName !== (user.name || '') ||
+          formData.customerPhone !== (user.phone || '') ||
+          formData.deliveryAddress !== (user.address || '');
+
+        if (hasChanges) {
+          console.log('🔄 User details changed, updating profile...');
+          try {
+            await customerService.updateProfile({
+              name: formData.customerName,
+              phone: formData.customerPhone,
+              address: formData.deliveryAddress
+            });
+            console.log('✅ Profile updated successfully');
+          } catch (updateErr) {
+            console.error('⚠️ Failed to update profile:', updateErr);
+            // We continue with order creation even if profile update fails
+          }
+        }
+      }
+
       const orderData = {
         customer: {
           name: formData.customerName,

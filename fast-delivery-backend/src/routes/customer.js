@@ -8,7 +8,8 @@ const {
   confirmOrderPrice,
   uploadVoice,
   getMyOrders,
-  getActiveOrderByPhone
+  getActiveOrderByPhone,
+  updateProfile
 } = require('../controllers/customerController');
 
 // @route   GET /api/v1/orders/stores
@@ -16,6 +17,9 @@ router.get('/stores', getStores);
 
 // @route   GET /api/v1/orders/my-orders
 router.get('/my-orders', protect, getMyOrders);
+
+// @route   PUT /api/v1/orders/profile
+router.put('/profile', protect, updateProfile);
 
 // @route   GET /api/v1/orders/active-by-phone/:phone
 router.get('/active-by-phone/:phone', getActiveOrderByPhone);

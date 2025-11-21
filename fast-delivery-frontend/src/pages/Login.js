@@ -128,9 +128,9 @@ const Login = () => {
 
                 <div className="mt-4 text-center">
                   <small className="text-muted">
-                    Δεν έχετε λογαριασμό;{' '}
-                    <span className="text-primary" style={{ cursor: 'pointer' }} onClick={() => navigate('/register')}>
-                      Εγγραφή
+                    Εγγραφή ως Κατάστημα/Οδηγός;{' '}
+                    <span className="text-primary" style={{ cursor: 'pointer', fontWeight: '600' }} onClick={() => navigate('/register-business')}>
+                      Εγγραφή Επιχείρησης
                     </span>
                   </small>
                 </div>

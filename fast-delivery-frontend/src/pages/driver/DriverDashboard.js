@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Badge, Form, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Form, Alert, Modal, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../services/api';
@@ -17,6 +17,10 @@ const DriverDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
+  
+  // Modal states
+  const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [pendingOnlineStatus, setPendingOnlineStatus] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -81,8 +85,11 @@ const DriverDashboard = () => {
 
     // Listen for new order assignments - show notification
     const handleOrderAssigned = (data) => {
-      setStatusMessage(`📦 Νέα παραγγελία ανατέθηκε: ${data.orderNumber || ''}`);
-      setTimeout(() => setStatusMessage(''), 5000);
+      // FILTER: Only show notification if this order is assigned to THIS driver
+      if (data.driverId && user?._id && data.driverId.toString() === user._id.toString()) {
+        setStatusMessage(`📦 Νέα παραγγελία ανατέθηκε: ${data.orderNumber || ''}`);
+        setTimeout(() => setStatusMessage(''), 5000);
+      }
     };
 
     socketService.on('driver:status_changed', handleStatusChange);
@@ -95,13 +102,19 @@ const DriverDashboard = () => {
   }, [fetchProfile, user, updateUser]);
 
   const handleToggleOnline = async () => {
+    const newStatus = !isOnline;
+    setPendingOnlineStatus(newStatus);
+    setShowAvailabilityModal(true);
+  };
+
+  const confirmToggleOnline = async () => {
     try {
-      const newStatus = !isOnline;
-      await driverService.setAvailability(newStatus);
-      setIsOnline(newStatus);
-      alert(newStatus ? 'Είστε τώρα διαθέσιμος!' : 'Είστε τώρα offline');
+      await driverService.setAvailability(pendingOnlineStatus);
+      setIsOnline(pendingOnlineStatus);
+      setShowAvailabilityModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setError(err.response?.data?.message || 'Σφάλμα αλλαγής διαθεσιμότητας');
+      setShowAvailabilityModal(false);
     }
   };
 
@@ -143,8 +156,9 @@ const DriverDashboard = () => {
                     <Badge bg={profile.status === 'approved' ? 'success' : 'warning'}>
                       {profile.status === 'approved' ? 'Εγκεκριμένος' : 'Εκκρεμεί'}
                     </Badge>
-                    {' · '}
-                    <span className="text-muted">{profile.vehicleType} - {profile.vehiclePlate}</span>
+                  </p>
+                  <p className="mb-0 mt-2">
+                    <small className="text-muted">{profile.vehicleType} {profile.vehiclePlate}</small>
                   </p>
                 </Card.Body>
               </Card>
@@ -180,6 +194,35 @@ const DriverDashboard = () => {
           </Card.Body>
         </Card>
       </Container>
+
+      {/* Availability Confirmation Modal */}
+      <Modal 
+        show={showAvailabilityModal} 
+        onHide={() => setShowAvailabilityModal(false)}
+        centered
+        className="driver-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {pendingOnlineStatus ? '🟢 Ενεργοποίηση Διαθεσιμότητας' : '⚫ Απενεργοποίηση Διαθεσιμότητας'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {pendingOnlineStatus ? (
+            <p>Θα γίνετε διαθέσιμος για νέες παραγγελίες. Είστε έτοιμος;</p>
+          ) : (
+            <p>Θα γίνετε μη διαθέσιμος και δεν θα λαμβάνετε νέες παραγγελίες.</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAvailabilityModal(false)}>
+            Άκυρο
+          </Button>
+          <Button variant="primary" onClick={confirmToggleOnline}>
+            Επιβεβαίωση
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

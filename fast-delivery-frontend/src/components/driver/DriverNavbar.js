@@ -1,53 +1,116 @@
-import React from 'react';
-import { Navbar, Container, Nav, Dropdown, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useRef } from 'react';
+import { Navbar, Container } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const DriverNavbar = ({ user, profile }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  // Get first letter of name for avatar
+  const getInitials = () => {
+    if (profile?.name) {
+      return profile.name[0].toUpperCase();
+    }
+    if (user?.name) {
+      return user.name[0].toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'Ο'; // Default: Οδηγός
+  };
+
   return (
-    <Navbar bg="primary" variant="dark" expand="lg" className="shadow-sm">
+    <Navbar bg="white" variant="light" expand="lg" className="shadow-sm border-bottom" style={{ borderBottom: '2px solid #f0f0f0' }}>
       <Container fluid>
         <Navbar.Brand onClick={() => navigate('/driver')} style={{ cursor: 'pointer' }}>
-          <span className="fw-bold">🚗 Fast Delivery</span>
-          <span className="ms-2 badge bg-light text-primary">Οδηγός</span>
+          <span className="fw-bold" style={{ color: '#00c2e8', fontSize: '20px' }}>🚗 Fast Delivery</span>
         </Navbar.Brand>
         
-        <Navbar.Toggle aria-controls="driver-navbar" />
-        
-        <Navbar.Collapse id="driver-navbar" className="justify-content-end">
-          <Nav>
-            {profile && (
-              <Nav.Item className="me-3 d-flex align-items-center">
-                <Badge bg={profile.isOnline ? 'success' : 'secondary'}>
-                  {profile.isOnline ? '🟢 Online' : '⚫ Offline'}
-                </Badge>
-              </Nav.Item>
-            )}
-            <Dropdown align="end">
-              <Dropdown.Toggle variant="outline-light" id="user-dropdown">
-                👤 {profile?.name || user?.email}
-              </Dropdown.Toggle>
+        <div className="d-flex align-items-center gap-3">
+          {/* User Avatar with Dropdown */}
+          <div style={{ position: 'relative' }} ref={dropdownRef}>
+            <div
+              onClick={() => setShowDropdown(!showDropdown)}
+              style={{
+                width: '40px',
+                height: '40px',
+                backgroundColor: '#e0f7fa',
+                color: '#00c2e8',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '18px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: showDropdown ? '0 0 0 3px rgba(0, 194, 232, 0.2)' : 'none'
+              }}
+            >
+              {getInitials()}
+            </div>
 
-              <Dropdown.Menu>
-                <Dropdown.Item disabled>
-                  <small className="text-muted">{user?.email}</small>
-                </Dropdown.Item>
-                <Dropdown.Divider />
-                <Dropdown.Item onClick={handleLogout}>
+            {/* Dropdown Menu */}
+            {showDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  backgroundColor: 'white',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  borderRadius: '12px',
+                  padding: '8px 0',
+                  marginTop: '8px',
+                  zIndex: 1000,
+                  minWidth: '160px'
+                }}
+              >
+                <div
+                  onClick={handleLogout}
+                  style={{
+                    padding: '12px 20px',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    color: '#202125'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                >
                   🚪 Αποσύνδεση
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
-          </Nav>
-        </Navbar.Collapse>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </Container>
     </Navbar>
   );

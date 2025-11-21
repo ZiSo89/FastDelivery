@@ -218,22 +218,32 @@ const OrderStatus = () => {
                   <span className="h4 mb-0 text-primary fw-bold">€{order.totalPrice?.toFixed(2)}</span>
                 </div>
                 
-                <div className="d-grid gap-2">
-                  <Button 
-                    size="lg" 
-                    style={{ backgroundColor: '#5cb85c', borderColor: '#5cb85c', borderRadius: '12px' }} 
+                <div className="d-grid gap-3">
+                  <button 
+                    className="btn-primary-app"
                     onClick={handleConfirmPrice}
                   >
                     Αποδοχή & Συνέχεια
-                  </Button>
-                  <Button 
-                    variant="outline-danger" 
-                    size="lg" 
-                    style={{ borderRadius: '12px', borderWidth: '0' }}
+                  </button>
+                  <button 
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      backgroundColor: '#fff',
+                      color: '#dc3545',
+                      border: '1px solid #ffebee',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
                     onClick={handleCancelOrder}
+                    onMouseOver={(e) => e.target.style.backgroundColor = '#fff5f5'}
+                    onMouseOut={(e) => e.target.style.backgroundColor = '#fff'}
                   >
                     Ακύρωση Παραγγελίας
-                  </Button>
+                  </button>
                 </div>
               </Card.Body>
             </Card>

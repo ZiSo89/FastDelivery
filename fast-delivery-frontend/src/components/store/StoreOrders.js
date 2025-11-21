@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Modal, Form, Card, Row, Col } from 'react-bootstrap';
+import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/api';
 import socketService from '../../services/socket';
 
 const StoreOrders = () => {
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -62,42 +64,55 @@ const StoreOrders = () => {
 
   // Socket.IO listeners (setup once, never recreate)
   useEffect(() => {
+    // Helper function to check if event is for this store
+    const isMyOrder = (data) => {
+      const match = data.storeId && user?._id && data.storeId.toString() === user._id.toString();
+      // Debug logging:
+      // console.log('🔍 StoreOrders event filter:', { 
+      //   eventStoreId: data.storeId?.toString(), 
+      //   myId: user?._id?.toString(), 
+      //   match,
+      //   orderNumber: data.orderNumber,
+      //   eventName: 'checking'
+      // });
+      return match;
+    };
     
     // Socket.IO real-time listeners for store
     const handleNewOrder = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleOrderCancelled = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleDriverAccepted = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleOrderStatusChanged = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleOrderPendingAdmin = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleOrderPriceReady = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleOrderAssigned = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleOrderCompleted = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     const handleOrderConfirmed = (data) => {
-      fetchOrders(); // Refresh list
+      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
     };
 
     // Subscribe to events
@@ -123,7 +138,8 @@ const StoreOrders = () => {
       socketService.off('order:completed', handleOrderCompleted);
       socketService.off('order:confirmed', handleOrderConfirmed);
     };
-  }, [fetchOrders]); // Only recreate if fetchOrders changes (which it won't)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // Only re-attach listeners when user changes
 
   const handleAccept = async (orderId) => {
     try {

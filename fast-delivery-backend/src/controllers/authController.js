@@ -132,7 +132,7 @@ exports.registerStore = async (req, res) => {
     // Notify all admins about new store registration
     const io = req.app.get('io');
     if (io) {
-      io.emit('store:registered', {
+      io.to('admin').emit('store:registered', {
         storeId: store._id,
         businessName: store.businessName,
         storeType: store.storeType,
@@ -190,7 +190,7 @@ exports.registerDriver = async (req, res, next) => {
     // Notify all admins about new driver registration
     const io = req.app.get('io');
     if (io) {
-      io.emit('driver:registered', {
+      io.to('admin').emit('driver:registered', {
         driverId: driver._id,
         name: driver.name,
         message: `Νέος οδηγός: ${driver.name}`
@@ -209,6 +209,15 @@ exports.registerDriver = async (req, res, next) => {
 exports.registerCustomer = async (req, res, next) => {
   try {
     const { name, email, password, phone, address } = req.body;
+
+    // Check if customer exists
+    const existingCustomer = await Customer.findOne({ email });
+    if (existingCustomer) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το email χρησιμοποιείται ήδη'
+      });
+    }
 
     // Create customer
     const customer = await Customer.create({
@@ -236,6 +245,13 @@ exports.registerCustomer = async (req, res, next) => {
       }
     });
   } catch (error) {
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το email χρησιμοποιείται ήδη'
+      });
+    }
     res.status(400).json({ success: false, message: 'Κάτι πήγε στραβά. ' + error.message });
   }
 };

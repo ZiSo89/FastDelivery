@@ -1,6 +1,7 @@
 const Store = require('../models/Store');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Customer = require('../models/Customer'); // Import Customer model
 const multer = require('multer');
 const { uploadToFirebase } = require('../config/firebase');
 const { broadcastOrderEvent } = require('../utils/socketHelpers');
@@ -142,11 +143,12 @@ exports.createOrder = async (req, res) => {
       status: 'pending_store'
     });
 
-    // Broadcast new order to everyone
+    // Broadcast new order to specific store and admins only
     const io = req.app.get('io');
     broadcastOrderEvent(io, order, 'order:new', {
       orderId: order._id,
       orderNumber: order.orderNumber,
+      storeId: order.storeId?.toString(), // Convert ObjectId to string
       storeName: order.storeName,
       customer: order.customer,
       orderType: order.orderType,
@@ -263,8 +265,13 @@ exports.confirmOrderPrice = async (req, res) => {
       order.confirmedAt = new Date();
       await order.save();
 
-      // Notify admin
-      io.emit('order:confirmed', {
+      // Notify admin and store
+      io.to('admin').emit('order:confirmed', {
+        orderId: order._id,
+        orderNumber: order.orderNumber
+      });
+      
+      io.to(`store:${order.storeId}`).emit('order:confirmed', {
         orderId: order._id,
         orderNumber: order.orderNumber
       });
@@ -286,7 +293,9 @@ exports.confirmOrderPrice = async (req, res) => {
       // Broadcast cancellation to everyone
       broadcastOrderEvent(io, order, 'order:cancelled', {
         orderId: order._id,
-        orderNumber: order.orderNumber
+        orderNumber: order.orderNumber,
+        storeId: order.storeId?.toString(),
+        driverId: order.driverId?.toString()
       });
 
       res.json({
@@ -381,6 +390,51 @@ exports.getActiveOrderByPhone = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Σφάλμα αναζήτησης'
+    });
+  }
+};
+
+// @desc    Update customer profile
+// @route   PUT /api/v1/orders/profile
+// @access  Private (Customer)
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, phone, address } = req.body;
+    
+    // Find customer by ID (from auth middleware)
+    const customer = await Customer.findById(req.user._id);
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ο χρήστης δεν βρέθηκε'
+      });
+    }
+
+    // Update fields
+    if (name) customer.name = name;
+    if (phone) customer.phone = phone;
+    if (address) customer.address = address;
+
+    await customer.save();
+
+    res.json({
+      success: true,
+      message: 'Το προφίλ ενημερώθηκε επιτυχώς',
+      user: {
+        _id: customer._id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address,
+        role: 'customer'
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ενημέρωσης προφίλ'
     });
   }
 };

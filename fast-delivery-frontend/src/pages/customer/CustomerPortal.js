@@ -35,7 +35,7 @@ const CustomerPortal = () => {
       <div className="login-screen">
         <div className="brand-header">
           <h1>FastDelivery</h1>
-          <p>Το φαγητό σου, γρήγορα.</p>
+          <p>Εσύ ζητάς, εμείς τρέχουμε</p>
         </div>
 
         <div className="login-form-container">

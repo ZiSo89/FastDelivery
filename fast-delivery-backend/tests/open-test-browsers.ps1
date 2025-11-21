@@ -2,6 +2,20 @@
 # Each window with different Chrome profile
 # Checks first for existing profiles
 
+# --- Start Servers ---
+$backendPath = "C:\Users\zisog\Documents\Projects\FastDelivery\fast-delivery-backend"
+$frontendPath = "C:\Users\zisog\Documents\Projects\FastDelivery\fast-delivery-frontend"
+
+Write-Host "Starting Backend Server (nodemon)..." -ForegroundColor Green
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; npm run dev"
+
+Write-Host "Starting Frontend Server..." -ForegroundColor Green
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendPath'; npm start"
+
+Write-Host "Waiting 15 seconds for servers to initialize..." -ForegroundColor Yellow
+Start-Sleep -Seconds 15
+# ---------------------
+
 $frontendUrl = "http://localhost:3000"
 
 Write-Host "Opening Test Browsers..." -ForegroundColor Cyan

@@ -88,23 +88,46 @@ const NotificationToast = () => {
     // Store notifications
     if (user.role === 'store') {
       const handleNewOrder = (data) => {
-        addNotification(`Νέα παραγγελία: ${data.orderNumber}`, 'primary', '📦', `store-new-${data.orderNumber}`);
+        // FILTER: Only show notification if this order is for THIS store
+        const match = data.storeId && user._id && data.storeId.toString() === user._id.toString();
+        // Debug logging (uncomment to debug):
+        // console.log('🔔 NotificationToast filter:', { 
+        //   eventStoreId: data.storeId, 
+        //   myId: user._id, 
+        //   match,
+        //   orderNumber: data.orderNumber 
+        // });
+        if (match) {
+          addNotification(`Νέα παραγγελία: ${data.orderNumber}`, 'primary', '📦', `store-new-${data.orderNumber}`);
+        }
       };
 
       const handleOrderConfirmed = (data) => {
-        addNotification(`Παραγγελία ${data.orderNumber} - Επιβεβαιώθηκε από πελάτη`, 'success', '✅', `store-confirmed-${data.orderNumber}`);
+        // FILTER: Only show notification if this order is for THIS store
+        if (data.storeId && user._id && data.storeId.toString() === user._id.toString()) {
+          addNotification(`Παραγγελία ${data.orderNumber} - Επιβεβαιώθηκε από πελάτη`, 'success', '✅', `store-confirmed-${data.orderNumber}`);
+        }
       };
 
       const handleOrderAssigned = (data) => {
-        addNotification(`Οδηγός ανατέθηκε στην ${data.orderNumber}`, 'info', '🚗', `store-assigned-${data.orderNumber}`);
+        // FILTER: Only show notification if this order is for THIS store
+        if (data.storeId && user._id && data.storeId.toString() === user._id.toString()) {
+          addNotification(`Οδηγός ανατέθηκε για ${data.orderNumber}`, 'info', '📋', `store-assigned-${data.orderNumber}`);
+        }
       };
 
       const handleDriverAccepted = (data) => {
-        addNotification(`Οδηγός αποδέχτηκε ${data.orderNumber}`, 'success', '👍', `store-accepted-${data.orderNumber}`);
+        // FILTER: Only show notification if this order is for THIS store
+        if (data.storeId && user._id && data.storeId.toString() === user._id.toString()) {
+          addNotification(`Οδηγός επιβεβαίωσε ${data.orderNumber} - Ετοιμάστε την!`, 'success', '✅', `store-accepted-${data.orderNumber}`);
+        }
       };
 
       const handleOrderCompleted = (data) => {
-        addNotification(`Παραγγελία ${data.orderNumber} - Παραδόθηκε!`, 'success', '🎉', `store-completed-${data.orderNumber}`);
+        // FILTER: Only show notification if this order is for THIS store
+        if (data.storeId && user._id && data.storeId.toString() === user._id.toString()) {
+          addNotification(`Παραγγελία ${data.orderNumber} - Παραδόθηκε!`, 'success', '🎉', `store-completed-${data.orderNumber}`);
+        }
       };
 
       socketService.on('order:new', handleNewOrder);

@@ -11,13 +11,13 @@
  * @param {Object} data - Event data
  */
 const broadcastOrderEvent = (io, order, eventName, data) => {
-  // 1. Broadcast to ALL connected clients (includes admins who don't join specific rooms)
-  // This ensures admins receive all events even without joining rooms
+  // Broadcast to ALL clients (includes admins, stores, drivers, and customers)
+  // Each client will filter events based on their context:
+  // - Admins: receive all events
+  // - Stores: filter by storeId
+  // - Drivers: filter by driverId
+  // - Customers: filter by orderNumber
   io.emit(eventName, data);
-  
-  // Note: We DON'T send to specific store/driver rooms because they already receive
-  // the event from io.emit() above. Sending again would create duplicates.
-  // Store and driver clients listen to global events and filter by orderNumber.
 };
 
 /**
@@ -27,7 +27,7 @@ const broadcastOrderEvent = (io, order, eventName, data) => {
  * @param {Object} data - Event data
  */
 const broadcastToAdmins = (io, eventName, data) => {
-  io.emit(eventName, data);
+  io.to('admin').emit(eventName, data);
 };
 
 module.exports = {

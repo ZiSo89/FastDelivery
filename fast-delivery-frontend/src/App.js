@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import RegisterSelection from './pages/RegisterSelection';
+import StoreRegister from './pages/StoreRegister';
+import DriverRegister from './pages/DriverRegister';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import StoreDashboard from './pages/store/StoreDashboard';
 import DriverDashboard from './pages/driver/DriverDashboard';
@@ -26,6 +29,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<CustomerPortal />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/register-business" element={<RegisterSelection />} />
+          <Route path="/register-business/store" element={<StoreRegister />} />
+          <Route path="/register-business/driver" element={<DriverRegister />} />
           <Route path="/order" element={<CustomerHome />} />
           <Route path="/new-order" element={<NewOrder />} />
           <Route path="/my-orders" element={<CustomerOrders />} />

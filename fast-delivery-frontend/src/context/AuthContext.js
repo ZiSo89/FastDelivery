@@ -30,8 +30,10 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authService.login(credentials);
-      // Backend επιστρέφει: { success: true, token: "...", user: { user object } }
+      
+      // Get user data from response
       const userData = response.user || response.data?.user || response.data || response;
+      
       setUser(userData);
       
       // Connect socket after successful login
@@ -39,9 +41,12 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, data: userData, user: userData };
     } catch (error) {
+      // Check for specific approval error from backend
+      const errorMessage = error.response?.data?.message || 'Σφάλμα κατά τη σύνδεση';
+      
       return {
         success: false,
-        error: error.response?.data?.message || 'Σφάλμα κατά τη σύνδεση'
+        error: errorMessage
       };
     }
   };

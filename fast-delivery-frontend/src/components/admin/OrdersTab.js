@@ -286,7 +286,12 @@ const OrdersTab = () => {
                   <div className="mb-2">
                     <small className="text-muted">Πελάτης:</small><br />
                     <strong>{order.customer?.name || 'N/A'}</strong><br />
-                    <small>{order.customer?.phone || order.customerPhone}</small>
+                    <small>📞 {order.customer?.phone || order.customerPhone}</small>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <small className="text-muted">Διεύθυνση Παράδοσης:</small><br />
+                    <span>{order.customer?.address || order.deliveryAddress || 'N/A'}</span>
                   </div>
                   
                   <div className="mb-2">
@@ -372,6 +377,7 @@ const OrdersTab = () => {
               <tr>
                 <th>Αριθμός</th>
                 <th>Πελάτης</th>
+                <th>Διεύθυνση Παράδοσης</th>
                 <th>Κατάστημα</th>
                 <th>Περιγραφή</th>
                 <th>Οδηγός</th>
@@ -388,15 +394,18 @@ const OrdersTab = () => {
                 <tr key={order._id}>
                   <td className="fw-bold">{order.orderNumber}</td>
                   <td>
-                    {order.customer?.name || 'N/A'}
+                    <strong>{order.customer?.name || 'N/A'}</strong>
                     <br />
-                    <small className="text-muted">{order.customer?.phone || order.customerPhone}</small>
+                    <small className="text-muted">📞 {order.customer?.phone || order.customerPhone}</small>
+                  </td>
+                  <td>
+                    <small>{order.customer?.address || order.deliveryAddress || 'N/A'}</small>
                   </td>
                   <td>
                     {order.storeId?.businessName || order.storeName || 'N/A'}
                   </td>
                   <td>
-                    {order.orderContent || (order.orderType === 'voice' ? '🎤 Φωνητική' : '-')}
+                    <small>{order.orderContent || (order.orderType === 'voice' ? '🎤 Φωνητική' : '-')}</small>
                   </td>
                   <td>{order.driverId?.name || order.driver?.name || '-'}</td>
                   <td>{order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}</td>

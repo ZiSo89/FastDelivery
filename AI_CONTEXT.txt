@@ -2,9 +2,28 @@
 
 # FAST DELIVERY PROJECT - AI ASSISTANT CONTEXT
 
-**Last Updated:** 2025-11-19
+**Last Updated:** 2025-11-21
 **Repository:** https://github.com/ZiSo89/FastDelivery
 **Status:** ✅ LOCAL DEVELOPMENT COMPLETE | ⚠️ NEEDS PRODUCTION DEPLOYMENT
+
+---
+
+## 🎨 UI/UX DESIGN SYSTEM (CRITICAL FOR FRONTEND)
+
+The customer-facing application (`fast-delivery-frontend`) follows a specific modern design language inspired by Wolt/Uber Eats. **All future UI updates must adhere to this style.**
+
+**Core Styles (`src/styles/CustomerPortal.css`):**
+- **Primary Color:** `#00c2e8` (Cyan/Blue)
+  - Used for: Primary buttons (`.btn-primary-app`), active states, icons, accents.
+  - **NEVER** use standard Bootstrap primary blue (`#0d6efd`) for customer actions.
+- **Typography:** 'Inter', sans-serif.
+- **Backgrounds:**
+  - App Background: White `#fff` or Light Grey `#f8f9fa`.
+  - Input Fields: Light Grey `#f9f9f9` with border `#e0e0e0`.
+- **Components:**
+  - **Buttons:** Flat design, no gradients, `8px` rounded corners.
+  - **Cards:** White, `16px` rounded corners, soft shadow: `box-shadow: 0 4px 12px rgba(0,0,0,0.05)`.
+  - **Inputs:** Large padding (`16px`), focus border color `#00c2e8`.
 
 ---
 
@@ -46,6 +65,7 @@
 - ✅ Auto-generated order numbers (ORD-YYYYMMDD-####)
 - ✅ Password hashing fixed for all user types
 - ✅ Test data seeding scripts with Greek data
+- ✅ **Profile Auto-Update:** User details (name, phone, address) automatically update in DB when changed during new order.
 
 ### Frontend (100% Core Features)
 - ✅ Authentication system with role-based routing
@@ -56,6 +76,8 @@
 - ✅ Real-time updates via Socket.IO
 - ✅ Greek UI (100% translated)
 - ✅ Responsive Bootstrap design
+- ✅ **Modern UI:** "Wolt-style" design system implemented.
+- ✅ **Smart Forms:** Auto-fill and auto-update user profile data.
 
 ### Database & Test Data
 - ✅ MongoDB Atlas connected and configured

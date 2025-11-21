@@ -1,14 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col } from 'react-bootstrap';
+import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../services/api';
 import socketService from '../../services/socket';
 
 const DriverOrders = () => {
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [processingId, setProcessingId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  
+  // Modal states
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -33,35 +43,24 @@ const DriverOrders = () => {
   useEffect(() => {
     fetchOrders();
     
-    // Socket.IO real-time listeners for driver (replaces 30s polling)
-    const handleOrderAssigned = (data) => {
-      fetchOrders(); // Refresh list
-    };
-
-    const handleOrderStatusChanged = (data) => {
-      fetchOrders(); // Refresh list
-    };
-
-    const handleOrderCancelled = (data) => {
-      fetchOrders(); // Refresh list
-    };
-
-    const handleOrderCompleted = (data) => {
-      fetchOrders(); // Refresh list
+    // Socket.IO real-time listeners for driver
+    // For drivers, we refresh on ANY order event since the API filters by driverId anyway
+    const handleOrderEvent = (data) => {
+      fetchOrders(); // Always refresh - API will filter by driverId
     };
 
     // Subscribe to events
-    socketService.on('order:assigned', handleOrderAssigned);
-    socketService.on('order:status_changed', handleOrderStatusChanged);
-    socketService.on('order:cancelled', handleOrderCancelled);
-    socketService.on('order:completed', handleOrderCompleted);
+    socketService.on('order:assigned', handleOrderEvent);
+    socketService.on('order:status_changed', handleOrderEvent);
+    socketService.on('order:cancelled', handleOrderEvent);
+    socketService.on('order:completed', handleOrderEvent);
 
     // Cleanup on unmount
     return () => {
-      socketService.off('order:assigned', handleOrderAssigned);
-      socketService.off('order:status_changed', handleOrderStatusChanged);
-      socketService.off('order:cancelled', handleOrderCancelled);
-      socketService.off('order:completed', handleOrderCompleted);
+      socketService.off('order:assigned', handleOrderEvent);
+      socketService.off('order:status_changed', handleOrderEvent);
+      socketService.off('order:cancelled', handleOrderEvent);
+      socketService.off('order:completed', handleOrderEvent);
     };
   }, [fetchOrders]);
 
@@ -70,27 +69,40 @@ const DriverOrders = () => {
       setProcessingId(orderId);
       await driverService.acceptOrder(orderId, true);
       await fetchOrders();
-      // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setErrorMessage(err.response?.data?.message || 'Σφάλμα αποδοχής παραγγελίας');
+      setShowErrorModal(true);
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleReject = async (orderId) => {
-    const reason = prompt('Λόγος απόρριψης:');
-    if (!reason) return;
+    setSelectedOrderId(orderId);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectReason.trim()) {
+      setErrorMessage('Παρακαλώ εισάγετε λόγο απόρριψης');
+      setShowErrorModal(true);
+      return;
+    }
 
     try {
-      setProcessingId(orderId);
-      await driverService.acceptOrder(orderId, false, reason);
+      setProcessingId(selectedOrderId);
+      await driverService.acceptOrder(selectedOrderId, false, rejectReason);
       await fetchOrders();
-      // Success - real-time update will show the change
+      setShowRejectModal(false);
+      setRejectReason('');
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setErrorMessage(err.response?.data?.message || 'Σφάλμα απόρριψης παραγγελίας');
+      setShowErrorModal(true);
+      setShowRejectModal(false);
     } finally {
       setProcessingId(null);
+      setSelectedOrderId(null);
     }
   };
 
@@ -99,26 +111,32 @@ const DriverOrders = () => {
       setProcessingId(orderId);
       await driverService.updateStatus(orderId, 'in_delivery');
       await fetchOrders();
-      // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setErrorMessage(err.response?.data?.message || 'Σφάλμα παραλαβής παραγγελίας');
+      setShowErrorModal(true);
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleComplete = async (orderId) => {
-    if (!window.confirm('Είστε σίγουρος ότι ολοκληρώθηκε η παράδοση;')) return;
+    setSelectedOrderId(orderId);
+    setShowCompleteModal(true);
+  };
 
+  const confirmComplete = async () => {
     try {
-      setProcessingId(orderId);
-      await driverService.updateStatus(orderId, 'completed');
+      setProcessingId(selectedOrderId);
+      await driverService.updateStatus(selectedOrderId, 'completed');
       await fetchOrders();
-      // Success - real-time update will show the change
+      setShowCompleteModal(false);
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setErrorMessage(err.response?.data?.message || 'Σφάλμα ολοκλήρωσης παραγγελίας');
+      setShowErrorModal(true);
+      setShowCompleteModal(false);
     } finally {
       setProcessingId(null);
+      setSelectedOrderId(null);
     }
   };
 
@@ -197,6 +215,14 @@ const DriverOrders = () => {
                         </Button>
                       </>
                     )}
+                    {order.status === 'accepted_driver' && (
+                      <Alert variant="info" className="mb-0">
+                        <div className="text-center">
+                          <strong>⏳ Αναμονή Προετοιμασίας</strong>
+                          <p className="mb-0 mt-2 small">Το κατάστημα ετοιμάζει την παραγγελία</p>
+                        </div>
+                      </Alert>
+                    )}
                     {order.status === 'preparing' && (
                       <Button
                         variant="primary"
@@ -270,6 +296,11 @@ const DriverOrders = () => {
                         </Button>
                       </ButtonGroup>
                     )}
+                    {order.status === 'accepted_driver' && (
+                      <Badge bg="info" className="p-2">
+                        ⏳ Αναμονή Προετοιμασίας
+                      </Badge>
+                    )}
                     {order.status === 'preparing' && (
                       <Button
                         variant="primary"
@@ -300,6 +331,86 @@ const DriverOrders = () => {
           </Table>
         </div>
       )}
+
+      {/* Reject Order Modal */}
+      <Modal 
+        show={showRejectModal} 
+        onHide={() => setShowRejectModal(false)}
+        centered
+        className="driver-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>❌ Απόρριψη Παραγγελίας</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group>
+              <Form.Label>Λόγος απόρριψης:</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="π.χ. Πολύ μακριά, Δεν είμαι διαθέσιμος κτλ."
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowRejectModal(false)}>
+            Άκυρο
+          </Button>
+          <Button variant="danger" onClick={confirmReject} disabled={!rejectReason.trim()}>
+            Απόρριψη Παραγγελίας
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Complete Delivery Modal */}
+      <Modal 
+        show={showCompleteModal} 
+        onHide={() => setShowCompleteModal(false)}
+        centered
+        className="driver-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>✅ Ολοκλήρωση Παράδοσης</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Είστε σίγουρος ότι ολοκληρώθηκε η παράδοση;</p>
+          <p className="text-muted mb-0">
+            <small>Μετά την επιβεβαίωση, η παραγγελία θα μεταφερθεί στο ιστορικό.</small>
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCompleteModal(false)}>
+            Όχι, Ακύρωση
+          </Button>
+          <Button variant="primary" onClick={confirmComplete}>
+            Ναι, Ολοκληρώθηκε
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal 
+        show={showErrorModal} 
+        onHide={() => setShowErrorModal(false)}
+        centered
+        className="driver-modal"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>⚠️ Σφάλμα</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>{errorMessage}</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowErrorModal(false)}>
+            Κλείσιμο
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
