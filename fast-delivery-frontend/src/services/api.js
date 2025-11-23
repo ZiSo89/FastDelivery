@@ -301,7 +301,11 @@ export const customerService = {
 
   // Create order
   createOrder: async (orderData) => {
-    const response = await api.post('/orders', orderData);
+    const config = {};
+    if (orderData instanceof FormData) {
+      config.headers = { 'Content-Type': 'multipart/form-data' };
+    }
+    const response = await api.post('/orders', orderData, config);
     return response.data;
   },
 

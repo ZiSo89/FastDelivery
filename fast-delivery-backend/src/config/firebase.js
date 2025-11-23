@@ -21,11 +21,18 @@ try {
   }
 
   if (firebaseInitialized) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET
-    });
-    console.log('✅ Firebase initialized successfully');
+    // Check if app is already initialized to avoid duplicate app error
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+      });
+      console.log('✅ Firebase initialized successfully');
+    } else {
+      // Use existing app
+      admin.app(); 
+      console.log('✅ Firebase already initialized');
+    }
   }
 } catch (error) {
   console.error('⚠️  Firebase initialization failed:', error.message);

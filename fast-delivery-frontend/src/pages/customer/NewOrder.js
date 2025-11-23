@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +23,15 @@ const NewOrder = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Voice Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const timerRef = useRef(null);
+  const MAX_RECORDING_TIME = 50; // seconds
 
   useEffect(() => {
     if (location.state?.store) {
@@ -75,9 +84,15 @@ const NewOrder = () => {
       return;
     }
 
-    if (!formData.customerName || !formData.customerPhone || !formData.deliveryAddress || !formData.orderContent) {
+    if (!formData.customerName || !formData.customerPhone || !formData.deliveryAddress) {
       console.log('❌ Missing fields', formData);
       setError('Παρακαλώ συμπληρώστε όλα τα πεδία');
+      return;
+    }
+
+    // Check if either text or voice is provided
+    if (!formData.orderContent && !audioBlob) {
+      setError('Παρακαλώ γράψτε μια περιγραφή ή ηχογραφήστε μήνυμα');
       return;
     }
 
@@ -107,19 +122,38 @@ const NewOrder = () => {
         }
       }
 
-      const orderData = {
-        customer: {
+      let orderData;
+      
+      if (audioBlob) {
+        // Use FormData for voice order
+        orderData = new FormData();
+        // Send customer data as JSON string to handle nested object correctly
+        orderData.append('customer', JSON.stringify({
           name: formData.customerName,
           phone: formData.customerPhone,
-          email: formData.customerEmail, // Send email to backend
+          email: formData.customerEmail,
           address: formData.deliveryAddress
-        },
-        storeId: selectedStore._id,
-        orderType: formData.orderType,
-        orderContent: formData.orderContent
-      };
+        }));
+        orderData.append('storeId', selectedStore._id);
+        orderData.append('orderType', 'voice');
+        orderData.append('orderContent', formData.orderContent || 'Φωνητική Παραγγελία'); // Fallback text
+        orderData.append('voiceFile', audioBlob, 'voice-order.webm');
+      } else {
+        // Use JSON for text order
+        orderData = {
+          customer: {
+            name: formData.customerName,
+            phone: formData.customerPhone,
+            email: formData.customerEmail,
+            address: formData.deliveryAddress
+          },
+          storeId: selectedStore._id,
+          orderType: 'text',
+          orderContent: formData.orderContent
+        };
+      }
 
-      console.log('📤 Sending Order Data:', orderData);
+      console.log('📤 Sending Order Data...');
       const response = await customerService.createOrder(orderData);
       console.log('✅ Order Created:', response);
       setSuccess(`Η παραγγελία σας καταχωρήθηκε! Αριθμός: ${response.order.orderNumber}`);
@@ -133,6 +167,73 @@ const NewOrder = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    };
+  }, [audioUrl]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      const chunks = [];
+
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          if (prev >= MAX_RECORDING_TIME) {
+            stopRecording();
+            return MAX_RECORDING_TIME;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+      setError('Δεν ήταν δυνατή η πρόσβαση στο μικρόφωνο');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const deleteRecording = () => {
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setRecordingTime(0);
+    if (isRecording) {
+      stopRecording();
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -232,6 +333,61 @@ const NewOrder = () => {
           </div>
 
           <div className="mb-4">
+            <label className="form-label">Φωνητική Παραγγελία (Προαιρετικό)</label>
+            <div className="voice-recorder-container p-3 border rounded bg-light mb-3">
+              {!isRecording && !audioBlob ? (
+                <div className="d-flex align-items-center justify-content-between">
+                  <span className="text-muted">Πατήστε για ηχογράφηση (max 50s)</span>
+                  <button 
+                    type="button" 
+                    className="btn btn-danger rounded-circle d-flex align-items-center justify-content-center"
+                    style={{ width: '50px', height: '50px' }}
+                    onClick={startRecording}
+                  >
+                    <i className="fas fa-microphone fa-lg"></i>
+                  </button>
+                </div>
+              ) : isRecording ? (
+                <div className="recording-active">
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="text-danger fw-bold animate-pulse">● Recording...</span>
+                    <span className="font-monospace">{formatTime(recordingTime)} / 0:50</span>
+                  </div>
+                  <div className="progress mb-3" style={{ height: '10px' }}>
+                    <div 
+                      className="progress-bar bg-danger progress-bar-striped progress-bar-animated" 
+                      role="progressbar" 
+                      style={{ width: `${(recordingTime / MAX_RECORDING_TIME) * 100}%` }}
+                    ></div>
+                  </div>
+                  <div className="d-flex justify-content-center">
+                    <button 
+                      type="button" 
+                      className="btn btn-outline-danger rounded-circle"
+                      style={{ width: '50px', height: '50px' }}
+                      onClick={stopRecording}
+                    >
+                      <i className="fas fa-stop"></i>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="recording-complete">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <audio src={audioUrl} controls className="flex-grow-1 me-3" style={{ height: '40px' }} />
+                    <button 
+                      type="button" 
+                      className="btn btn-outline-secondary rounded-circle"
+                      onClick={deleteRecording}
+                      title="Διαγραφή"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <label className="form-label">Περιγραφή Παραγγελίας *</label>
             <textarea
               rows={4}
@@ -240,12 +396,14 @@ const NewOrder = () => {
               placeholder="Περιγράψτε τι θέλετε να παραγγείλετε..."
               value={formData.orderContent}
               onChange={handleChange}
-              required
+              required={!audioBlob} // Not required if voice exists
             />
             <div className="form-text">
-              Αναφέρετε με λεπτομέρεια τα προϊόντα που θέλετε
+              Αναφέρετε με λεπτομέρεια τα προϊόντα που θέλετε ή χρησιμοποιήστε φωνητικό μήνυμα.
             </div>
           </div>
+
+
 
           <div className="d-grid">
             <button

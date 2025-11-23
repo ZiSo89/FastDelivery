@@ -312,11 +312,15 @@ const StoreOrders = () => {
                   
                   <div className="mb-2">
                     <small className="text-muted">Παραγγελία:</small><br />
-                    {order.orderType === 'voice' ? (
-                      <span>🎤 Φωνητική παραγγελία</span>
-                    ) : (
-                      order.orderContent
+                    {order.orderType === 'voice' && (
+                      <div className="mb-2">
+                        <span className="badge bg-info mb-1">🎤 Φωνητική</span>
+                        {order.orderVoiceUrl && (
+                          <audio controls src={order.orderVoiceUrl} className="w-100" style={{ height: '32px' }} />
+                        )}
+                      </div>
                     )}
+                    {order.orderContent && <div>{order.orderContent}</div>}
                   </div>
                   
                   {order.productPrice && (
@@ -397,11 +401,15 @@ const StoreOrders = () => {
                     </small>
                   </td>
                   <td>
-                    {order.orderType === 'voice' ? (
-                      <span>🎤 Φωνητική παραγγελία</span>
-                    ) : (
-                      order.orderContent
+                    {order.orderType === 'voice' && (
+                      <div className="mb-1">
+                        <span className="badge bg-info me-1">🎤 Φωνητική</span>
+                        {order.orderVoiceUrl && (
+                          <audio controls src={order.orderVoiceUrl} style={{ height: '32px', maxWidth: '200px' }} />
+                        )}
+                      </div>
                     )}
+                    {order.orderContent}
                   </td>
                   <td>{order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}</td>
                   <td>{getStatusBadge(order.status)}</td>

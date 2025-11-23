@@ -86,7 +86,17 @@ exports.getStores = async (req, res) => {
 // @access  Public
 exports.createOrder = async (req, res) => {
   try {
-    const { customer, storeId, orderType, orderContent } = req.body;
+    let { customer, storeId, orderType, orderContent } = req.body;
+
+    // Parse customer if it's a string (from FormData)
+    if (typeof customer === 'string') {
+      try {
+        customer = JSON.parse(customer);
+      } catch (e) {
+        console.error('JSON parse error for customer:', e);
+        return res.status(400).json({ success: false, message: 'Μη έγκυρα δεδομένα πελάτη' });
+      }
+    }
 
     // Validation
     if (!customer?.name || !customer?.phone || !customer?.address) {
@@ -138,7 +148,7 @@ exports.createOrder = async (req, res) => {
       storeId,
       storeName: store.businessName,
       orderType,
-      orderContent: orderType === 'text' ? orderContent : '',
+      orderContent: orderContent || '',
       orderVoiceUrl,
       status: 'pending_store'
     });

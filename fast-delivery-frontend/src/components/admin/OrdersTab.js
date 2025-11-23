@@ -327,7 +327,15 @@ const OrdersTab = () => {
                   
                   <div className="mb-2">
                     <small className="text-muted">Περιγραφή Παραγγελίας:</small><br />
-                    {order.orderContent || (order.orderType === 'voice' ? '🎤 Φωνητική παραγγελία' : '-')}
+                    {order.orderType === 'voice' && (
+                      <div className="mb-2">
+                        <span className="badge bg-info mb-1">🎤 Φωνητική</span>
+                        {order.orderVoiceUrl && (
+                          <audio controls src={order.orderVoiceUrl} className="w-100" style={{ height: '32px' }} />
+                        )}
+                      </div>
+                    )}
+                    {order.orderContent && <div>{order.orderContent}</div>}
                   </div>
                   
                   {(order.driverId?.name || order.driver?.name) && (
@@ -431,7 +439,15 @@ const OrdersTab = () => {
                     {order.storeId?.businessName || order.storeName || 'N/A'}
                   </td>
                   <td>
-                    <small>{order.orderContent || (order.orderType === 'voice' ? '🎤 Φωνητική' : '-')}</small>
+                    {order.orderType === 'voice' && (
+                      <div className="mb-1">
+                        <span className="badge bg-info me-1">🎤 Φωνητική</span>
+                        {order.orderVoiceUrl && (
+                          <audio controls src={order.orderVoiceUrl} style={{ height: '32px', maxWidth: '200px' }} />
+                        )}
+                      </div>
+                    )}
+                    <small>{order.orderContent}</small>
                   </td>
                   <td>{order.driverId?.name || order.driver?.name || '-'}</td>
                   <td>{order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}</td>
