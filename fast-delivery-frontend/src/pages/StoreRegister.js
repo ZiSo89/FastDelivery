@@ -1,13 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import axios from 'axios';
+import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from '@react-google-maps/api';
 import '../styles/Login.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
 
+const defaultCenter = {
+  lat: 40.8457, // Alexandroupoli
+  lng: 25.8733
+};
+
+const libraries = ['places'];
+
 const StoreRegister = () => {
   const navigate = useNavigate();
+  const autocompleteRef = useRef(null);
+  const mapRef = useRef(null);
   
   const [formData, setFormData] = useState({
     businessName: '',
@@ -22,9 +32,28 @@ const StoreRegister = () => {
     serviceAreas: ''
   });
   
+  const [location, setLocation] = useState(defaultCenter);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries
+  });
+
+  if (loadError) {
+    return (
+      <Container className="py-5">
+        <Alert variant="danger">
+          Η φόρτωση του χάρτη απέτυχε. Παρακαλώ ελέγξτε το Google Maps API Key.
+          <br />
+          <small>{loadError.message}</small>
+        </Alert>
+      </Container>
+    );
+  }
 
   const handleChange = (e) => {
     setFormData({
@@ -32,6 +61,38 @@ const StoreRegister = () => {
       [e.target.name]: e.target.value
     });
     setError('');
+  };
+
+  const handleMapClick = (e) => {
+    setLocation({
+      lat: e.latLng.lat(),
+      lng: e.latLng.lng()
+    });
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current !== null) {
+      const place = autocompleteRef.current.getPlace();
+      
+      if (place.geometry && place.geometry.location) {
+        const newLocation = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng()
+        };
+        
+        setLocation(newLocation);
+        setFormData(prev => ({
+          ...prev,
+          address: place.formatted_address || place.name
+        }));
+
+        // Pan map to new location
+        if (mapRef.current) {
+          mapRef.current.panTo(newLocation);
+          mapRef.current.setZoom(17);
+        }
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -81,7 +142,11 @@ const StoreRegister = () => {
         address: formData.address,
         storeType: formData.storeType,
         workingHours: formData.workingHours || 'Δευ-Παρ: 08:00-22:00',
-        serviceAreas: formData.serviceAreas || 'Αλεξανδρούπολη'
+        serviceAreas: formData.serviceAreas || 'Αλεξανδρούπολη',
+        location: {
+          type: 'Point',
+          coordinates: [location.lng, location.lat] // GeoJSON format: [lng, lat]
+        }
       };
 
       const response = await axios.post(`${API_URL}/auth/store/register`, registrationData);
@@ -208,14 +273,52 @@ const StoreRegister = () => {
 
                   <Form.Group className="mb-3">
                     <Form.Label>Διεύθυνση</Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="address"
-                      placeholder="π.χ. Λεωφ. Δημοκρατίας 10, Αλεξανδρούπολη"
-                      value={formData.address}
-                      onChange={handleChange}
-                      disabled={loading}
-                    />
+                    {isLoaded ? (
+                      <Autocomplete
+                        onLoad={autocomplete => autocompleteRef.current = autocomplete}
+                        onPlaceChanged={onPlaceChanged}
+                      >
+                        <Form.Control
+                          type="text"
+                          name="address"
+                          placeholder="π.χ. Λεωφ. Δημοκρατίας 10, Αλεξανδρούπολη"
+                          value={formData.address}
+                          onChange={handleChange}
+                          disabled={loading}
+                        />
+                      </Autocomplete>
+                    ) : (
+                      <Form.Control
+                        type="text"
+                        name="address"
+                        placeholder="π.χ. Λεωφ. Δημοκρατίας 10, Αλεξανδρούπολη"
+                        value={formData.address}
+                        onChange={handleChange}
+                        disabled={loading}
+                      />
+                    )}
+                  </Form.Group>
+
+                  <Form.Group className="mb-3">
+                    <Form.Label>Τοποθεσία στο Χάρτη <span className="text-danger">*</span></Form.Label>
+                    <div style={{ height: '300px', width: '100%', marginBottom: '10px' }}>
+                      {isLoaded ? (
+                        <GoogleMap
+                          mapContainerStyle={{ width: '100%', height: '100%', borderRadius: '8px' }}
+                          center={defaultCenter}
+                          zoom={14}
+                          onClick={handleMapClick}
+                          onLoad={map => mapRef.current = map}
+                        >
+                          <Marker position={location} />
+                        </GoogleMap>
+                      ) : (
+                        <div>Loading Map...</div>
+                      )}
+                    </div>
+                    <Form.Text className="text-muted">
+                      Κάντε κλικ στο χάρτη για να ορίσετε την ακριβή τοποθεσία του καταστήματος.
+                    </Form.Text>
                   </Form.Group>
 
                   <Form.Group className="mb-3">

@@ -2,7 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import '../../styles/CustomerPortal.css';
+
+const containerStyle = {
+  width: '100%',
+  height: 'calc(100vh - 180px)', // Adjust based on header/footer height
+  borderRadius: '15px'
+};
+
+const defaultCenter = {
+  lat: 40.8457, // Alexandroupoli
+  lng: 25.8733
+};
 
 const CustomerHome = () => {
   const navigate = useNavigate();
@@ -12,6 +24,55 @@ const CustomerHome = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [map, setMap] = useState(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY
+  });
+
+  const filteredStores = stores.filter(store => 
+    store.businessName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    if (map && viewMode === 'map' && filteredStores.length > 0 && isLoaded) {
+      const bounds = new window.google.maps.LatLngBounds();
+      let hasValidLoc = false;
+      filteredStores.forEach(store => {
+        if (store.location && store.location.coordinates) {
+          bounds.extend({
+            lat: store.location.coordinates[1],
+            lng: store.location.coordinates[0]
+          });
+          hasValidLoc = true;
+        }
+      });
+      if (hasValidLoc) {
+        map.fitBounds(bounds);
+      }
+    }
+  }, [map, viewMode, filteredStores, isLoaded]);
+
+  useEffect(() => {
+    // Get user location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        () => {
+          console.log('Location access denied or error');
+        }
+      );
+    }
+  }, []);
 
   const categories = [
     { id: 'all', label: 'Όλα', icon: '🍽️' },
@@ -91,10 +152,6 @@ const CustomerHome = () => {
     }
   };
 
-  const filteredStores = stores.filter(store => 
-    store.businessName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const [showDropdown, setShowDropdown] = useState(false);
 
   const handleLogout = () => {
@@ -169,13 +226,43 @@ const CustomerHome = () => {
         ))}
       </div>
 
+      {/* View Toggle */}
+      <div className="view-toggle-container" style={{ padding: '0 15px 10px', display: 'flex', justifyContent: 'flex-end' }}>
+        <div className="btn-group" role="group">
+          <button 
+            type="button" 
+            className={`btn btn-sm`}
+            style={{ 
+              backgroundColor: viewMode === 'list' ? '#4b92e3' : 'transparent', 
+              color: viewMode === 'list' ? 'white' : '#4b92e3',
+              borderColor: '#4b92e3'
+            }}
+            onClick={() => setViewMode('list')}
+          >
+            <i className="fas fa-list me-1"></i> Λίστα
+          </button>
+          <button 
+            type="button" 
+            className={`btn btn-sm`}
+            style={{ 
+              backgroundColor: viewMode === 'map' ? '#4b92e3' : 'transparent', 
+              color: viewMode === 'map' ? 'white' : '#4b92e3',
+              borderColor: '#4b92e3'
+            }}
+            onClick={() => setViewMode('map')}
+          >
+            <i className="fas fa-map-marker-alt me-1"></i> Χάρτης
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="main-content">
-        <h2 className="section-title">Κοντά σας</h2>
+        {viewMode === 'list' && <h2 className="section-title">Κοντά σας</h2>}
         
         {loading ? (
           <div className="loading-spinner">Φόρτωση...</div>
-        ) : (
+        ) : viewMode === 'list' ? (
           <div className="stores-list">
             {filteredStores.length > 0 ? (
               filteredStores.map(store => (
@@ -201,6 +288,72 @@ const CustomerHome = () => {
               ))
             ) : (
               <div className="no-stores">Δεν βρέθηκαν καταστήματα {searchTerm && `για "${searchTerm}"`}</div>
+            )}
+          </div>
+        ) : (
+          // Map View
+          <div className="map-container" style={{ height: 'calc(100vh - 250px)', width: '100%' }}>
+            {isLoaded ? (
+              <GoogleMap
+                mapContainerStyle={{ width: '100%', height: '100%', borderRadius: '15px' }}
+                center={defaultCenter}
+                zoom={14}
+                onLoad={map => setMap(map)}
+                options={{
+                  disableDefaultUI: false,
+                  zoomControl: true,
+                  streetViewControl: false,
+                  mapTypeControl: false,
+                  fullscreenControl: false
+                }}
+              >
+                {/* Store Markers */}
+                {filteredStores.map(store => {
+                  // Ensure store has valid coordinates
+                  if (!store.location || !store.location.coordinates) return null;
+                  
+                  const position = {
+                    lat: store.location.coordinates[1], // MongoDB stores as [lng, lat]
+                    lng: store.location.coordinates[0]
+                  };
+
+                  return (
+                    <Marker
+                      key={store._id}
+                      position={position}
+                      onClick={() => setSelectedStore(store)}
+                      icon={{
+                        url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' // Can be customized based on store type
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Info Window for Selected Store */}
+                {selectedStore && (
+                  <InfoWindow
+                    position={{
+                      lat: selectedStore.location.coordinates[1],
+                      lng: selectedStore.location.coordinates[0]
+                    }}
+                    onCloseClick={() => setSelectedStore(null)}
+                  >
+                    <div style={{ padding: '5px', maxWidth: '200px' }}>
+                      <h4 style={{ margin: '0 0 5px', fontSize: '16px' }}>{selectedStore.businessName}</h4>
+                      <p style={{ margin: '0 0 5px', fontSize: '12px', color: '#666' }}>{selectedStore.storeType}</p>
+                      <p style={{ margin: '0 0 10px', fontSize: '12px' }}>{selectedStore.workingHours}</p>
+                      <button 
+                        className="btn btn-primary btn-sm w-100"
+                        onClick={() => handleStoreClick(selectedStore)}
+                      >
+                        Παραγγελία
+                      </button>
+                    </div>
+                  </InfoWindow>
+                )}
+              </GoogleMap>
+            ) : (
+              <div>Loading Map...</div>
             )}
           </div>
         )}
