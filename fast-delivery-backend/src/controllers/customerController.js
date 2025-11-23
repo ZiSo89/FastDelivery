@@ -143,18 +143,27 @@ exports.createOrder = async (req, res) => {
       status: 'pending_store'
     });
 
-    // Broadcast new order to specific store and admins only
+    // Broadcast new order to specific store and admins only (NOT to drivers)
     const io = req.app.get('io');
-    broadcastOrderEvent(io, order, 'order:new', {
-      orderId: order._id,
-      orderNumber: order.orderNumber,
-      storeId: order.storeId?.toString(), // Convert ObjectId to string
-      storeName: order.storeName,
-      customer: order.customer,
-      orderType: order.orderType,
-      orderContent: order.orderContent,
-      orderVoiceUrl: order.orderVoiceUrl
-    });
+    if (io) {
+      const orderData = {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        storeId: order.storeId?.toString(),
+        storeName: order.storeName,
+        customer: order.customer,
+        orderType: order.orderType,
+        orderContent: order.orderContent,
+        orderVoiceUrl: order.orderVoiceUrl,
+        status: order.status
+      };
+
+      // Send to specific store only
+      io.to(`store:${order.storeId}`).emit('order:new', orderData);
+      
+      // Send to all admins
+      io.to('admin').emit('order:new', orderData);
+    }
 
     res.status(201).json({
       success: true,

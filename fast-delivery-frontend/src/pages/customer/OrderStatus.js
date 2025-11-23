@@ -3,6 +3,8 @@ import { Container, Row, Col, Card, Alert, ListGroup, Button } from 'react-boots
 import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/api';
 import socketService from '../../services/socket';
+import AlertModal from '../../components/AlertModal';
+import ConfirmModal from '../../components/ConfirmModal';
 import '../../styles/Customer.css';
 
 const OrderStatus = () => {
@@ -11,6 +13,8 @@ const OrderStatus = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
+  const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: null });
 
   const fetchOrderStatus = useCallback(async () => {
     try {
@@ -29,47 +33,57 @@ const OrderStatus = () => {
   useEffect(() => {
     if (orderNumber) {
       fetchOrderStatus();
-      
-      // Socket.IO real-time updates
-      // Connect socket for guest user (no authentication needed)
-      if (!socketService.isConnected()) {
-        socketService.connect(null);
-      }
-
-      // Listen to ALL order events
-      const handleOrderUpdate = (data) => {
-        if (data.orderNumber === orderNumber || data.orderId === order?._id) {
-          fetchOrderStatus(); // Refresh order data
-        }
-      };
-
-      // Subscribe to all relevant events
-      socketService.on('order:status_changed', handleOrderUpdate);
-      socketService.on('order:pending_admin', handleOrderUpdate);
-      socketService.on('order:price_ready', handleOrderUpdate);
-      socketService.on('order:confirmed', handleOrderUpdate);
-      socketService.on('order:assigned', handleOrderUpdate);
-      socketService.on('driver:accepted', handleOrderUpdate);
-      socketService.on('driver:rejected', handleOrderUpdate);
-      socketService.on('order:completed', handleOrderUpdate);
-      socketService.on('order:cancelled', handleOrderUpdate);
-      socketService.on('order:rejected_store', handleOrderUpdate);
-
-      // Cleanup on unmount
-      return () => {
-        socketService.off('order:status_changed', handleOrderUpdate);
-        socketService.off('order:pending_admin', handleOrderUpdate);
-        socketService.off('order:price_ready', handleOrderUpdate);
-        socketService.off('order:confirmed', handleOrderUpdate);
-        socketService.off('order:assigned', handleOrderUpdate);
-        socketService.off('driver:accepted', handleOrderUpdate);
-        socketService.off('driver:rejected', handleOrderUpdate);
-        socketService.off('order:completed', handleOrderUpdate);
-        socketService.off('order:cancelled', handleOrderUpdate);
-        socketService.off('order:rejected_store', handleOrderUpdate);
-      };
     }
-  }, [orderNumber, order?._id, fetchOrderStatus]);
+  }, [orderNumber, fetchOrderStatus]);
+
+  useEffect(() => {
+    if (!order || !order.customer?.phone) return;
+
+    // Socket.IO real-time updates
+    // Connect socket for guest user (no authentication needed)
+    if (!socketService.isConnected()) {
+      socketService.connect(null);
+    }
+
+    // Join customer room using phone number
+    const customerRoom = `customer:${order.customer.phone}`;
+    socketService.joinRoom(customerRoom);
+
+    // Listen to ALL order events
+    const handleOrderUpdate = (data) => {
+      console.log('📨 Order event received:', data);
+      if (data.orderNumber === orderNumber || data.orderId === order?._id?.toString()) {
+        console.log('✅ Refreshing order data...');
+        fetchOrderStatus(); // Refresh order data
+      }
+    };
+
+    // Subscribe to all relevant events
+    socketService.on('order:status_changed', handleOrderUpdate);
+    socketService.on('order:pending_admin', handleOrderUpdate);
+    socketService.on('order:price_ready', handleOrderUpdate);
+    socketService.on('order:confirmed', handleOrderUpdate);
+    socketService.on('order:assigned', handleOrderUpdate);
+    socketService.on('driver:accepted', handleOrderUpdate);
+    socketService.on('driver:rejected', handleOrderUpdate);
+    socketService.on('order:completed', handleOrderUpdate);
+    socketService.on('order:cancelled', handleOrderUpdate);
+    socketService.on('order:rejected_store', handleOrderUpdate);
+
+    // Cleanup on unmount
+    return () => {
+      socketService.off('order:status_changed', handleOrderUpdate);
+      socketService.off('order:pending_admin', handleOrderUpdate);
+      socketService.off('order:price_ready', handleOrderUpdate);
+      socketService.off('order:confirmed', handleOrderUpdate);
+      socketService.off('order:assigned', handleOrderUpdate);
+      socketService.off('driver:accepted', handleOrderUpdate);
+      socketService.off('driver:rejected', handleOrderUpdate);
+      socketService.off('order:completed', handleOrderUpdate);
+      socketService.off('order:cancelled', handleOrderUpdate);
+      socketService.off('order:rejected_store', handleOrderUpdate);
+    };
+  }, [order, orderNumber, fetchOrderStatus]);
 
   const handleConfirmPrice = async () => {
     if (!order) return;
@@ -82,7 +96,11 @@ const OrderStatus = () => {
       fetchOrderStatus();
     } catch (err) {
       // Keep error alert if something goes wrong
-      alert(err.response?.data?.message || 'Σφάλμα επιβεβαίωσης');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα επιβεβαίωσης'
+      });
     }
   };
 
@@ -91,17 +109,32 @@ const OrderStatus = () => {
 
     const phone = order.customer?.phone || order.customerPhone;
     if (!phone) {
-      alert('Δεν βρέθηκε το τηλέφωνο της παραγγελίας');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: 'Δεν βρέθηκε το τηλέφωνο της παραγγελίας'
+      });
       return;
     }
 
-    try {
-      // Καλούμε το backend να ακυρώσει την παραγγελία
-      await customerService.cancelOrder(order._id, phone);
-      navigate('/');
-    } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα ακύρωσης');
-    }
+    // Επιβεβαίωση από τον χρήστη με custom modal
+    setConfirmModal({
+      show: true,
+      message: 'Είστε βέβαιος ότι θέλετε να ακυρώσετε αυτή την παραγγελία?\n\nΗ ακύρωση είναι οριστική και δεν μπορεί να αναιρεθεί.',
+      onConfirm: async () => {
+        try {
+          // Καλούμε το backend να ακυρώσει την παραγγελία
+          await customerService.cancelOrder(order._id, phone);
+          navigate('/');
+        } catch (err) {
+          setAlertModal({
+            show: true,
+            variant: 'danger',
+            message: err.response?.data?.message || 'Σφάλμα ακύρωσης'
+          });
+        }
+      }
+    });
   };
 
   const getStatusInfo = (status) => {
@@ -296,6 +329,28 @@ const OrderStatus = () => {
           </div>
         </div>
       </div>
+
+      <AlertModal
+        show={alertModal.show}
+        onHide={() => setAlertModal({ ...alertModal, show: false })}
+        variant={alertModal.variant}
+        message={alertModal.message}
+      />
+
+      <ConfirmModal
+        show={confirmModal.show}
+        onHide={() => setConfirmModal({ ...confirmModal, show: false })}
+        onConfirm={() => {
+          setConfirmModal({ ...confirmModal, show: false });
+          confirmModal.onConfirm && confirmModal.onConfirm();
+        }}
+        title="Επιβεβαίωση Ακύρωσης"
+        message={confirmModal.message}
+        confirmText="Ακύρωση Παραγγελίας"
+        cancelText="Όχι, Επιστροφή"
+        variant="danger"
+        icon="❌"
+      />
     </div>
   );
 };

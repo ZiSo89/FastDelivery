@@ -33,13 +33,13 @@ exports.getStores = async (req, res) => {
   }
 };
 
-// @desc    Approve/Reject store
+// @desc    Approve/Reject/Pending store
 // @route   PUT /api/v1/admin/stores/:storeId/approve
 // @access  Private (Admin)
 exports.approveRejectStore = async (req, res) => {
   try {
     const { storeId } = req.params;
-    const { action } = req.body; // 'approve' or 'reject'
+    const { action } = req.body; // 'approve', 'reject', or 'pending'
 
     const store = await Store.findById(storeId);
 
@@ -55,6 +55,9 @@ exports.approveRejectStore = async (req, res) => {
       store.isApproved = true;
     } else if (action === 'reject') {
       store.status = 'rejected';
+      store.isApproved = false;
+    } else if (action === 'pending') {
+      store.status = 'pending';
       store.isApproved = false;
     } else {
       return res.status(400).json({
@@ -75,9 +78,15 @@ exports.approveRejectStore = async (req, res) => {
       });
     }
 
+    const actionMessages = {
+      approve: 'εγκρίθηκε',
+      reject: 'απορρίφθηκε',
+      pending: 'τέθηκε σε αναμονή'
+    };
+
     res.json({
       success: true,
-      message: `Το κατάστημα ${action === 'approve' ? 'εγκρίθηκε' : 'απορρίφθηκε'}.`,
+      message: `Το κατάστημα ${actionMessages[action]}.`,
       store: {
         _id: store._id,
         businessName: store.businessName,
@@ -128,13 +137,13 @@ exports.getDrivers = async (req, res) => {
   }
 };
 
-// @desc    Approve/Reject driver
+// @desc    Approve/Reject/Pending driver
 // @route   PUT /api/v1/admin/drivers/:driverId/approve
 // @access  Private (Admin)
 exports.approveRejectDriver = async (req, res) => {
   try {
     const { driverId } = req.params;
-    const { action } = req.body;
+    const { action } = req.body; // 'approve', 'reject', or 'pending'
 
     const driver = await Driver.findById(driverId);
 
@@ -150,6 +159,9 @@ exports.approveRejectDriver = async (req, res) => {
       driver.isApproved = true;
     } else if (action === 'reject') {
       driver.status = 'rejected';
+      driver.isApproved = false;
+    } else if (action === 'pending') {
+      driver.status = 'pending';
       driver.isApproved = false;
     } else {
       return res.status(400).json({
@@ -170,9 +182,15 @@ exports.approveRejectDriver = async (req, res) => {
       });
     }
 
+    const actionMessages = {
+      approve: 'εγκρίθηκε',
+      reject: 'απορρίφθηκε',
+      pending: 'τέθηκε σε αναμονή'
+    };
+
     res.json({
       success: true,
-      message: `Ο διανομέας ${action === 'approve' ? 'εγκρίθηκε' : 'απορρίφθηκε'}.`,
+      message: `Ο διανομέας ${actionMessages[action]}.`,
       driver: {
         _id: driver._id,
         name: driver.name,

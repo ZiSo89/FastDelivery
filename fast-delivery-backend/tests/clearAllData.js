@@ -5,7 +5,7 @@ const Admin = require('../src/models/Admin');
 const Store = require('../src/models/Store');
 const Driver = require('../src/models/Driver');
 const Order = require('../src/models/Order');
-const User = require('../src/models/User');
+const Customer = require('../src/models/Customer');
 
 const clearAllData = async () => {
   try {
@@ -26,7 +26,7 @@ const clearAllData = async () => {
     await Order.deleteMany({});
     console.log('🗑️  Διαγράφηκαν όλες οι Παραγγελίες');
 
-    await User.deleteMany({});
+    await Customer.deleteMany({});
     console.log('🗑️  Διαγράφηκαν όλοι οι Πελάτες');
 
     console.log('\n✅ Όλα τα δεδομένα διαγράφηκαν επιτυχώς!');

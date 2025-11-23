@@ -3,6 +3,7 @@ import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Modal, Form, Card, R
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/api';
 import socketService from '../../services/socket';
+import AlertModal from '../AlertModal';
 
 const StoreOrders = () => {
   const { user } = useAuth();
@@ -15,6 +16,10 @@ const StoreOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [productPrice, setProductPrice] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectOrderId, setRejectOrderId] = useState(null);
   const filterRef = useRef(filter);
 
   // Keep filterRef in sync with filter state
@@ -148,23 +153,44 @@ const StoreOrders = () => {
       await fetchOrders();
       // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα'
+      });
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleReject = async (orderId) => {
-    const reason = prompt('Λόγος απόρριψης:');
-    if (!reason) return;
+    setRejectOrderId(orderId);
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const submitReject = async () => {
+    if (!rejectReason || rejectReason.trim().length === 0) {
+      setAlertModal({
+        show: true,
+        variant: 'warning',
+        message: 'Παρακαλώ εισάγετε λόγο απόρριψης'
+      });
+      return;
+    }
 
     try {
-      setProcessingId(orderId);
-      await storeService.acceptOrder(orderId, false, reason);
+      setProcessingId(rejectOrderId);
+      await storeService.acceptOrder(rejectOrderId, false, rejectReason);
+      setShowRejectModal(false);
       await fetchOrders();
       // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα'
+      });
     } finally {
       setProcessingId(null);
     }
@@ -178,7 +204,11 @@ const StoreOrders = () => {
 
   const submitPrice = async () => {
     if (!productPrice || parseFloat(productPrice) <= 0) {
-      alert('Παρακαλώ εισάγετε έγκυρη τιμή');
+      setAlertModal({
+        show: true,
+        variant: 'warning',
+        message: 'Παρακαλώ εισάγετε έγκυρη τιμή'
+      });
       return;
     }
 
@@ -188,7 +218,11 @@ const StoreOrders = () => {
       await fetchOrders();
       // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα'
+      });
     }
   };
 
@@ -199,7 +233,11 @@ const StoreOrders = () => {
       await fetchOrders();
       // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα'
+      });
     } finally {
       setProcessingId(null);
     }
@@ -438,6 +476,48 @@ const StoreOrders = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Reject Order Modal */}
+      <Modal show={showRejectModal} onHide={() => setShowRejectModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Απόρριψη Παραγγελίας</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group>
+            <Form.Label>Λόγος Απόρριψης <span className="text-danger">*</span></Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Εισάγετε τον λόγο απόρριψης..."
+              maxLength={200}
+            />
+            <Form.Text className="text-muted">
+              {rejectReason.length}/200 χαρακτήρες
+            </Form.Text>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowRejectModal(false)}>
+            Ακύρωση
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={submitReject}
+            disabled={!rejectReason || rejectReason.trim().length === 0}
+          >
+            Απόρριψη Παραγγελίας
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <AlertModal
+        show={alertModal.show}
+        onHide={() => setAlertModal({ ...alertModal, show: false })}
+        variant={alertModal.variant}
+        message={alertModal.message}
+      />
     </>
   );
 };

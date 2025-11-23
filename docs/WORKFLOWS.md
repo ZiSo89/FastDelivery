@@ -1,6 +1,7 @@
 # Fast Delivery - User Workflows & State Diagrams
 
-Αυτό το έγγραφο περιγράφει τις ροές χρηστών και τη λογική αλλαγής καταστάσεων.
+**Last Updated:** 2025-11-23  
+Αυτό το έγγραφο περιγράφει τις ροές χρηστών και τη λογική αλλαγής καταστάσεων με βάση την επιβεβαιωμένη λειτουργία του συστήματος.
 
 ---
 
@@ -354,22 +355,24 @@ END
 
 ### 5.2 Πίνακας Μεταβάσεων Καταστάσεων
 
-| Τρέχουσα Κατάσταση | Ενέργεια | Ποιος | Νέα Κατάσταση |
-|-------------------|----------|-------|---------------|
-| `pending_store` | Αποδοχή | Κατάστημα | `pricing` |
-| `pending_store` | Απόρριψη | Κατάστημα | `rejected_store` |
-| `pricing` | Εισαγωγή τιμής | Κατάστημα | `pending_admin` |
-| `pending_admin` | Προσθήκη delivery fee | Admin | `pending_customer_confirm` |
-| `pending_customer_confirm` | Επιβεβαίωση | Πελάτης | `confirmed` |
-| `pending_customer_confirm` | Ακύρωση | Πελάτης | `cancelled` |
-| `confirmed` | Ανάθεση διανομέα | Admin | `assigned` |
-| `assigned` | Αποδοχή | Διανομέας | `accepted_driver` |
-| `assigned` | Απόρριψη | Διανομέας | `rejected_driver` |
-| `rejected_driver` | Ξανα-ανάθεση | Admin | `assigned` |
-| `accepted_driver` | Ετοιμάζεται | Κατάστημα | `preparing` |
-| `preparing` | Παραλαβή | Διανομέας | `in_delivery` |
-| `in_delivery` | Παράδοση | Διανομέας | `completed` |
-| **Οποιαδήποτε** | Ακύρωση | Admin | `cancelled` |
+**Επιβεβαιωμένες μεταβάσεις από πραγματικό testing (2025-11-23):**
+
+| Τρέχουσα Κατάσταση | Ενέργεια | Ποιος | API Endpoint | Νέα Κατάσταση |
+|-------------------|----------|-------|--------------|---------------|
+| `pending_store` | Αποδοχή | Κατάστημα | `PUT /store/orders/:id/accept` | `pricing` |
+| `pending_store` | Απόρριψη | Κατάστημα | `PUT /store/orders/:id/accept` | `rejected_store` |
+| `pricing` | Εισαγωγή τιμής | Κατάστημα | `PUT /store/orders/:id/price` | `pending_admin` |
+| `pending_admin` | Προσθήκη delivery fee | Admin | `PUT /admin/orders/:id/delivery-fee` | `pending_customer_confirm` |
+| `pending_customer_confirm` | Επιβεβαίωση | Πελάτης | `PUT /orders/:id/confirm` | `confirmed` |
+| `pending_customer_confirm` | Ακύρωση | Πελάτης | `PUT /orders/:id/confirm` | `cancelled` |
+| `confirmed` | Ανάθεση διανομέα | Admin | `PUT /admin/orders/:id/assign-driver` | `assigned` |
+| `assigned` | Αποδοχή | Διανομέας | `PUT /driver/orders/:id/accept` | `accepted_driver` |
+| `assigned` | Απόρριψη | Διανομέας | `PUT /driver/orders/:id/accept` | `rejected_driver` |
+| `rejected_driver` | Ξανα-ανάθεση | Admin | `PUT /admin/orders/:id/assign-driver` | `assigned` |
+| `accepted_driver` | Προετοιμασία | Κατάστημα | `PUT /store/orders/:id/status` | `preparing` |
+| `preparing` | Παραλαβή | Διανομέας | `PUT /driver/orders/:id/status` | `in_delivery` |
+| `in_delivery` | Παράδοση | Διανομέας | `PUT /driver/orders/:id/status` | `completed` |
+| **Οποιαδήποτε** | Ακύρωση με αιτιολόγηση | Admin | `PUT /admin/orders/:id/cancel` | `cancelled` |
 
 ---
 
@@ -472,7 +475,83 @@ END
 
 ---
 
-## 8. Χρονικοί Περιορισμοί (Προτάσεις - Μελλοντικά)
+## 8. Επιβεβαιωμένο End-to-End Test Workflow
+
+**Βασισμένο σε:** `fast-delivery-backend/tests/orderLifecycleScript.js` (Tested: 2025-11-23)
+
+### 8.1 Πλήρης Κύκλος Παραγγελίας (Happy Path)
+
+```
+[1] Backend & Frontend Preparation
+    - Backend: npm run dev (http://localhost:5000)
+    - Frontend: npm start (http://localhost:3000)
+    - Database: node clearAllData.js && node seedTestData.js
+    - Browsers: .\open-test-browsers.ps1 (4 Chrome profiles)
+
+[2] Automated: Login Tokens
+    ✅ Admin: admin@fastdelivery.gr → JWT token
+    ✅ Store: kafeteria@test.com → JWT token
+    ✅ Driver: driver1@test.com → JWT token
+
+[3] Automated: Customer Creates Order
+    → POST /api/v1/orders
+    → Status: pending_store
+    → Order Number: ORD-YYYYMMDD-####
+
+[4] Automated: Store Accepts Order
+    → PUT /api/v1/store/orders/:id/accept (action: accept)
+    → Status: pending_store → pricing
+
+[5] Automated: Store Sets Product Price
+    → PUT /api/v1/store/orders/:id/price (productPrice: 25.50)
+    → Status: pricing → pending_admin
+
+[6] Automated: Admin Sets Delivery Fee
+    → PUT /api/v1/admin/orders/:id/delivery-fee (deliveryFee: 3.50)
+    → Status: pending_admin → pending_customer_confirm
+
+[7] MANUAL: Customer Confirms Price
+    ⚠️  UI Action Required:
+    - Open Customer browser tab
+    - Navigate to "Οι Παραγγελίες μου"
+    - Find order ORD-YYYYMMDD-####
+    - Click "Επιβεβαίωση" button
+    → Status: pending_customer_confirm → confirmed
+
+[8] MANUAL: Admin Assigns Driver
+    ⚠️  UI Action Required:
+    - Open Admin browser tab
+    - Go to Orders tab
+    - Find order ORD-YYYYMMDD-####
+    - Click "Assign Driver" → Select driver1@test.com
+    → Status: confirmed → assigned
+
+[9] MANUAL: Driver Accepts Assignment
+    ⚠️  UI Action Required:
+    - Open Driver browser tab
+    - See notification for new assignment
+    - Click "✅ Αποδοχή Παραγγελίας" button
+    → Status: assigned → accepted_driver
+
+[10] MANUAL: Store Marks as "Προετοιμασία"
+    ⚠️  UI Action Required:
+    - Open Store browser tab
+    - Find order ORD-YYYYMMDD-####
+    - Click "Προετοιμασία" button
+    → Status: accepted_driver → preparing
+
+[11] Automated: Driver Marks "Παραλαβή"
+    → PUT /api/v1/driver/orders/:id/status (status: in_delivery)
+    → Status: preparing → in_delivery
+
+[12] Automated: Driver Marks "Παράδοση"
+    → PUT /api/v1/driver/orders/:id/status (status: completed)
+    → Status: in_delivery → completed
+
+✅ WORKFLOW COMPLETE
+```
+
+### 8.2 Χρονικοί Περιορισμοί (Προτάσεις - Μελλοντικά)
 
 | Κατάσταση | Max Χρόνος | Ενέργεια μετά timeout |
 |-----------|------------|---------------------|

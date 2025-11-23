@@ -66,25 +66,27 @@ const Login = () => {
 
   return (
     <div className="login-page">
-      <Container>
+      <Container className="py-4">
         <Row className="justify-content-center align-items-center min-vh-100">
-          <Col md={6} lg={5}>
-            <Card className="shadow-lg">
-              <Card.Body className="p-5">
+          <Col xs={12} sm={10} md={8} lg={6} xl={5}>
+            <Card className="login-card">
+              <Card.Body className="p-4 p-md-5">
                 <div className="text-center mb-4">
-                  <h2 className="fw-bold text-primary">🚚 Fast Delivery</h2>
-                  <p className="text-muted">Σύστημα Διαχείρισης Παραγγελιών</p>
+                  <div className="logo-emoji">🚚</div>
+                  <h2 className="app-title">Fast Delivery</h2>
+                  <p className="app-subtitle">Σύνδεση στο σύστημα</p>
                 </div>
 
-                {error && <Alert variant="danger">{error}</Alert>}
+                {error && <Alert variant="danger" className="custom-alert">{error}</Alert>}
 
                 <Form onSubmit={handleSubmit}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Ρόλος</Form.Label>
+                    <Form.Label className="form-label-custom">Ρόλος</Form.Label>
                     <Form.Select
                       name="role"
                       value={formData.role}
                       onChange={handleChange}
+                      className="form-input-custom"
                     >
                       <option value="admin">Διαχειριστής</option>
                       <option value="store">Κατάστημα</option>
@@ -93,7 +95,7 @@ const Login = () => {
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Email</Form.Label>
+                    <Form.Label className="form-label-custom">Email</Form.Label>
                     <Form.Control
                       type="email"
                       name="email"
@@ -101,11 +103,12 @@ const Login = () => {
                       value={formData.email}
                       onChange={handleChange}
                       disabled={loading}
+                      className="form-input-custom"
                     />
                   </Form.Group>
 
                   <Form.Group className="mb-4">
-                    <Form.Label>Κωδικός</Form.Label>
+                    <Form.Label className="form-label-custom">Κωδικός</Form.Label>
                     <Form.Control
                       type="password"
                       name="password"
@@ -113,27 +116,31 @@ const Login = () => {
                       value={formData.password}
                       onChange={handleChange}
                       disabled={loading}
+                      className="form-input-custom"
                     />
                   </Form.Group>
 
                   <Button
-                    variant="primary"
                     type="submit"
-                    className="w-100"
+                    className="btn-primary-app w-100 mb-3"
                     disabled={loading}
                   >
                     {loading ? 'Σύνδεση...' : 'Είσοδος'}
                   </Button>
                 </Form>
 
-                <div className="mt-4 text-center">
-                  <small className="text-muted">
-                    Εγγραφή ως Κατάστημα/Οδηγός;{' '}
-                    <span className="text-primary" style={{ cursor: 'pointer', fontWeight: '600' }} onClick={() => navigate('/register-business')}>
-                      Εγγραφή Επιχείρησης
-                    </span>
-                  </small>
+                <div className="divider-custom">
+                  <span>ή</span>
                 </div>
+
+                <Button
+                  variant="outline"
+                  className="btn-outline-app w-100"
+                  onClick={() => navigate('/register-business')}
+                >
+                  <span className="me-2">📝</span>
+                  Εγγραφή ως Κατάστημα ή Οδηγός
+                </Button>
               </Card.Body>
             </Card>
           </Col>

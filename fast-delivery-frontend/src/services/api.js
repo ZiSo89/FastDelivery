@@ -122,10 +122,16 @@ export const adminService = {
     return response.data;
   },
 
-  // Approve/Reject store
-  approveStore: async (storeId, approved) => {
+  // Approve/Reject/Pending store
+  approveStore: async (storeId, action) => {
+    // action can be: 'approve', 'reject', or 'pending'
+    // For backward compatibility, also accept boolean (true = approve, false = reject)
+    const actionValue = typeof action === 'boolean' 
+      ? (action ? 'approve' : 'reject')
+      : action;
+    
     const response = await api.put(`/admin/stores/${storeId}/approve`, { 
-      action: approved ? 'approve' : 'reject' 
+      action: actionValue
     });
     return response.data;
   },
@@ -139,10 +145,16 @@ export const adminService = {
     return response.data;
   },
 
-  // Approve/Reject driver
-  approveDriver: async (driverId, approved) => {
+  // Approve/Reject/Pending driver
+  approveDriver: async (driverId, action) => {
+    // action can be: 'approve', 'reject', or 'pending'
+    // For backward compatibility, also accept boolean (true = approve, false = reject)
+    const actionValue = typeof action === 'boolean' 
+      ? (action ? 'approve' : 'reject')
+      : action;
+    
     const response = await api.put(`/admin/drivers/${driverId}/approve`, { 
-      action: approved ? 'approve' : 'reject' 
+      action: actionValue
     });
     return response.data;
   },

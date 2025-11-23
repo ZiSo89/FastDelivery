@@ -1,35 +1,271 @@
+/* Login & Register Pages - Wolt Style Design */
 .login-page {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f8f9fa;
   min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-.login-page .card {
-  border: none;
-  border-radius: 15px;
+/* Logo & Branding */
+.logo-emoji {
+  font-size: 48px;
+  margin-bottom: 16px;
 }
 
-.login-page .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.app-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #00c2e8;
+  margin-bottom: 8px;
+}
+
+.app-subtitle {
+  font-size: 16px;
+  color: #666;
+  font-weight: 400;
+  margin-bottom: 0;
+}
+
+/* Cards */
+.login-card,
+.register-option-card {
+  background: white;
   border: none;
-  padding: 12px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.register-option-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 194, 232, 0.15);
+}
+
+/* Form Elements */
+.form-label-custom {
+  font-size: 14px;
   font-weight: 600;
-  transition: transform 0.2s;
+  color: #333;
+  margin-bottom: 8px;
 }
 
-.login-page .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.login-page .form-control,
-.login-page .form-select {
-  padding: 12px;
+.form-input-custom {
+  padding: 16px;
   border-radius: 8px;
-  border: 1px solid #dee2e6;
+  border: 1px solid #e0e0e0;
+  background: #f9f9f9;
+  font-size: 15px;
+  transition: all 0.2s ease;
 }
 
-.login-page .form-control:focus,
-.login-page .form-select:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+.form-input-custom:focus {
+  background: white;
+  border-color: #00c2e8;
+  box-shadow: 0 0 0 3px rgba(0, 194, 232, 0.1);
+  outline: none;
+}
+
+.form-input-custom:disabled {
+  background: #f5f5f5;
+  opacity: 0.7;
+}
+
+/* Primary Button - Wolt Style */
+.btn-primary-app {
+  background: #00c2e8;
+  color: white;
+  border: none;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  text-transform: none;
+}
+
+.btn-primary-app:hover {
+  background: #00a8cc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 194, 232, 0.3);
+}
+
+.btn-primary-app:active {
+  transform: translateY(0);
+  background: #0090b0;
+}
+
+.btn-primary-app:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Outline Button */
+.btn-outline-app {
+  background: white;
+  color: #00c2e8;
+  border: 2px solid #00c2e8;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-app:hover {
+  background: #00c2e8;
+  color: white;
+  border-color: #00c2e8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 194, 232, 0.2);
+}
+
+.btn-outline-app:active {
+  transform: translateY(0);
+}
+
+/* Divider */
+.divider-custom {
+  position: relative;
+  text-align: center;
+  margin: 24px 0;
+}
+
+.divider-custom::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e0e0e0;
+  z-index: 0;
+}
+
+.divider-custom span {
+  background: white;
+  padding: 0 16px;
+  color: #999;
+  font-size: 14px;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+}
+
+/* Register Selection Page */
+.option-icon {
+  font-size: 56px;
+  margin-bottom: 16px;
+}
+
+.option-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #00c2e8;
+  margin-bottom: 12px;
+}
+
+.option-description {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.option-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+  text-align: left;
+}
+
+.option-features li {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 10px;
+  padding-left: 8px;
+}
+
+/* Alert */
+.custom-alert {
+  border-radius: 8px;
+  border: none;
+  padding: 14px;
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .logo-emoji {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+
+  .app-title {
+    font-size: 28px;
+  }
+
+  .app-subtitle {
+    font-size: 14px;
+  }
+
+  .login-card,
+  .register-option-card {
+    border-radius: 12px;
+  }
+
+  .login-card .card-body,
+  .register-option-card .card-body {
+    padding: 24px !important;
+  }
+
+  .btn-primary-app {
+    padding: 14px 20px;
+    font-size: 15px;
+  }
+
+  .btn-outline-app {
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+
+  .option-icon {
+    font-size: 48px;
+  }
+
+  .option-title {
+    font-size: 20px;
+  }
+
+  .option-description {
+    font-size: 13px;
+  }
+
+  .option-features li {
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .login-page {
+    padding: 16px;
+  }
+
+  .logo-emoji {
+    font-size: 36px;
+  }
+
+  .app-title {
+    font-size: 24px;
+  }
+
+  .btn-primary-app,
+  .btn-outline-app {
+    font-size: 14px;
+  }
+
+  .form-input-custom {
+    padding: 14px;
+    font-size: 14px;
+  }
 }

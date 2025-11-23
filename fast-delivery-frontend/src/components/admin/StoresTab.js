@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col } from 'react-bootstrap';
 import { adminService } from '../../services/api';
+import AlertModal from '../AlertModal';
 
 const StoresTab = () => {
   const [stores, setStores] = useState([]);
@@ -9,6 +10,7 @@ const StoresTab = () => {
   const [filter, setFilter] = useState('pending');
   const [processingId, setProcessingId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -34,18 +36,31 @@ const StoresTab = () => {
     fetchStores();
   }, [fetchStores]);
 
-  const handleApprove = async (storeId, approved) => {
+  const handleApprove = async (storeId, action) => {
     try {
       setProcessingId(storeId);
-      await adminService.approveStore(storeId, approved);
+      await adminService.approveStore(storeId, action === 'approve');
       
       // Refresh list
       await fetchStores();
       
-      // Show success message
-      alert(approved ? 'Το κατάστημα εγκρίθηκε!' : 'Το κατάστημα απορρίφθηκε!');
+      const messages = {
+        approve: 'Το κατάστημα εγκρίθηκε!',
+        reject: 'Το κατάστημα απορρίφθηκε!',
+        pending: 'Το κατάστημα τέθηκε σε αναμονή!'
+      };
+      
+      setAlertModal({
+        show: true,
+        variant: 'success',
+        message: messages[action] || 'Η ενέργεια ολοκληρώθηκε!'
+      });
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα κατά την επεξεργασία');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα κατά την επεξεργασία'
+      });
     } finally {
       setProcessingId(null);
     }
@@ -69,9 +84,9 @@ const StoresTab = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5>Διαχείριση Καταστημάτων</h5>
-        <ButtonGroup>
+      <div className="mb-3">
+        <h5 className="mb-3">Διαχείριση Καταστημάτων</h5>
+        <div className="d-grid d-md-flex gap-2">
           <Button
             variant={filter === 'pending' ? 'primary' : 'outline-primary'}
             onClick={() => setFilter('pending')}
@@ -100,7 +115,7 @@ const StoresTab = () => {
           >
             Όλα
           </Button>
-        </ButtonGroup>
+        </div>
       </div>
 
       {loading ? (
@@ -148,11 +163,11 @@ const StoresTab = () => {
                     {getStatusBadge(store.status)}
                   </div>
                   
-                  {store.status === 'pending' && (
-                    <div className="d-grid gap-2">
+                  <div className="d-grid gap-2">
+                    {store.status !== 'approved' && (
                       <Button
                         variant="success"
-                        onClick={() => handleApprove(store._id, true)}
+                        onClick={() => handleApprove(store._id, 'approve')}
                         disabled={processingId === store._id}
                       >
                         {processingId === store._id ? (
@@ -161,15 +176,17 @@ const StoresTab = () => {
                           '✅ Έγκριση Καταστήματος'
                         )}
                       </Button>
+                    )}
+                    {store.status !== 'rejected' && (
                       <Button
                         variant="danger"
-                        onClick={() => handleApprove(store._id, false)}
+                        onClick={() => handleApprove(store._id, 'reject')}
                         disabled={processingId === store._id}
                       >
                         ❌ Απόρριψη
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </Card.Body>
               </Card>
             </Col>
@@ -204,31 +221,32 @@ const StoresTab = () => {
                   </td>
                   <td>{getStatusBadge(store.status)}</td>
                   <td>
-                    {store.status === 'pending' && (
-                      <ButtonGroup size="sm">
+                    <ButtonGroup size="sm">
+                      {store.status !== 'approved' && (
                         <Button
                           variant="success"
-                          onClick={() => handleApprove(store._id, true)}
+                          onClick={() => handleApprove(store._id, 'approve')}
                           disabled={processingId === store._id}
+                          title="Έγκριση"
                         >
                           {processingId === store._id ? (
                             <Spinner animation="border" size="sm" />
                           ) : (
-                            '✅ Έγκριση'
+                            '✅'
                           )}
                         </Button>
+                      )}
+                      {store.status !== 'rejected' && (
                         <Button
                           variant="danger"
-                          onClick={() => handleApprove(store._id, false)}
+                          onClick={() => handleApprove(store._id, 'reject')}
                           disabled={processingId === store._id}
+                          title="Απόρριψη"
                         >
-                          ❌ Απόρριψη
+                          ❌
                         </Button>
-                      </ButtonGroup>
-                    )}
-                    {store.status !== 'pending' && (
-                      <small className="text-muted">Επεξεργασμένο</small>
-                    )}
+                      )}
+                    </ButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -236,6 +254,13 @@ const StoresTab = () => {
           </Table>
         </div>
       )}
+
+      <AlertModal
+        show={alertModal.show}
+        onHide={() => setAlertModal({ ...alertModal, show: false })}
+        variant={alertModal.variant}
+        message={alertModal.message}
+      />
     </div>
   );
 };

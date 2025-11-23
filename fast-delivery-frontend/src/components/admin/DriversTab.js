@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col } from 'react-bootstrap';
 import { adminService } from '../../services/api';
 import socketService from '../../services/socket';
+import AlertModal from '../AlertModal';
 
 const DriversTab = () => {
   const [drivers, setDrivers] = useState([]);
@@ -10,6 +11,7 @@ const DriversTab = () => {
   const [filter, setFilter] = useState('approved');
   const [processingId, setProcessingId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -46,15 +48,30 @@ const DriversTab = () => {
     };
   }, [fetchDrivers]);
 
-  const handleApprove = async (driverId, approved) => {
+  const handleApprove = async (driverId, action) => {
     try {
       setProcessingId(driverId);
-      await adminService.approveDriver(driverId, approved);
+      await adminService.approveDriver(driverId, action === 'approve');
       
       await fetchDrivers();
-      alert(approved ? 'Ο οδηγός εγκρίθηκε!' : 'Ο οδηγός απορρίφθηκε!');
+      
+      const messages = {
+        approve: 'Ο οδηγός εγκρίθηκε!',
+        reject: 'Ο οδηγός απορρίφθηκε!',
+        pending: 'Ο οδηγός τέθηκε σε αναμονή!'
+      };
+      
+      setAlertModal({
+        show: true,
+        variant: 'success',
+        message: messages[action] || 'Η ενέργεια ολοκληρώθηκε!'
+      });
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα κατά την επεξεργασία');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα κατά την επεξεργασία'
+      });
     } finally {
       setProcessingId(null);
     }
@@ -78,9 +95,9 @@ const DriversTab = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5>Διαχείριση Οδηγών</h5>
-        <ButtonGroup>
+      <div className="mb-3">
+        <h5 className="mb-3">Διαχείριση Οδηγών</h5>
+        <div className="d-grid d-md-flex gap-2">
           <Button
             variant={filter === 'pending' ? 'primary' : 'outline-primary'}
             onClick={() => setFilter('pending')}
@@ -109,7 +126,7 @@ const DriversTab = () => {
           >
             Όλοι
           </Button>
-        </ButtonGroup>
+        </div>
       </div>
 
       {loading ? (
@@ -159,11 +176,11 @@ const DriversTab = () => {
                     {getStatusBadge(driver.status)}
                   </div>
                   
-                  {driver.status === 'pending' && (
-                    <div className="d-grid gap-2">
+                  <div className="d-grid gap-2">
+                    {driver.status !== 'approved' && (
                       <Button
                         variant="success"
-                        onClick={() => handleApprove(driver._id, true)}
+                        onClick={() => handleApprove(driver._id, 'approve')}
                         disabled={processingId === driver._id}
                       >
                         {processingId === driver._id ? (
@@ -172,15 +189,17 @@ const DriversTab = () => {
                           '✅ Έγκριση Οδηγού'
                         )}
                       </Button>
+                    )}
+                    {driver.status !== 'rejected' && (
                       <Button
                         variant="danger"
-                        onClick={() => handleApprove(driver._id, false)}
+                        onClick={() => handleApprove(driver._id, 'reject')}
                         disabled={processingId === driver._id}
                       >
                         ❌ Απόρριψη
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </Card.Body>
               </Card>
             </Col>
@@ -219,31 +238,32 @@ const DriversTab = () => {
                   </td>
                   <td>{getStatusBadge(driver.status)}</td>
                   <td>
-                    {driver.status === 'pending' && (
-                      <ButtonGroup size="sm">
+                    <ButtonGroup size="sm">
+                      {driver.status !== 'approved' && (
                         <Button
                           variant="success"
-                          onClick={() => handleApprove(driver._id, true)}
+                          onClick={() => handleApprove(driver._id, 'approve')}
                           disabled={processingId === driver._id}
+                          title="Έγκριση"
                         >
                           {processingId === driver._id ? (
                             <Spinner animation="border" size="sm" />
                           ) : (
-                            '✅ Έγκριση'
+                            '✅'
                           )}
                         </Button>
+                      )}
+                      {driver.status !== 'rejected' && (
                         <Button
                           variant="danger"
-                          onClick={() => handleApprove(driver._id, false)}
+                          onClick={() => handleApprove(driver._id, 'reject')}
                           disabled={processingId === driver._id}
+                          title="Απόρριψη"
                         >
-                          ❌ Απόρριψη
+                          ❌
                         </Button>
-                      </ButtonGroup>
-                    )}
-                    {driver.status !== 'pending' && (
-                      <small className="text-muted">Επεξεργασμένος</small>
-                    )}
+                      )}
+                    </ButtonGroup>
                   </td>
                 </tr>
               ))}
@@ -251,6 +271,13 @@ const DriversTab = () => {
           </Table>
         </div>
       )}
+
+      <AlertModal
+        show={alertModal.show}
+        onHide={() => setAlertModal({ ...alertModal, show: false })}
+        variant={alertModal.variant}
+        message={alertModal.message}
+      />
     </div>
   );
 };

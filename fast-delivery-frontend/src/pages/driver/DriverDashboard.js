@@ -103,8 +103,20 @@ const DriverDashboard = () => {
 
   const handleToggleOnline = async () => {
     const newStatus = !isOnline;
-    setPendingOnlineStatus(newStatus);
-    setShowAvailabilityModal(true);
+    
+    // Αν γίνεται online, αλλάζει απευθείας χωρίς modal
+    if (newStatus) {
+      try {
+        await driverService.setAvailability(true);
+        setIsOnline(true);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Σφάλμα αλλαγής διαθεσιμότητας');
+      }
+    } else {
+      // Αν γίνεται offline, δείχνει modal επιβεβαίωσης
+      setPendingOnlineStatus(newStatus);
+      setShowAvailabilityModal(true);
+    }
   };
 
   const confirmToggleOnline = async () => {
@@ -203,16 +215,10 @@ const DriverDashboard = () => {
         className="driver-modal"
       >
         <Modal.Header closeButton>
-          <Modal.Title>
-            {pendingOnlineStatus ? '🟢 Ενεργοποίηση Διαθεσιμότητας' : '⚫ Απενεργοποίηση Διαθεσιμότητας'}
-          </Modal.Title>
+          <Modal.Title>⚫ Απενεργοποίηση Διαθεσιμότητας</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {pendingOnlineStatus ? (
-            <p>Θα γίνετε διαθέσιμος για νέες παραγγελίες. Είστε έτοιμος;</p>
-          ) : (
-            <p>Θα γίνετε μη διαθέσιμος και δεν θα λαμβάνετε νέες παραγγελίες.</p>
-          )}
+          <p>Θα γίνετε μη διαθέσιμος και δεν θα λαμβάνετε νέες παραγγελίες.</p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowAvailabilityModal(false)}>

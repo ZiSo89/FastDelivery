@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Badge, Spinner, Alert, Form, Button, Modal, Card, Row, Col } from 'react-bootstrap';
 import { adminService } from '../../services/api';
 import socketService from '../../services/socket';
+import AlertModal from '../AlertModal';
 
 const OrdersTab = () => {
   const [orders, setOrders] = useState([]);
@@ -20,6 +21,7 @@ const OrdersTab = () => {
   const [selectedDriver, setSelectedDriver] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
 
   // Detect screen size changes
   useEffect(() => {
@@ -173,7 +175,11 @@ const OrdersTab = () => {
 
   const handleAddDeliveryFee = async () => {
     if (!deliveryFee || parseFloat(deliveryFee) <= 0) {
-      alert('Παρακαλώ εισάγετε έγκυρο ποσό μεταφορικών');
+      setAlertModal({
+        show: true,
+        variant: 'warning',
+        message: 'Παρακαλώ εισάγετε έγκυρο ποσό μεταφορικών'
+      });
       return;
     }
 
@@ -184,7 +190,11 @@ const OrdersTab = () => {
       fetchOrders(); // Refresh list
       // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα προσθήκης μεταφορικών');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα προσθήκης μεταφορικών'
+      });
     } finally {
       setActionLoading(false);
     }
@@ -192,7 +202,11 @@ const OrdersTab = () => {
 
   const handleAssignDriver = async () => {
     if (!selectedDriver) {
-      alert('Παρακαλώ επιλέξτε οδηγό');
+      setAlertModal({
+        show: true,
+        variant: 'warning',
+        message: 'Παρακαλώ επιλέξτε οδηγό'
+      });
       return;
     }
 
@@ -203,7 +217,11 @@ const OrdersTab = () => {
       fetchOrders(); // Refresh list
       // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα ανάθεσης οδηγού');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα ανάθεσης οδηγού'
+      });
     } finally {
       setActionLoading(false);
     }
@@ -218,7 +236,11 @@ const OrdersTab = () => {
 
   const handleCancelOrder = async () => {
     if (!cancelReason || cancelReason.trim().length < 5) {
-      alert('Παρακαλώ εισάγετε λόγο ακύρωσης (τουλάχιστον 5 χαρακτήρες)');
+      setAlertModal({
+        show: true,
+        variant: 'warning',
+        message: 'Παρακαλώ εισάγετε λόγο ακύρωσης (τουλάχιστον 5 χαρακτήρες)'
+      });
       return;
     }
 
@@ -229,7 +251,11 @@ const OrdersTab = () => {
       fetchOrders(); // Refresh list
       // Success - real-time update will show the change
     } catch (err) {
-      alert(err.response?.data?.message || 'Σφάλμα ακύρωσης παραγγελίας');
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα ακύρωσης παραγγελίας'
+      });
     } finally {
       setActionLoading(false);
     }
@@ -600,6 +626,13 @@ const OrdersTab = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <AlertModal
+        show={alertModal.show}
+        onHide={() => setAlertModal({ ...alertModal, show: false })}
+        variant={alertModal.variant}
+        message={alertModal.message}
+      />
     </div>
   );
 };

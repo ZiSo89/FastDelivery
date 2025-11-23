@@ -1,23 +1,35 @@
 /**
  * Socket.IO Helper Functions
- * Broadcast order events to all relevant parties
+ * Broadcast order events to relevant parties only
  */
 
 /**
- * Broadcast order status change to all relevant users
+ * Broadcast order status change to relevant users only (not all users)
  * @param {Object} io - Socket.IO instance
  * @param {Object} order - Order object with storeId and driverId
  * @param {String} eventName - Event name to emit
  * @param {Object} data - Event data
  */
 const broadcastOrderEvent = (io, order, eventName, data) => {
-  // Broadcast to ALL clients (includes admins, stores, drivers, and customers)
-  // Each client will filter events based on their context:
-  // - Admins: receive all events
-  // - Stores: filter by storeId
-  // - Drivers: filter by driverId
-  // - Customers: filter by orderNumber
-  io.emit(eventName, data);
+  if (!io) return;
+
+  // Always send to admins
+  io.to('admin').emit(eventName, data);
+
+  // Send to the specific store involved
+  if (order.storeId) {
+    io.to(`store:${order.storeId}`).emit(eventName, data);
+  }
+
+  // Send to the specific driver if assigned
+  if (order.driverId) {
+    io.to(`driver:${order.driverId}`).emit(eventName, data);
+  }
+
+  // Send to customer (using phone number or order number as room)
+  if (order.customer?.phone) {
+    io.to(`customer:${order.customer.phone}`).emit(eventName, data);
+  }
 };
 
 /**
