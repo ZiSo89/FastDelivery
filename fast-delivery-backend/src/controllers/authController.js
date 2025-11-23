@@ -208,7 +208,7 @@ exports.registerDriver = async (req, res, next) => {
 // @access  Public
 exports.registerCustomer = async (req, res, next) => {
   try {
-    const { name, email, password, phone, address } = req.body;
+    const { name, email, password, phone, address, location } = req.body;
 
     // Check if customer exists
     const existingCustomer = await Customer.findOne({ email });
@@ -225,7 +225,8 @@ exports.registerCustomer = async (req, res, next) => {
       email,
       password,
       phone,
-      address
+      address,
+      location // GeoJSON Point
     });
 
     // Create token
@@ -241,6 +242,7 @@ exports.registerCustomer = async (req, res, next) => {
         email: customer.email,
         phone: customer.phone,
         address: customer.address,
+        location: customer.location,
         role: 'customer'
       }
     });

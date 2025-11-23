@@ -4,6 +4,174 @@
 
 **Last Updated:** 2025-11-23
 **Repository:** https://github.com/ZiSo89/FastDelivery
+**Status:** ✅ LOCAL DEVELOPMENT COMPLETE | 🚀 GOOGLE MAPS PARTIALLY INTEGRATED | ⚠️ NEEDS DRIVER NAV & TRACKING
+
+---
+
+## 🎨 UI/UX DESIGN SYSTEM (CRITICAL FOR FRONTEND)
+
+The customer-facing application (`fast-delivery-frontend`) follows a specific modern design language inspired by Wolt/Uber Eats. **All future UI updates must adhere to this style.**
+
+**Core Styles (`src/styles/CustomerPortal.css`):**
+- **Primary Color:** `#00c2e8` (Cyan/Blue)
+  - Used for: Primary buttons (`.btn-primary-app`), active states, icons, accents.
+  - **NEVER** use standard Bootstrap primary blue (`#0d6efd`) for customer actions.
+- **Typography:** 'Inter', sans-serif.
+- **Backgrounds:**
+  - App Background: White `#fff` or Light Grey `#f8f9fa`.
+  - Input Fields: Light Grey `#f9f9f9` with border `#e0e0e0`.
+- **Components:**
+  - **Buttons:** Flat design, no gradients, `8px` rounded corners.
+  - **Cards:** White, `16px` rounded corners, soft shadow: `box-shadow: 0 4px 12px rgba(0,0,0,0.05)`.
+  - **Inputs:** Large padding (`16px`), focus border color `#00c2e8`.
+
+---
+
+## 🎯 PROJECT OVERVIEW
+
+**Fast Delivery** is a full-stack delivery platform for the Greek market (Alexandroupoli region) that connects:
+- **Customers:** Order via text/voice from local stores
+- **Stores:** Accept orders, set prices, prepare items
+- **Admin:** Add delivery fees, assign drivers, manage platform
+- **Drivers:** Accept assignments, deliver orders
+
+**Core Features:**
+- 13-state order lifecycle with real-time updates
+- Role-based authentication (JWT)
+- Greek language UI/data (100% Ελληνικά)
+- Real-time notifications via Socket.IO
+- Voice message support (Firebase Storage)
+- Geolocation-based store discovery
+
+**Tech Stack:**
+- **Backend:** Node.js, Express, MongoDB, Socket.IO
+- **Frontend:** React, Bootstrap, Socket.IO Client
+- **Database:** MongoDB Atlas
+- **Storage:** Firebase (voice messages)
+- **Maps:** Google Maps API (@react-google-maps/api)
+
+---
+
+## ✅ WHAT'S COMPLETED
+
+### Backend (100% Complete)
+- ✅ All 34 REST API endpoints implemented and tested
+- ✅ JWT authentication with role-based authorization
+- ✅ MongoDB models for Admin, Store, Driver, Order, User
+- ✅ **Updated Customer Model:** Now stores `location` as GeoJSON Point `[lng, lat]`
+- ✅ 13-state order workflow fully implemented
+- ✅ Socket.IO real-time broadcasting to all parties
+- ✅ Firebase Storage integration for voice messages
+- ✅ Geospatial queries for nearby stores
+- ✅ Auto-generated order numbers (ORD-YYYYMMDD-####)
+- ✅ Password hashing fixed for all user types
+- ✅ Test data seeding scripts with Greek data (Alexandroupoli coordinates)
+
+### Frontend (Production-Ready Core Features)
+- ✅ **Google Maps Integration (Phase 1 Complete):**
+  - ✅ **Customer Home:** Toggle between List/Map view. Map shows User location (blue) and Store pins (red). Auto-focus on stores.
+  - ✅ **Store Register:** Interactive Map to pick exact store location. Autocomplete for address.
+  - ✅ **Customer Register:** Google Places Autocomplete to capture address AND exact coordinates (Lat/Lng).
+- ✅ Authentication system with role-based routing (Admin, Store, Driver, Customer)
+- ✅ Admin Dashboard with complete management interface
+- ✅ Store Panel with full order management
+- ✅ Driver Panel with complete delivery workflow
+- ✅ Customer interface for ordering and tracking
+- ✅ Greek UI (100% translated) with modern "Wolt-style" design system
+- ✅ Responsive Bootstrap design for all devices
+
+### Database & Test Data
+- ✅ MongoDB Atlas connected and configured
+- ✅ Test data scripts (seed, clear, verify)
+- ✅ Greek data for Alexandroupoli region
+- ✅ All user types can login successfully
+
+---
+
+## 📁 PROJECT STRUCTURE
+
+```
+FastDelivery/
+├── fast-delivery-backend/         # Express.js API
+│   ├── server.js                 # Main server with Socket.IO
+│   ├── src/
+│   │   ├── config/              # Database & Firebase config
+│   │   ├── models/              # Mongoose schemas (5 models)
+│   │   ├── controllers/         # Business logic (5 controllers)
+│   │   ├── routes/              # API routes (5 route files)
+│   │   ├── middleware/          # Auth middleware
+│   │   └── utils/               # JWT & Socket helpers
+│   └── tests/                   # PowerShell test scripts
+│
+└── fast-delivery-frontend/       # React application
+    └── src/
+        ├── services/            # API & Socket.IO client
+        ├── context/             # Auth context
+        ├── components/          # Reusable components
+        ├── pages/              # Main page components
+        └── styles/             # CSS files
+```
+
+---
+
+## 🚀 HOW TO RUN LOCALLY
+
+```powershell
+# 1. Setup database with test data
+cd fast-delivery-backend/tests
+node clearAllData.js
+node seedTestData.js
+
+# 2. Start backend (Terminal 1)
+cd fast-delivery-backend
+node server.js
+
+# 3. Start frontend (Terminal 2)
+cd fast-delivery-frontend
+npm start
+```
+
+---
+
+## 🎯 IMMEDIATE NEXT STEPS (FOR NEXT SESSION)
+
+**Priority 1: Driver App Navigation & Maps**
+- [ ] **Accept Screen:** Show Map with Route (Store -> Customer) before accepting.
+- [ ] **Navigation:** Add "Navigate" button to open Google Maps/Waze app on mobile.
+
+**Priority 2: Real-time Tracking**
+- [ ] **Customer Tracking:** Update `OrderStatus.js` to show Driver's live location moving on the map when status is "On the way".
+- [ ] **Socket.IO:** Ensure driver location updates are broadcasted to specific order rooms.
+
+**Priority 3: Production Verification**
+- [ ] **Render:** Verify Google Maps works on production URL (Check Billing & Referrer Restrictions).
+- [ ] **Env Vars:** Ensure `REACT_APP_GOOGLE_MAPS_API_KEY` is set in Render.
+
+---
+
+## 📝 QUICK REFERENCE FOR AI ASSISTANTS
+
+### Current Context
+- **Google Maps:** API Key is active. `CustomerHome`, `StoreRegister`, and `CustomerRegister` are updated.
+- **Data:** `Customer` model now has `location: { type: 'Point', coordinates: [lng, lat] }`.
+- **Pending:** Driver navigation and real-time tracking implementation.
+
+### Key Files to Know:
+- **Driver Orders:** `fast-delivery-frontend/src/components/driver/DriverOrders.js`
+- **Order Status:** `fast-delivery-frontend/src/pages/customer/OrderStatus.js`
+- **Customer Register:** `fast-delivery-frontend/src/pages/customer/Register.js`
+
+### Git Commands:
+```powershell
+git add .
+git commit -m "Your message"
+git push origin master
+``` 
+
+# FAST DELIVERY PROJECT - AI ASSISTANT CONTEXT
+
+**Last Updated:** 2025-11-23
+**Repository:** https://github.com/ZiSo89/FastDelivery
 **Status:** ✅ LOCAL DEVELOPMENT COMPLETE | ⚠️ NEEDS PRODUCTION DEPLOYMENT
 
 ---

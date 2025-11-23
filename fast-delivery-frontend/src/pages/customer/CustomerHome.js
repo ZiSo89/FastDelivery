@@ -323,7 +323,7 @@ const CustomerHome = () => {
                       position={position}
                       onClick={() => setSelectedStore(store)}
                       icon={{
-                        url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' // Can be customized based on store type
+                        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png' // Can be customized based on store type
                       }}
                     />
                   );

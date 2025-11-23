@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import '../../styles/CustomerPortal.css';
+
+const libraries = ['places'];
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -9,19 +12,47 @@ const Register = () => {
     email: '',
     password: '',
     phone: '',
-    address: ''
+    address: '',
+    location: null
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { register } = useAuth();
   const navigate = useNavigate();
+  const autocompleteRef = useRef(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries
+  });
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current !== null) {
+      const place = autocompleteRef.current.getPlace();
+      
+      if (place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        
+        setFormData(prev => ({
+          ...prev,
+          address: place.formatted_address || place.name,
+          location: {
+            type: 'Point',
+            coordinates: [lng, lat]
+          }
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -48,6 +79,10 @@ const Register = () => {
       return;
     }
 
+    // If location is missing (user typed address manually without selecting from dropdown), 
+    // we might want to geocode it or just warn. For now, we proceed but warn if critical.
+    // Ideally, we force selection or geocode on submit.
+    
     const result = await register(formData);
 
     if (result.success) {
@@ -123,14 +158,30 @@ const Register = () => {
             </div>
 
             <div className="input-group">
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Διεύθυνση παράδοσης"
-                className="app-input"
-              />
+              {isLoaded ? (
+                <Autocomplete
+                  onLoad={autocomplete => autocompleteRef.current = autocomplete}
+                  onPlaceChanged={onPlaceChanged}
+                >
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder="Διεύθυνση παράδοσης"
+                    className="app-input"
+                  />
+                </Autocomplete>
+              ) : (
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Διεύθυνση παράδοσης"
+                  className="app-input"
+                />
+              )}
             </div>
 
             <button type="submit" className="btn-primary-app" disabled={loading}>

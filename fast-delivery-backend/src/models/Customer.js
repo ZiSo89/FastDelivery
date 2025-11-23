@@ -29,6 +29,17 @@ const customerSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Η διεύθυνση είναι υποχρεωτική']
   },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0] // [lng, lat]
+    }
+  },
   role: {
     type: String,
     default: 'customer'
