@@ -33,6 +33,8 @@ class SocketService {
           roomData = { role: 'store', userId: user._id };
         } else if (user.role === 'driver') {
           roomData = { role: 'driver', userId: user._id };
+        } else if (user.role === 'customer') {
+          roomData = { role: 'customer', userId: user.phone }; // Join by phone for customers
         }
         
         if (roomData) {

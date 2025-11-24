@@ -3,8 +3,10 @@ import { Table, Badge, Spinner, Alert, Form, Button, Modal, Card, Row, Col } fro
 import { adminService } from '../../services/api';
 import socketService from '../../services/socket';
 import AlertModal from '../AlertModal';
+import { useNotification } from '../../context/NotificationContext';
 
 const OrdersTab = () => {
+  const { removeNotificationsByRelatedId } = useNotification();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -186,6 +188,7 @@ const OrdersTab = () => {
     try {
       setActionLoading(true);
       await adminService.addDeliveryFee(selectedOrder._id, parseFloat(deliveryFee));
+      removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowDeliveryFeeModal(false);
       fetchOrders(); // Refresh list
       // Success - real-time update will show the change
@@ -213,6 +216,7 @@ const OrdersTab = () => {
     try {
       setActionLoading(true);
       await adminService.assignDriver(selectedOrder._id, selectedDriver);
+      removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowAssignDriverModal(false);
       fetchOrders(); // Refresh list
       // Success - real-time update will show the change
@@ -247,6 +251,7 @@ const OrdersTab = () => {
     try {
       setActionLoading(true);
       await adminService.cancelOrder(selectedOrder._id, cancelReason.trim());
+      removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowCancelModal(false);
       fetchOrders(); // Refresh list
       // Success - real-time update will show the change
@@ -312,7 +317,9 @@ const OrdersTab = () => {
                   <div className="mb-2">
                     <small className="text-muted">Πελάτης:</small><br />
                     <strong>{order.customer?.name || 'N/A'}</strong><br />
-                    <small>📞 {order.customer?.phone || order.customerPhone}</small>
+                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small>📞 {order.customer?.phone || order.customerPhone}</small>
+                    </a>
                   </div>
                   
                   <div className="mb-2">
@@ -323,7 +330,10 @@ const OrdersTab = () => {
                   <div className="mb-2">
                     <small className="text-muted">Κατάστημα:</small><br />
                     <strong>{order.storeId?.businessName || order.storeName || 'N/A'}</strong><br />
-                    <small>📞 {order.storeId?.phone || 'N/A'}</small>
+                    <a href={`tel:${order.storeId?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small>📞 {order.storeId?.phone || 'N/A'}</small>
+                    </a><br />
+                    <small>📍 {order.storeId?.address ? order.storeId.address.split(',')[0] : 'N/A'}</small>
                   </div>
                   
                   <div className="mb-2">
@@ -343,7 +353,9 @@ const OrdersTab = () => {
                     <div className="mb-2">
                       <small className="text-muted">Οδηγός:</small><br />
                       <strong>{order.driverId?.name || order.driver?.name}</strong><br />
-                      <small>📞 {order.driverId?.phone || order.driver?.phone || 'N/A'}</small>
+                      <a href={`tel:${order.driverId?.phone || order.driver?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <small>📞 {order.driverId?.phone || order.driver?.phone || 'N/A'}</small>
+                      </a>
                     </div>
                   )}
                   
@@ -413,13 +425,10 @@ const OrdersTab = () => {
               <tr>
                 <th>Αριθμός</th>
                 <th>Πελάτης</th>
-                <th>Διεύθυνση Παράδοσης</th>
                 <th>Κατάστημα</th>
                 <th>Περιγραφή</th>
                 <th>Οδηγός</th>
-                <th>Τιμή Προϊόντος</th>
-                <th>Μεταφορικά</th>
-                <th>Σύνολο</th>
+                <th>Οικονομικά</th>
                 <th>Κατάσταση</th>
                 <th>Ημερομηνία</th>
                 <th>Ενέργειες</th>
@@ -432,15 +441,20 @@ const OrdersTab = () => {
                   <td>
                     <strong>{order.customer?.name || 'N/A'}</strong>
                     <br />
-                    <small className="text-muted">📞 {order.customer?.phone || order.customerPhone}</small>
-                  </td>
-                  <td>
-                    <small>{order.customer?.address || order.deliveryAddress || 'N/A'}</small>
+                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small className="text-muted">📞 {order.customer?.phone || order.customerPhone}</small>
+                    </a>
+                    <br />
+                    <small className="text-muted">📍 {order.customer?.address ? order.customer.address.split(',')[0] : (order.deliveryAddress ? order.deliveryAddress.split(',')[0] : 'N/A')}</small>
                   </td>
                   <td>
                     <strong>{order.storeId?.businessName || order.storeName || 'N/A'}</strong>
                     <br />
-                    <small className="text-muted">📞 {order.storeId?.phone || 'N/A'}</small>
+                    <a href={`tel:${order.storeId?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small className="text-muted">📞 {order.storeId?.phone || 'N/A'}</small>
+                    </a>
+                    <br />
+                    <small className="text-muted">📍 {order.storeId?.address ? order.storeId.address.split(',')[0] : 'N/A'}</small>
                   </td>
                   <td>
                     {order.orderType === 'voice' && (
@@ -458,14 +472,18 @@ const OrdersTab = () => {
                     {(order.driverId?.phone || order.driver?.phone) && (
                       <>
                         <br />
-                        <small className="text-muted">📞 {order.driverId?.phone || order.driver?.phone}</small>
+                        <a href={`tel:${order.driverId?.phone || order.driver?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                          <small className="text-muted">📞 {order.driverId?.phone || order.driver?.phone}</small>
+                        </a>
                       </>
                     )}
                   </td>
-                  <td>{order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}</td>
-                  <td>{order.deliveryFee ? `€${order.deliveryFee.toFixed(2)}` : '-'}</td>
-                  <td className="fw-bold">
-                    {order.totalPrice ? `€${order.totalPrice.toFixed(2)}` : '-'}
+                  <td>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      <span className="text-muted">Προϊόντα:</span> {order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}<br/>
+                      <span className="text-muted">Μεταφορικά:</span> {order.deliveryFee ? `€${order.deliveryFee.toFixed(2)}` : '-'}<br/>
+                      <strong>Σύνολο: {order.totalPrice ? `€${order.totalPrice.toFixed(2)}` : '-'}</strong>
+                    </div>
                   </td>
                   <td>{getStatusBadge(order.status)}</td>
                   <td>

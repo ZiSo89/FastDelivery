@@ -145,7 +145,9 @@ const StoresTab = () => {
                   
                   <div className="mb-2">
                     <small className="text-muted">📞 Τηλέφωνο:</small><br />
-                    <strong>{store.phone}</strong>
+                    <a href={`tel:${store.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <strong>{store.phone}</strong>
+                    </a>
                   </div>
                   
                   <div className="mb-2">
@@ -214,7 +216,11 @@ const StoresTab = () => {
                   <td className="fw-bold">{store.businessName || store.storeName}</td>
                   <td>{store.storeType}</td>
                   <td>{store.email}</td>
-                  <td>{store.phone}</td>
+                  <td>
+                    <a href={`tel:${store.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      {store.phone}
+                    </a>
+                  </td>
                   <td>{store.afm}</td>
                   <td>
                     <small>{store.address}</small>

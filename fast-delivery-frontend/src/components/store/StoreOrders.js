@@ -4,9 +4,11 @@ import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/api';
 import socketService from '../../services/socket';
 import AlertModal from '../AlertModal';
+import { useNotification } from '../../context/NotificationContext';
 
 const StoreOrders = () => {
   const { user } = useAuth();
+  const { removeNotificationsByRelatedId } = useNotification();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -150,6 +152,10 @@ const StoreOrders = () => {
     try {
       setProcessingId(orderId);
       await storeService.acceptOrder(orderId, true);
+      // Find order to get orderNumber
+      const order = orders.find(o => o._id === orderId);
+      if (order) removeNotificationsByRelatedId(order.orderNumber);
+      
       await fetchOrders();
       // Success - real-time update will show the change
     } catch (err) {
@@ -182,6 +188,11 @@ const StoreOrders = () => {
     try {
       setProcessingId(rejectOrderId);
       await storeService.acceptOrder(rejectOrderId, false, rejectReason);
+      
+      // Find order to get orderNumber
+      const order = orders.find(o => o._id === rejectOrderId);
+      if (order) removeNotificationsByRelatedId(order.orderNumber);
+
       setShowRejectModal(false);
       await fetchOrders();
       // Success - real-time update will show the change
@@ -214,6 +225,7 @@ const StoreOrders = () => {
 
     try {
       await storeService.setPrice(selectedOrder._id, parseFloat(productPrice));
+      removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowModal(false);
       await fetchOrders();
       // Success - real-time update will show the change
@@ -230,6 +242,11 @@ const StoreOrders = () => {
     try {
       setProcessingId(orderId);
       await storeService.updateStatus(orderId, 'preparing');
+      
+      // Find order to get orderNumber
+      const order = orders.find(o => o._id === orderId);
+      if (order) removeNotificationsByRelatedId(order.orderNumber);
+
       await fetchOrders();
       // Success - real-time update will show the change
     } catch (err) {
@@ -306,7 +323,9 @@ const StoreOrders = () => {
                   <div className="mb-2">
                     <small className="text-muted">Πελάτης:</small><br />
                     <strong>{order.customer?.name || 'N/A'}</strong><br />
-                    <small>📞 {order.customer?.phone || order.customerPhone || 'N/A'}</small><br />
+                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small>📞 {order.customer?.phone || order.customerPhone || 'N/A'}</small>
+                    </a><br />
                     <small>📍 {order.customer?.address || order.deliveryAddress || 'N/A'}</small>
                   </div>
                   
@@ -393,9 +412,11 @@ const StoreOrders = () => {
                   <td className="fw-bold">{order.orderNumber}</td>
                   <td>
                     <strong>{order.customer?.name || 'N/A'}</strong><br />
-                    <small className="text-muted">
-                      📞 {order.customer?.phone || order.customerPhone || 'N/A'}
-                    </small><br />
+                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small className="text-muted">
+                        📞 {order.customer?.phone || order.customerPhone || 'N/A'}
+                      </small>
+                    </a><br />
                     <small className="text-muted">
                       📍 {order.customer?.address || order.deliveryAddress || 'N/A'}
                     </small>

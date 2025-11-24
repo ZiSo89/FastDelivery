@@ -58,7 +58,9 @@ const CustomersTab = () => {
                   
                   <div className="mb-2">
                     <small className="text-muted">📞 Τηλέφωνο:</small><br />
-                    <strong>{customer.phone}</strong>
+                    <a href={`tel:${customer.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <strong>{customer.phone}</strong>
+                    </a>
                   </div>
                   
                   {customer.address && (
@@ -112,7 +114,11 @@ const CustomersTab = () => {
               {customers.map((customer) => (
                 <tr key={customer._id}>
                   <td className="fw-bold">{customer.name || 'N/A'}</td>
-                  <td>{customer.phone}</td>
+                  <td>
+                    <a href={`tel:${customer.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      {customer.phone}
+                    </a>
+                  </td>
                   <td>{customer.address || 'N/A'}</td>
                   <td className="text-center">
                     <Badge bg="primary">{customer.totalOrders || customer.orderCount || 0}</Badge>

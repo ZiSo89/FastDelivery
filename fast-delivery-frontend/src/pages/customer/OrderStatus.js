@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Alert, ListGroup, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Alert, ListGroup, Button, Toast, ToastContainer } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/api';
 import socketService from '../../services/socket';
@@ -22,6 +22,7 @@ const OrderStatus = () => {
       // Backend επιστρέφει { success: true, order: {...} }
       const orderData = response.order || response.data || response;
       setOrder(orderData);
+      
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Δεν βρέθηκε η παραγγελία');
@@ -58,6 +59,14 @@ const OrderStatus = () => {
       }
     };
 
+    // Log order data for debugging
+    console.log('🔍 Order Data:', order);
+    if (order.storeId) {
+      console.log('🏪 Store Data:', order.storeId);
+    } else {
+      console.warn('⚠️ Store ID is missing or not populated');
+    }
+
     // Subscribe to all relevant events
     socketService.on('order:status_changed', handleOrderUpdate);
     socketService.on('order:pending_admin', handleOrderUpdate);
@@ -92,7 +101,14 @@ const OrderStatus = () => {
       // Χρησιμοποιούμε το τηλέφωνο που υπάρχει ήδη στην παραγγελία
       const phone = order.customer?.phone || order.customerPhone;
       await customerService.confirmPrice(order._id, phone);
-      // No alert needed, UI will update via socket or re-fetch
+      
+      // Remove notification manually since we are performing the action
+      // We need to import useNotification hook or dispatch event, but since we are outside context here
+      // we rely on socket update. However, user said it didn't dismiss.
+      // Let's try to force a refresh which might help, but the notification is global.
+      // The best way is to listen to the socket event 'order:confirmed' which we already do in NotificationContext
+      // Wait... NotificationContext listens to 'order:confirmed' for ADMIN and STORE, but not for CUSTOMER to remove the alert!
+      
       fetchOrderStatus();
     } catch (err) {
       // Keep error alert if something goes wrong
@@ -209,7 +225,7 @@ const OrderStatus = () => {
                 <button className="btn-icon" onClick={() => navigate('/order')}>
                   <i className="fas fa-arrow-left"></i>
                 </button>
-                <h3 className="fw-bold">Παραγγελία {order.orderNumber.split('-').pop()}</h3>
+                <h3 className="fw-bold">Fast Delivery</h3>
                 <div style={{ width: 32 }}></div>
               </div>
             </header>
@@ -300,6 +316,20 @@ const OrderStatus = () => {
                       <ListGroup.Item className="p-3 border-bottom-0">
                         <small className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>ΚΑΤΑΣΤΗΜΑ</small>
                         <div className="fw-bold mt-1">{order.storeName || order.store?.businessName || 'Μη διαθέσιμο'}</div>
+                        {(order.storeId?.address || order.store?.address) && (
+                          <div className="text-muted small mt-1">
+                            <i className="fas fa-map-marker-alt me-1" style={{ fontSize: '0.8rem' }}></i> 
+                            {order.storeId?.address || order.store?.address}
+                          </div>
+                        )}
+                        {(order.storeId?.phone || order.store?.phone) && (
+                          <div className="mt-1">
+                            <a href={`tel:${order.storeId?.phone || order.store?.phone}`} className="text-decoration-none text-muted small" style={{ textDecoration: 'none', color: 'inherit' }}>
+                              <i className="fas fa-phone-alt me-1" style={{ fontSize: '0.8rem' }}></i> 
+                              {order.storeId?.phone || order.store?.phone}
+                            </a>
+                          </div>
+                        )}
                       </ListGroup.Item>
                       
                       <ListGroup.Item className="p-3 border-bottom-0 border-top">
@@ -312,7 +342,11 @@ const OrderStatus = () => {
                       <ListGroup.Item className="p-3 border-bottom-0 border-top">
                         <small className="text-uppercase text-muted fw-bold" style={{ fontSize: '0.7rem', letterSpacing: '1px' }}>ΠΑΡΑΔΟΣΗ ΣΕ</small>
                         <div className="fw-bold mt-1">{order.customer?.address || order.deliveryAddress}</div>
-                        <div className="text-muted small">{order.customer?.phone || order.customerPhone}</div>
+                        <div className="text-muted small">
+                          <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                            {order.customer?.phone || order.customerPhone}
+                          </a>
+                        </div>
                       </ListGroup.Item>
 
                       {(order.driverName || order.driver) && (

@@ -206,7 +206,7 @@ exports.getOrderStatus = async (req, res) => {
     const { orderNumber } = req.params;
 
     const order = await Order.findOne({ orderNumber })
-      .populate('storeId', 'businessName phone')
+      .populate('storeId', 'businessName phone address')
       .populate('driverId', 'name phone');
 
     if (!order) {
@@ -223,6 +223,7 @@ exports.getOrderStatus = async (req, res) => {
         orderNumber: order.orderNumber,
         status: order.status,
         customer: order.customer,
+        storeId: order.storeId, // Include populated store data
         storeName: order.storeName,
         orderType: order.orderType,
         orderContent: order.orderContent,
@@ -293,6 +294,12 @@ exports.confirmOrderPrice = async (req, res) => {
       });
       
       io.to(`store:${order.storeId}`).emit('order:confirmed', {
+        orderId: order._id,
+        orderNumber: order.orderNumber
+      });
+
+      // Notify customer (to remove sticky notification)
+      io.to(`customer:${order.customer.phone}`).emit('order:confirmed', {
         orderId: order._id,
         orderNumber: order.orderNumber
       });

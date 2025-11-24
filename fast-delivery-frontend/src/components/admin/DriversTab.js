@@ -160,7 +160,9 @@ const DriversTab = () => {
                   
                   <div className="mb-2">
                     <small className="text-muted">📞 Τηλέφωνο:</small><br />
-                    <strong>{driver.phone}</strong>
+                    <a href={`tel:${driver.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <strong>{driver.phone}</strong>
+                    </a>
                   </div>
                   
                   <div className="mb-2">
@@ -226,7 +228,11 @@ const DriversTab = () => {
                 <tr key={driver._id}>
                   <td className="fw-bold">{driver.name}</td>
                   <td>{driver.email}</td>
-                  <td>{driver.phone}</td>
+                  <td>
+                    <a href={`tel:${driver.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      {driver.phone}
+                    </a>
+                  </td>
                   <td>{driver.vehicle || driver.vehicleType || '-'}</td>
                   <td>{driver.licensePlate || driver.vehiclePlate || '-'}</td>
                   <td>

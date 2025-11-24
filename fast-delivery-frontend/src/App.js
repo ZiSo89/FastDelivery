@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import RegisterSelection from './pages/RegisterSelection';
@@ -20,12 +21,15 @@ import CustomerProfile from './pages/customer/CustomerProfile';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import './styles/CustomerPortal.css';
+import NotificationToast from './components/NotificationToast';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
+      <NotificationProvider>
+        <NotificationToast />
+        <Router>
+          <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<CustomerPortal />} />
@@ -74,6 +78,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

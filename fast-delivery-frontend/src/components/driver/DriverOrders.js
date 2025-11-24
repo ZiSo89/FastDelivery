@@ -3,9 +3,11 @@ import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col, Moda
 import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../services/api';
 import socketService from '../../services/socket';
+import { useNotification } from '../../context/NotificationContext';
 
 const DriverOrders = () => {
   const { user } = useAuth();
+  const { removeNotificationsByRelatedId } = useNotification();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,6 +70,11 @@ const DriverOrders = () => {
     try {
       setProcessingId(orderId);
       await driverService.acceptOrder(orderId, true);
+      
+      // Find order to get orderNumber
+      const order = orders.find(o => o._id === orderId);
+      if (order) removeNotificationsByRelatedId(order.orderNumber);
+
       await fetchOrders();
     } catch (err) {
       setErrorMessage(err.response?.data?.message || 'Σφάλμα αποδοχής παραγγελίας');
@@ -93,6 +100,11 @@ const DriverOrders = () => {
     try {
       setProcessingId(selectedOrderId);
       await driverService.acceptOrder(selectedOrderId, false, rejectReason);
+      
+      // Find order to get orderNumber
+      const order = orders.find(o => o._id === selectedOrderId);
+      if (order) removeNotificationsByRelatedId(order.orderNumber);
+
       await fetchOrders();
       setShowRejectModal(false);
       setRejectReason('');
@@ -110,6 +122,11 @@ const DriverOrders = () => {
     try {
       setProcessingId(orderId);
       await driverService.updateStatus(orderId, 'in_delivery');
+      
+      // Find order to get orderNumber
+      const order = orders.find(o => o._id === orderId);
+      if (order) removeNotificationsByRelatedId(order.orderNumber);
+
       await fetchOrders();
     } catch (err) {
       setErrorMessage(err.response?.data?.message || 'Σφάλμα παραλαβής παραγγελίας');
@@ -128,6 +145,11 @@ const DriverOrders = () => {
     try {
       setProcessingId(selectedOrderId);
       await driverService.updateStatus(selectedOrderId, 'completed');
+      
+      // Find order to get orderNumber
+      const order = orders.find(o => o._id === selectedOrderId);
+      if (order) removeNotificationsByRelatedId(order.orderNumber);
+
       await fetchOrders();
       setShowCompleteModal(false);
     } catch (err) {
@@ -177,7 +199,18 @@ const DriverOrders = () => {
                   <div className="mb-2">
                     <small className="text-muted">🏪 Κατάστημα:</small><br />
                     <strong>{order.storeId?.businessName || order.storeName}</strong><br />
-                    <small>{order.storeId?.address}</small>
+                    <small>{order.storeId?.address}</small><br />
+                    <a href={`tel:${order.storeId?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small>📞 {order.storeId?.phone}</small>
+                    </a>
+                    {order.storeId?.managerPhone && (
+                      <>
+                        <br />
+                        <a href={`tel:${order.storeId?.managerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }} className="text-muted">
+                          <small>👤 Υπεύθυνος: {order.storeId?.managerPhone}</small>
+                        </a>
+                      </>
+                    )}
                   </div>
                   
                   <div className="mb-2">
@@ -187,7 +220,9 @@ const DriverOrders = () => {
                   
                   <div className="mb-2">
                     <small className="text-muted">📞 Τηλέφωνο:</small><br />
-                    <strong>{order.customer?.phone || order.customerPhone}</strong>
+                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <strong>{order.customer?.phone || order.customerPhone}</strong>
+                    </a>
                   </div>
                   
                   <div className="mb-3">
@@ -271,10 +306,25 @@ const DriverOrders = () => {
                   <td className="fw-bold">{order.orderNumber}</td>
                   <td>
                     {order.storeId?.businessName || order.storeName}<br />
-                    <small className="text-muted">{order.storeId?.address}</small>
+                    <small className="text-muted">{order.storeId?.address}</small><br />
+                    <a href={`tel:${order.storeId?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <small className="text-muted">📞 {order.storeId?.phone}</small>
+                    </a>
+                    {order.storeId?.managerPhone && (
+                      <>
+                        <br />
+                        <a href={`tel:${order.storeId?.managerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                          <small className="text-muted">👤 {order.storeId?.managerPhone}</small>
+                        </a>
+                      </>
+                    )}
                   </td>
                   <td>{order.customer?.address || order.deliveryAddress}</td>
-                  <td>{order.customer?.phone || order.customerPhone}</td>
+                  <td>
+                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      {order.customer?.phone || order.customerPhone}
+                    </a>
+                  </td>
                   <td className="fw-bold">€{order.totalPrice?.toFixed(2)}</td>
                   <td>{getStatusBadge(order.status)}</td>
                   <td>
