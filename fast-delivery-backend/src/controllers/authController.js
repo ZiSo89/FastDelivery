@@ -99,6 +99,7 @@ exports.registerStore = async (req, res) => {
       address,
       storeType,
       workingHours,
+      description,
       serviceAreas,
       location
     } = req.body;
@@ -124,6 +125,7 @@ exports.registerStore = async (req, res) => {
       location,
       storeType,
       workingHours,
+      description,
       serviceAreas,
       status: 'pending',
       isApproved: false

@@ -248,7 +248,13 @@
 
 @media (max-width: 576px) {
   .login-page {
-    padding: 16px;
+    padding: 0;
+  }
+
+  .login-card,
+  .register-option-card {
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .logo-emoji {

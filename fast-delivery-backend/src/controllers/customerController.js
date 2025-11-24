@@ -66,6 +66,8 @@ exports.getStores = async (req, res) => {
         businessName: store.businessName,
         storeType: store.storeType,
         address: store.address,
+        phone: store.phone,
+        description: store.description,
         workingHours: store.workingHours,
         serviceAreas: store.serviceAreas,
         location: store.location,
@@ -419,11 +421,13 @@ exports.getActiveOrderByPhone = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name, phone, address } = req.body;
+    console.log('📥 Update Profile Request:', { userId: req.user._id, body: req.body });
     
     // Find customer by ID (from auth middleware)
     const customer = await Customer.findById(req.user._id);
 
     if (!customer) {
+      console.log('❌ Customer not found');
       return res.status(404).json({
         success: false,
         message: 'Ο χρήστης δεν βρέθηκε'
@@ -436,6 +440,7 @@ exports.updateProfile = async (req, res) => {
     if (address) customer.address = address;
 
     await customer.save();
+    console.log('✅ Customer updated:', customer);
 
     res.json({
       success: true,

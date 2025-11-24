@@ -1,22 +1,63 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Form, Button, Row, Col, Alert } from 'react-bootstrap';
 import { storeService } from '../../services/api';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+
+const libraries = ['places'];
 
 const StoreProfile = ({ profile, onUpdate }) => {
   const [formData, setFormData] = useState({
     phone: profile?.phone || '',
     address: profile?.address || '',
     workingHours: profile?.workingHours || '',
-    serviceAreas: profile?.serviceAreas || ''
+    description: profile?.description || '',
+    serviceAreas: profile?.serviceAreas || '',
+    location: profile?.location || null
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const autocompleteRef = useRef(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script-store',
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries,
+    language: 'el',
+    region: 'GR'
+  });
+
+  // Alexandroupoli bounds
+  const alexandroupoliBounds = {
+    north: 40.88,
+    south: 40.81,
+    east: 25.92,
+    west: 25.82
+  };
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current !== null) {
+      const place = autocompleteRef.current.getPlace();
+      if (place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        
+        setFormData(prev => ({
+          ...prev,
+          address: place.formatted_address || place.name,
+          location: {
+            type: 'Point',
+            coordinates: [lng, lat]
+          }
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -118,12 +159,31 @@ const StoreProfile = ({ profile, onUpdate }) => {
 
         <Form.Group className="mb-3">
           <Form.Label>Διεύθυνση</Form.Label>
-          <Form.Control
-            type="text"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-          />
+          {isLoaded ? (
+            <Autocomplete
+              onLoad={autocomplete => autocompleteRef.current = autocomplete}
+              onPlaceChanged={onPlaceChanged}
+              options={{
+                bounds: alexandroupoliBounds,
+                componentRestrictions: { country: "gr" },
+                strictBounds: true
+              }}
+            >
+              <Form.Control
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+              />
+            </Autocomplete>
+          ) : (
+            <Form.Control
+              type="text"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+            />
+          )}
         </Form.Group>
 
         <Row>
@@ -141,12 +201,13 @@ const StoreProfile = ({ profile, onUpdate }) => {
           </Col>
           <Col md={6}>
             <Form.Group className="mb-3">
-              <Form.Label>Περιοχές Εξυπηρέτησης</Form.Label>
+              <Form.Label>Περιγραφή</Form.Label>
               <Form.Control
-                type="text"
-                name="serviceAreas"
-                placeholder="π.χ. Αλεξανδρούπολη"
-                value={formData.serviceAreas}
+                as="textarea"
+                rows={1}
+                name="description"
+                placeholder="Λίγα λόγια για το κατάστημα..."
+                value={formData.description}
                 onChange={handleChange}
               />
             </Form.Group>

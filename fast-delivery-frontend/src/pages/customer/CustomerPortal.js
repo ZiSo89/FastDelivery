@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Container, Row, Col } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/CustomerPortal.css';
 
@@ -31,48 +32,54 @@ const CustomerPortal = () => {
   };
 
   return (
-    <div className="app-container">
-      <div className="login-screen">
-        <div className="brand-header">
-          <h1>FastDelivery</h1>
-          <p>Εσύ ζητάς, εμείς τρέχουμε</p>
-        </div>
+    <div className="app-container" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      <Container className="p-0" fluid>
+        <Row className="justify-content-center m-0">
+          <Col xs={12} sm={12} md={8} lg={6} xl={5} className="p-0 bg-white min-vh-100 shadow-sm position-relative">
+            <div className="login-screen">
+              <div className="brand-header">
+                <h1>FastDelivery</h1>
+                <p>Εσύ ζητάς, εμείς τρέχουμε</p>
+              </div>
 
-        <div className="login-form-container">
-          <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <input 
-                type="email" 
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required 
-              />
+              <div className="login-form-container">
+                <form onSubmit={handleSubmit}>
+                  <div className="input-group">
+                    <input 
+                      type="email" 
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required 
+                    />
+                  </div>
+                  <div className="input-group">
+                    <input 
+                      type="password" 
+                      placeholder="Κωδικός πρόσβασης"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required 
+                    />
+                  </div>
+
+                  {error && <div className="error-msg">{error}</div>}
+
+                  <button type="submit" className="btn-primary-app" disabled={loading}>
+                    {loading ? 'Σύνδεση...' : 'Σύνδεση'}
+                  </button>
+                </form>
+
+                <div className="secondary-actions">
+                  <p>Δεν έχεις λογαριασμό; <Link to="/register" onClick={() => console.log('🖱️ Clicked Register Link')}>Εγγραφή</Link></p>
+                  <div className="divider">ή</div>
+                  <Link to="/order" className="guest-link" onClick={() => console.log('🖱️ Clicked Guest Link')}>Συνέχεια ως Επισκέπτης</Link>
+                </div>
+              </div>
             </div>
-            <div className="input-group">
-              <input 
-                type="password" 
-                placeholder="Κωδικός πρόσβασης"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required 
-              />
-            </div>
-
-            {error && <div className="error-msg">{error}</div>}
-
-            <button type="submit" className="btn-primary-app" disabled={loading}>
-              {loading ? 'Σύνδεση...' : 'Σύνδεση'}
-            </button>
-          </form>
-
-          <div className="secondary-actions">
-            <p>Δεν έχεις λογαριασμό; <Link to="/register" onClick={() => console.log('🖱️ Clicked Register Link')}>Εγγραφή</Link></p>
-            <div className="divider">ή</div>
-            <Link to="/order" className="guest-link" onClick={() => console.log('🖱️ Clicked Guest Link')}>Συνέχεια ως Επισκέπτης</Link>
-          </div>
-        </div>
-      </div>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 };

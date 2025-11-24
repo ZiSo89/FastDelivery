@@ -66,10 +66,10 @@ const Login = () => {
 
   return (
     <div className="login-page">
-      <Container className="py-4">
-        <Row className="justify-content-center align-items-center min-vh-100">
-          <Col xs={12} sm={10} md={8} lg={6} xl={5}>
-            <Card className="login-card">
+      <Container className="py-0 py-md-4" fluid="sm">
+        <Row className="justify-content-center align-items-center min-vh-100 m-0">
+          <Col xs={12} sm={10} md={8} lg={6} xl={5} className="p-0 p-sm-3">
+            <Card className="login-card h-100 h-sm-auto">
               <Card.Body className="p-4 p-md-5">
                 <div className="text-center mb-4">
                   <div className="logo-emoji">🚚</div>

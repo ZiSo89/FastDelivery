@@ -46,10 +46,15 @@ const DriverNavbar = ({ user, profile }) => {
   };
 
   return (
-    <Navbar bg="white" variant="light" expand="lg" className="shadow-sm border-bottom" style={{ borderBottom: '2px solid #f0f0f0' }}>
+    <Navbar bg="white" variant="light" expand="lg" className="shadow-sm" style={{ 
+      borderBottom: '1px solid #f0f0f0',
+      zIndex: 100
+    }}>
       <Container fluid>
         <Navbar.Brand onClick={() => navigate('/driver')} style={{ cursor: 'pointer' }}>
-          <span className="fw-bold" style={{ color: '#00c2e8', fontSize: '20px' }}>🚗 Fast Delivery</span>
+          <span className="fw-bold" style={{ color: '#00c2e8', fontSize: '18px', letterSpacing: '-0.5px' }}>
+            🚗 FastDelivery
+          </span>
         </Navbar.Brand>
         
         <div className="d-flex align-items-center gap-3">
@@ -58,8 +63,8 @@ const DriverNavbar = ({ user, profile }) => {
             <div
               onClick={() => setShowDropdown(!showDropdown)}
               style={{
-                width: '40px',
-                height: '40px',
+                width: '38px',
+                height: '38px',
                 backgroundColor: '#e0f7fa',
                 color: '#00c2e8',
                 borderRadius: '50%',
@@ -67,7 +72,7 @@ const DriverNavbar = ({ user, profile }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '700',
-                fontSize: '18px',
+                fontSize: '16px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 boxShadow: showDropdown ? '0 0 0 3px rgba(0, 194, 232, 0.2)' : 'none'
@@ -84,7 +89,7 @@ const DriverNavbar = ({ user, profile }) => {
                   top: '100%',
                   right: 0,
                   backgroundColor: 'white',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                   borderRadius: '12px',
                   padding: '8px 0',
                   marginTop: '8px',

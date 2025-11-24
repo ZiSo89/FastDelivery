@@ -52,6 +52,10 @@ const storeSchema = new mongoose.Schema({
     type: String,
     default: 'Δευ-Παρ: 08:00-22:00'
   },
+  description: {
+    type: String,
+    default: ''
+  },
   serviceAreas: {
     type: String,
     default: 'Αλεξανδρούπολη'

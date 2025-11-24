@@ -92,36 +92,14 @@ const NewOrder = () => {
 
     // Check if either text or voice is provided
     if (!formData.orderContent && !audioBlob) {
-      setError('Παρακαλώ γράψτε μια περιγραφή ή ηχογραφήστε μήνυμα');
+      setError('Παρακαλώ συμπληρώστε την περιγραφή ή ηχογραφήστε μήνυμα');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     setLoading(true);
 
     try {
-      // Check if user info has changed and update profile if logged in
-      if (user) {
-        const hasChanges = 
-          formData.customerName !== (user.name || '') ||
-          formData.customerPhone !== (user.phone || '') ||
-          formData.deliveryAddress !== (user.address || '');
-
-        if (hasChanges) {
-          console.log('🔄 User details changed, updating profile...');
-          try {
-            await customerService.updateProfile({
-              name: formData.customerName,
-              phone: formData.customerPhone,
-              address: formData.deliveryAddress
-            });
-            console.log('✅ Profile updated successfully');
-          } catch (updateErr) {
-            console.error('⚠️ Failed to update profile:', updateErr);
-            // We continue with order creation even if profile update fails
-          }
-        }
-      }
-
       let orderData;
       
       if (audioBlob) {
@@ -237,185 +215,208 @@ const NewOrder = () => {
   };
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <div className="header-content">
-          <button className="btn-icon" onClick={() => navigate('/order')}>
-            <i className="fas fa-arrow-left"></i>
-          </button>
-          <h3>Νέα Παραγγελία</h3>
-          <div style={{ width: 32 }}></div>
-        </div>
-      </header>
-
-      <div className="main-content" style={{ padding: '20px' }}>
-        {error && <div className="alert alert-danger">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <h5 className="mb-3">1. Επιλογή Καταστήματος</h5>
-          {selectedStore ? (
-            <div className="selected-store-card mb-4 p-3 border rounded bg-light">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="mb-1">{selectedStore.businessName || selectedStore.storeName}</h6>
-                  <small>{selectedStore.storeType} · {selectedStore.address}</small>
-                </div>
+    <div className="app-container" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      <Container className="p-0" fluid>
+        <Row className="justify-content-center m-0">
+          <Col xs={12} sm={12} md={8} lg={6} xl={5} className="p-0 bg-white min-vh-100 shadow-sm position-relative">
+            <header className="app-header">
+              <div className="header-content">
+                <button className="btn-icon" onClick={() => navigate('/order')}>
+                  <i className="fas fa-arrow-left"></i>
+                </button>
+                <h3>Νέα Παραγγελία</h3>
+                <div style={{ width: 32 }}></div>
               </div>
-            </div>
-          ) : (
-            <ListGroup className="mb-4">
-              {stores.length === 0 ? (
-                <Alert variant="info">Δεν βρέθηκαν διαθέσιμα καταστήματα</Alert>
-              ) : (
-                stores.map((store) => (
-                  <ListGroup.Item
-                    key={store._id}
-                    action
-                    active={selectedStore?._id === store._id}
-                    onClick={() => setSelectedStore(store)}
-                    className="cursor-pointer"
-                  >
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h6 className="mb-1">{store.businessName || store.storeName}</h6>
-                        <small>{store.storeType} · {store.address}</small>
+            </header>
+
+            <div className="main-content" style={{ padding: '20px' }}>
+              {error && <div className="alert alert-danger">{error}</div>}
+              {success && <div className="alert alert-success">{success}</div>}
+
+              <form onSubmit={handleSubmit}>
+                <h5 className="mb-3">Στοιχεία Καταστήματος</h5>
+                {selectedStore ? (
+                  <div className="selected-store-card mb-4 p-3 bg-light rounded" style={{ borderLeft: '4px solid #00c2e8' }}>
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="w-100">
+                        <div className="d-flex align-items-center mb-2">
+                          <i className="fas fa-store me-3 text-secondary" style={{ width: '20px' }}></i>
+                          <h6 className="mb-0 fw-bold text-dark">{selectedStore.businessName || selectedStore.storeName}</h6>
+                        </div>
+                        
+                        <div className="d-flex align-items-center mb-2">
+                          <i className="fas fa-info-circle me-3 text-secondary" style={{ width: '20px' }}></i>
+                          <span className="text-dark">{selectedStore.storeType}</span>
+                        </div>
+
+                        <div className="d-flex align-items-center mb-2">
+                          <i className="fas fa-map-marker-alt me-3 text-secondary" style={{ width: '20px' }}></i>
+                          <span className="text-dark">{selectedStore.address}</span>
+                        </div>
+
+                        {selectedStore.phone && (
+                          <div className="d-flex align-items-center mb-2">
+                            <i className="fas fa-phone me-3 text-secondary" style={{ width: '20px' }}></i>
+                            <a href={`tel:${selectedStore.phone}`} className="text-decoration-none text-dark fw-bold">
+                              {selectedStore.phone}
+                            </a>
+                          </div>
+                        )}
+                        
+                        {selectedStore.description && (
+                          <div className="mt-3 p-2 bg-white rounded border-start border-2 border-info">
+                            <small className="text-secondary fst-italic">"{selectedStore.description}"</small>
+                          </div>
+                        )}
                       </div>
-                      {selectedStore?._id === store._id && (
-                        <span className="badge bg-success">✓</span>
-                      )}
                     </div>
-                  </ListGroup.Item>
-                ))
-              )}
-            </ListGroup>
-          )}
+                  </div>
+                ) : (
+                  <ListGroup className="mb-4">
+                    {stores.length === 0 ? (
+                      <Alert variant="info">Δεν βρέθηκαν διαθέσιμα καταστήματα</Alert>
+                    ) : (
+                      stores.map((store) => (
+                        <ListGroup.Item
+                          key={store._id}
+                          action
+                          active={selectedStore?._id === store._id}
+                          onClick={() => setSelectedStore(store)}
+                          className="cursor-pointer"
+                        >
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 className="mb-1">{store.businessName || store.storeName}</h6>
+                              <small>{store.storeType} · {store.address}</small>
+                            </div>
+                            {selectedStore?._id === store._id && (
+                              <span className="badge bg-success">✓</span>
+                            )}
+                          </div>
+                        </ListGroup.Item>
+                      ))
+                    )}
+                  </ListGroup>
+                )}
 
-          <h5 className="mb-3">2. Στοιχεία Παραγγελίας</h5>
-          
-          <div className="mb-3">
-            <label className="form-label">Όνομα *</label>
-            <input
-              type="text"
-              name="customerName"
-              className="form-control app-input"
-              placeholder="Γιάννης Παπαδόπουλος"
-              value={formData.customerName}
-              onChange={handleChange}
-              required
-            />
-          </div>
+                <h5 className="mb-3">Στοιχεία Πελάτη</h5>
+                
+                <div className="customer-details-card mb-4 p-3 bg-light rounded" style={{ borderLeft: '4px solid #00c2e8' }}>
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div className="w-100">
+                      <div className="d-flex align-items-center mb-2">
+                        <i className="fas fa-user me-3 text-secondary" style={{ width: '20px' }}></i>
+                        <h6 className="mb-0 fw-bold text-dark">{formData.customerName || 'Όνομα Πελάτη'}</h6>
+                      </div>
+                      
+                      <div className="d-flex align-items-center mb-2">
+                        <i className="fas fa-phone me-3 text-secondary" style={{ width: '20px' }}></i>
+                        <span className="text-dark fw-bold">{formData.customerPhone || 'Τηλέφωνο'}</span>
+                      </div>
 
-          <div className="mb-3">
-            <label className="form-label">Τηλέφωνο *</label>
-            <input
-              type="tel"
-              name="customerPhone"
-              className="form-control app-input"
-              placeholder="6912345678"
-              value={formData.customerPhone}
-              onChange={handleChange}
-              required
-            />
-          </div>
+                      <div className="d-flex align-items-center mb-2">
+                        <i className="fas fa-map-marker-alt me-3 text-secondary" style={{ width: '20px' }}></i>
+                        <span className="text-dark">{formData.deliveryAddress || 'Διεύθυνση'}</span>
+                      </div>
+                      
+                      <div className="mt-3 text-end">
+                        <small>
+                          <a href="/profile" className="text-decoration-none" style={{ color: '#00c2e8' }}>
+                            <i className="fas fa-edit me-1"></i>
+                            Αλλαγή στοιχείων
+                          </a>
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          <div className="mb-3">
-            <label className="form-label">Διεύθυνση *</label>
-            <input
-              type="text"
-              name="deliveryAddress"
-              className="form-control app-input"
-              placeholder="Λεωφόρος Δημοκρατίας 25"
-              value={formData.deliveryAddress}
-              onChange={handleChange}
-              required
-            />
-          </div>
+                <div className="mb-4">
+                  <label className="form-label">Φωνητική Παραγγελία</label>
+                  <div className="voice-recorder-container p-3 border rounded bg-light mb-3">
+                    {!isRecording && !audioBlob ? (
+                      <div className="d-flex align-items-center justify-content-between">
+                        <span className="text-muted">Πατήστε για ηχογράφηση (max 50s)</span>
+                        <button 
+                          type="button" 
+                          className="btn btn-danger rounded-circle d-flex align-items-center justify-content-center"
+                          style={{ width: '50px', height: '50px' }}
+                          onClick={startRecording}
+                        >
+                          <i className="fas fa-microphone fa-lg"></i>
+                        </button>
+                      </div>
+                    ) : isRecording ? (
+                      <div className="recording-active">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <span className="text-danger fw-bold animate-pulse">● Recording...</span>
+                          <span className="font-monospace">{formatTime(recordingTime)} / 0:50</span>
+                        </div>
+                        <div className="progress mb-3" style={{ height: '10px' }}>
+                          <div 
+                            className="progress-bar bg-danger progress-bar-striped progress-bar-animated" 
+                            role="progressbar" 
+                            style={{ width: `${(recordingTime / MAX_RECORDING_TIME) * 100}%` }}
+                          ></div>
+                        </div>
+                        <div className="d-flex justify-content-center">
+                          <button 
+                            type="button" 
+                            className="btn btn-outline-danger rounded-circle"
+                            style={{ width: '50px', height: '50px' }}
+                            onClick={stopRecording}
+                          >
+                            <i className="fas fa-stop"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="recording-complete">
+                        <div className="d-flex align-items-center justify-content-between">
+                          <audio src={audioUrl} controls className="flex-grow-1 me-3" style={{ height: '40px' }} />
+                          <button 
+                            type="button" 
+                            className="btn btn-outline-secondary rounded-circle"
+                            onClick={deleteRecording}
+                            title="Διαγραφή"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-          <div className="mb-4">
-            <label className="form-label">Φωνητική Παραγγελία (Προαιρετικό)</label>
-            <div className="voice-recorder-container p-3 border rounded bg-light mb-3">
-              {!isRecording && !audioBlob ? (
-                <div className="d-flex align-items-center justify-content-between">
-                  <span className="text-muted">Πατήστε για ηχογράφηση (max 50s)</span>
-                  <button 
-                    type="button" 
-                    className="btn btn-danger rounded-circle d-flex align-items-center justify-content-center"
-                    style={{ width: '50px', height: '50px' }}
-                    onClick={startRecording}
+                  <label className="form-label">Περιγραφή Παραγγελίας</label>
+                  <textarea
+                    rows={4}
+                    name="orderContent"
+                    className="form-control app-input"
+                    placeholder="Περιγράψτε τι θέλετε να παραγγείλετε..."
+                    value={formData.orderContent}
+                    onChange={handleChange}
+                  />
+                  <div className="form-text">
+                    Αναφέρετε με λεπτομέρεια τα προϊόντα που θέλετε ή χρησιμοποιήστε φωνητικό μήνυμα.
+                  </div>
+                </div>
+
+
+
+                <div className="d-grid">
+                  <button
+                    type="submit"
+                    className="btn-primary-app"
+                    disabled={loading || !selectedStore}
                   >
-                    <i className="fas fa-microphone fa-lg"></i>
+                    {loading ? 'Αποστολή...' : 'Υποβολή Παραγγελίας'}
                   </button>
                 </div>
-              ) : isRecording ? (
-                <div className="recording-active">
-                  <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="text-danger fw-bold animate-pulse">● Recording...</span>
-                    <span className="font-monospace">{formatTime(recordingTime)} / 0:50</span>
-                  </div>
-                  <div className="progress mb-3" style={{ height: '10px' }}>
-                    <div 
-                      className="progress-bar bg-danger progress-bar-striped progress-bar-animated" 
-                      role="progressbar" 
-                      style={{ width: `${(recordingTime / MAX_RECORDING_TIME) * 100}%` }}
-                    ></div>
-                  </div>
-                  <div className="d-flex justify-content-center">
-                    <button 
-                      type="button" 
-                      className="btn btn-outline-danger rounded-circle"
-                      style={{ width: '50px', height: '50px' }}
-                      onClick={stopRecording}
-                    >
-                      <i className="fas fa-stop"></i>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="recording-complete">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <audio src={audioUrl} controls className="flex-grow-1 me-3" style={{ height: '40px' }} />
-                    <button 
-                      type="button" 
-                      className="btn btn-outline-secondary rounded-circle"
-                      onClick={deleteRecording}
-                      title="Διαγραφή"
-                    >
-                      <i className="fas fa-trash"></i>
-                    </button>
-                  </div>
-                </div>
-              )}
+              </form>
             </div>
-
-            <label className="form-label">Περιγραφή Παραγγελίας *</label>
-            <textarea
-              rows={4}
-              name="orderContent"
-              className="form-control app-input"
-              placeholder="Περιγράψτε τι θέλετε να παραγγείλετε..."
-              value={formData.orderContent}
-              onChange={handleChange}
-              required={!audioBlob} // Not required if voice exists
-            />
-            <div className="form-text">
-              Αναφέρετε με λεπτομέρεια τα προϊόντα που θέλετε ή χρησιμοποιήστε φωνητικό μήνυμα.
-            </div>
-          </div>
-
-
-
-          <div className="d-grid">
-            <button
-              type="submit"
-              className="btn-primary-app"
-              disabled={loading || !selectedStore}
-            >
-              {loading ? 'Αποστολή...' : 'Υποβολή Παραγγελίας'}
-            </button>
-          </div>
-        </form>
-      </div>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 };

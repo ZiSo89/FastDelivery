@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Container, Row, Col } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
 import '../../styles/CustomerPortal.css';
@@ -50,42 +51,48 @@ const TrackOrder = () => {
   };
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <div className="header-content">
-          <button className="btn-icon" onClick={() => navigate('/order')}>
-            <i className="fas fa-arrow-left"></i>
-          </button>
-          <h3>Εντοπισμός</h3>
-          <div style={{width: 32}}></div>
-        </div>
-      </header>
+    <div className="app-container" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      <Container className="p-0" fluid>
+        <Row className="justify-content-center m-0">
+          <Col xs={12} sm={12} md={8} lg={6} xl={5} className="p-0 bg-white min-vh-100 shadow-sm position-relative">
+            <header className="app-header">
+              <div className="header-content">
+                <button className="btn-icon" onClick={() => navigate('/order')}>
+                  <i className="fas fa-arrow-left"></i>
+                </button>
+                <h3>Εντοπισμός</h3>
+                <div style={{width: 32}}></div>
+              </div>
+            </header>
 
-      <div className="main-content" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px' }}>
-        <div className="login-form-container">
-          <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Πού είναι το φαγητό μου;</h2>
-          
-          {error && <div className="alert alert-danger">{error}</div>}
+            <div className="main-content" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px' }}>
+              <div className="login-form-container">
+                <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Πού είναι το φαγητό μου;</h2>
+                
+                {error && <div className="alert alert-danger">{error}</div>}
 
-          <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <input 
-                type="text" 
-                placeholder="Αριθμός Παραγγελίας ή Τηλέφωνο"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                required 
-              />
+                <form onSubmit={handleSubmit}>
+                  <div className="input-group">
+                    <input 
+                      type="text" 
+                      placeholder="Αριθμός Παραγγελίας ή Τηλέφωνο"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      required 
+                    />
+                  </div>
+                  <div className="form-text mb-3 text-center">
+                    Εισάγετε τον αριθμό της παραγγελίας σας ή το κινητό σας τηλέφωνο (10 ψηφία)
+                  </div>
+                  <button type="submit" className="btn-primary-app" disabled={loading}>
+                    {loading ? 'Αναζήτηση...' : 'Αναζήτηση'}
+                  </button>
+                </form>
+              </div>
             </div>
-            <div className="form-text mb-3 text-center">
-              Εισάγετε τον αριθμό της παραγγελίας σας ή το κινητό σας τηλέφωνο (10 ψηφία)
-            </div>
-            <button type="submit" className="btn-primary-app" disabled={loading}>
-              {loading ? 'Αναζήτηση...' : 'Αναζήτηση'}
-            </button>
-          </form>
-        </div>
-      </div>
+          </Col>
+        </Row>
+      </Container>
     </div>
   );
 };

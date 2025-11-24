@@ -29,6 +29,7 @@ const StoreRegister = () => {
     address: '',
     storeType: 'Mini Market',
     workingHours: '',
+    description: '',
     serviceAreas: ''
   });
   
@@ -40,8 +41,18 @@ const StoreRegister = () => {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    libraries
+    libraries,
+    language: 'el',
+    region: 'GR'
   });
+
+  // Alexandroupoli bounds for autocomplete
+  const alexandroupoliBounds = {
+    north: 40.88,
+    south: 40.81,
+    east: 25.92,
+    west: 25.82
+  };
 
   if (loadError) {
     return (
@@ -142,6 +153,7 @@ const StoreRegister = () => {
         address: formData.address,
         storeType: formData.storeType,
         workingHours: formData.workingHours || 'Δευ-Παρ: 08:00-22:00',
+        description: formData.description,
         serviceAreas: formData.serviceAreas || 'Αλεξανδρούπολη',
         location: {
           type: 'Point',
@@ -168,11 +180,11 @@ const StoreRegister = () => {
 
   return (
     <div className="login-page">
-      <Container>
-        <Row className="justify-content-center py-5">
-          <Col md={8} lg={6}>
-            <Card className="shadow-lg">
-              <Card.Body className="p-5">
+      <Container className="py-0 py-md-5" fluid="sm">
+        <Row className="justify-content-center m-0">
+          <Col xs={12} md={8} lg={6} className="p-0 p-md-3">
+            <Card className="shadow-lg border-0 rounded-0 rounded-md-3">
+              <Card.Body className="p-4 p-md-5">
                 <div className="text-center mb-4">
                   <div style={{ fontSize: '48px' }}>🏪</div>
                   <h2 className="fw-bold" style={{ color: '#00c2e8' }}>Εγγραφή Καταστήματος</h2>
@@ -277,6 +289,11 @@ const StoreRegister = () => {
                       <Autocomplete
                         onLoad={autocomplete => autocompleteRef.current = autocomplete}
                         onPlaceChanged={onPlaceChanged}
+                        options={{
+                          bounds: alexandroupoliBounds,
+                          componentRestrictions: { country: "gr" },
+                          strictBounds: true
+                        }}
                       >
                         <Form.Control
                           type="text"
@@ -310,7 +327,18 @@ const StoreRegister = () => {
                           onClick={handleMapClick}
                           onLoad={map => mapRef.current = map}
                         >
-                          <Marker position={location} />
+                          <Marker 
+                            position={location}
+                            icon={{
+                              path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
+                              fillColor: "#00c1e8",
+                              fillOpacity: 1,
+                              strokeWeight: 1,
+                              strokeColor: "#ffffff",
+                              scale: 1.5,
+                              anchor: { x: 12, y: 22 }
+                            }}
+                          />
                         </GoogleMap>
                       ) : (
                         <div>Loading Map...</div>
@@ -350,13 +378,14 @@ const StoreRegister = () => {
                     />
                   </Form.Group>
 
-                  <Form.Group className="mb-4">
-                    <Form.Label>Περιοχές Εξυπηρέτησης</Form.Label>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Περιγραφή</Form.Label>
                     <Form.Control
-                      type="text"
-                      name="serviceAreas"
-                      placeholder="π.χ. Κέντρο, Φλοίσβος, Μάκρη"
-                      value={formData.serviceAreas}
+                      as="textarea"
+                      rows={3}
+                      name="description"
+                      placeholder="Λίγα λόγια για το κατάστημα..."
+                      value={formData.description}
                       onChange={handleChange}
                       disabled={loading}
                     />

@@ -280,13 +280,16 @@ exports.getStoreProfile = async (req, res) => {
 // @access  Private (Store)
 exports.updateStoreProfile = async (req, res) => {
   try {
-    const { workingHours, serviceAreas, phone } = req.body;
+    const { workingHours, serviceAreas, phone, description, address, location } = req.body;
 
     const store = await Store.findById(req.user._id);
 
     if (workingHours) store.workingHours = workingHours;
     if (serviceAreas) store.serviceAreas = serviceAreas;
     if (phone) store.phone = phone;
+    if (description) store.description = description;
+    if (address) store.address = address;
+    if (location) store.location = location;
 
     await store.save();
 
@@ -298,7 +301,10 @@ exports.updateStoreProfile = async (req, res) => {
         businessName: store.businessName,
         workingHours: store.workingHours,
         serviceAreas: store.serviceAreas,
-        phone: store.phone
+        phone: store.phone,
+        description: store.description,
+        address: store.address,
+        location: store.location
       }
     });
   } catch (error) {

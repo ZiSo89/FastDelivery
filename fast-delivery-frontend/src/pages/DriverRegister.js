@@ -87,11 +87,11 @@ const DriverRegister = () => {
 
   return (
     <div className="login-page">
-      <Container>
-        <Row className="justify-content-center py-5">
-          <Col md={8} lg={6}>
-            <Card className="shadow-lg">
-              <Card.Body className="p-5">
+      <Container className="py-0 py-md-5" fluid="sm">
+        <Row className="justify-content-center m-0">
+          <Col xs={12} md={8} lg={6} className="p-0 p-md-3">
+            <Card className="shadow-lg border-0 rounded-0 rounded-md-3">
+              <Card.Body className="p-4 p-md-5">
                 <div className="text-center mb-4">
                   <div style={{ fontSize: '48px' }}>🚗</div>
                   <h2 className="fw-bold" style={{ color: '#00c2e8' }}>Εγγραφή Οδηγού</h2>

@@ -322,7 +322,8 @@ const OrdersTab = () => {
                   
                   <div className="mb-2">
                     <small className="text-muted">Κατάστημα:</small><br />
-                    <strong>{order.storeId?.businessName || order.storeName || 'N/A'}</strong>
+                    <strong>{order.storeId?.businessName || order.storeName || 'N/A'}</strong><br />
+                    <small>📞 {order.storeId?.phone || 'N/A'}</small>
                   </div>
                   
                   <div className="mb-2">
@@ -341,7 +342,8 @@ const OrdersTab = () => {
                   {(order.driverId?.name || order.driver?.name) && (
                     <div className="mb-2">
                       <small className="text-muted">Οδηγός:</small><br />
-                      <strong>{order.driverId?.name || order.driver?.name}</strong>
+                      <strong>{order.driverId?.name || order.driver?.name}</strong><br />
+                      <small>📞 {order.driverId?.phone || order.driver?.phone || 'N/A'}</small>
                     </div>
                   )}
                   
@@ -436,7 +438,9 @@ const OrdersTab = () => {
                     <small>{order.customer?.address || order.deliveryAddress || 'N/A'}</small>
                   </td>
                   <td>
-                    {order.storeId?.businessName || order.storeName || 'N/A'}
+                    <strong>{order.storeId?.businessName || order.storeName || 'N/A'}</strong>
+                    <br />
+                    <small className="text-muted">📞 {order.storeId?.phone || 'N/A'}</small>
                   </td>
                   <td>
                     {order.orderType === 'voice' && (
@@ -449,7 +453,15 @@ const OrdersTab = () => {
                     )}
                     <small>{order.orderContent}</small>
                   </td>
-                  <td>{order.driverId?.name || order.driver?.name || '-'}</td>
+                  <td>
+                    <strong>{order.driverId?.name || order.driver?.name || '-'}</strong>
+                    {(order.driverId?.phone || order.driver?.phone) && (
+                      <>
+                        <br />
+                        <small className="text-muted">📞 {order.driverId?.phone || order.driver?.phone}</small>
+                      </>
+                    )}
+                  </td>
                   <td>{order.productPrice ? `€${order.productPrice.toFixed(2)}` : '-'}</td>
                   <td>{order.deliveryFee ? `€${order.deliveryFee.toFixed(2)}` : '-'}</td>
                   <td className="fw-bold">

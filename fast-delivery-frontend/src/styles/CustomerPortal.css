@@ -73,6 +73,15 @@ body {
     box-sizing: border-box; /* Important for padding */
 }
 
+/* Google Maps Autocomplete wrapper fix */
+.input-group .pac-container {
+    z-index: 10000;
+}
+
+.input-group > div {
+    width: 100%;
+}
+
 .input-group input:focus {
     outline: none;
     border-color: #00c2e8;
@@ -223,6 +232,27 @@ body {
     cursor: pointer;
 }
 
+.btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #202125;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.btn-icon:hover {
+    color: #00c2e8;
+}
+
+.btn-icon i {
+    font-size: 1.2rem;
+}
+
 /* Categories Scroll */
 .categories-scroll {
     display: flex;
@@ -234,6 +264,33 @@ body {
 
 .categories-scroll::-webkit-scrollbar {
     display: none; /* Chrome/Safari */
+}
+
+/* Show scrollbar on desktop for categories */
+@media (min-width: 768px) {
+    .categories-scroll {
+        scrollbar-width: thin; /* Firefox */
+        padding-bottom: 12px; /* Space for scrollbar */
+    }
+    
+    .categories-scroll::-webkit-scrollbar {
+        display: block;
+        height: 8px;
+    }
+    
+    .categories-scroll::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .categories-scroll::-webkit-scrollbar-thumb {
+        background: #d1d1d1;
+        border-radius: 4px;
+    }
+    
+    .categories-scroll::-webkit-scrollbar-thumb:hover {
+        background: #b0b0b0;
+    }
 }
 
 .category-chip {
@@ -367,5 +424,15 @@ body {
 .nav-item .label {
     font-size: 10px;
     font-weight: 600;
+}
+
+/* Hide scrollbar for scrollable content area */
+.scrollable-content::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollable-content {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
 }
 

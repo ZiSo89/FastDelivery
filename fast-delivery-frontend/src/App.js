@@ -16,6 +16,7 @@ import NewOrder from './pages/customer/NewOrder';
 import OrderStatus from './pages/customer/OrderStatus';
 import TrackOrder from './pages/customer/TrackOrder';
 import CustomerOrders from './pages/customer/CustomerOrders';
+import CustomerProfile from './pages/customer/CustomerProfile';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import './styles/CustomerPortal.css';
@@ -35,6 +36,7 @@ function App() {
           <Route path="/order" element={<CustomerHome />} />
           <Route path="/new-order" element={<NewOrder />} />
           <Route path="/my-orders" element={<CustomerOrders />} />
+          <Route path="/profile" element={<CustomerProfile />} />
           <Route path="/order-status/track" element={<TrackOrder />} />
           <Route path="/order-status/:orderNumber" element={<OrderStatus />} />
           
