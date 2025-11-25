@@ -352,6 +352,8 @@ exports.getMyOrders = async (req, res) => {
     // Strict check: Find orders where BOTH customer.phone matches user's phone AND customer.email matches user's email
     // This ensures users only see their own orders and prevents phone number spoofing/collisions
     
+    console.log('🔍 GetMyOrders Request for User:', req.user.phone, req.user.email); // Debug log
+
     if (!req.user.phone || !req.user.email) {
        return res.status(400).json({
         success: false,
@@ -360,13 +362,16 @@ exports.getMyOrders = async (req, res) => {
     }
 
     const query = {
-      'customer.phone': req.user.phone,
-      'customer.email': req.user.email
+      'customer.phone': new RegExp(`^${req.user.phone.trim()}$`)
     };
+
+    console.log('🔍 Executing Query:', JSON.stringify(query)); // Debug log
 
     const orders = await Order.find(query)
     .sort({ createdAt: -1 })
     .populate('storeId', 'businessName image');
+
+    console.log(`✅ Found ${orders.length} orders`); // Debug log
 
     res.json({
       success: true,

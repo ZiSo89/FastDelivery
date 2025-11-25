@@ -12,7 +12,10 @@ const server = http.createServer(app);
 const allowedOrigins = [
   'http://localhost:3000',
   'https://fastdeliveryfontend.onrender.com',
-  process.env.FRONTEND_URL
+  process.env.FRONTEND_URL,
+  'http://192.168.31.160:8081',
+  'http://192.168.31.160:19000',
+  'http://192.168.31.160:19006'
 ].filter(Boolean);
 
 const io = socketIo(server, {

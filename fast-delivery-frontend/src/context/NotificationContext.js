@@ -222,11 +222,15 @@ export const NotificationProvider = ({ children }) => {
 
       const handleOrderStatusChanged = (data) => {
         if (data.status === 'preparing' || data.newStatus === 'preparing') {
+          // Remove previous notifications for this order (e.g. New Assignment)
+          removeNotificationsByRelatedId(data.orderNumber);
           addNotification(`Το κατάστημα ετοιμάζει την παραγγελία.`, 'info', '👨‍🍳', data.orderNumber, true);
         }
       };
 
       const handleOrderCancelled = (data) => {
+        // Remove all notifications for this order
+        removeNotificationsByRelatedId(data.orderNumber);
         addNotification(`Η παραγγελία ακυρώθηκε. Επιστροφή στη βάση.`, 'danger', '❌', data.orderNumber);
       };
 

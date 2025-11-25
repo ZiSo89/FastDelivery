@@ -1,20 +1,18 @@
-καλησπερα ειμαι ο σακης. 
-
 # FAST DELIVERY PROJECT - AI ASSISTANT CONTEXT
 
 **Last Updated:** 2025-11-25
 **Repository:** https://github.com/ZiSo89/FastDelivery
-**Status:** ✅ PRODUCTION DEPLOYED | ⚠️ PENDING: LIVE TRACKING & CHAT
+**Status:** ✅ PRODUCTION DEPLOYED | 📱 MOBILE APP IN DEVELOPMENT
 
 ---
 
-## 🎨 UI/UX DESIGN SYSTEM (CRITICAL FOR FRONTEND)
+## 🎨 UI/UX DESIGN SYSTEM (CRITICAL FOR FRONTEND & MOBILE)
 
-The customer-facing application (`fast-delivery-frontend`) follows a specific modern design language inspired by Wolt/Uber Eats. **All future UI updates must adhere to this style.**
+The customer-facing application (`fast-delivery-frontend` & `fast-delivery-mobile`) follows a specific modern design language inspired by Wolt/Uber Eats. **All future UI updates must adhere to this style.**
 
-**Core Styles (`src/styles/CustomerPortal.css`):**
+**Core Styles:**
 - **Primary Color:** `#00c2e8` (Cyan/Blue)
-  - Used for: Primary buttons (`.btn-primary-app`), active states, icons, accents.
+  - Used for: Primary buttons, active states, icons, accents.
   - **NEVER** use standard Bootstrap primary blue (`#0d6efd`) for customer actions.
 - **Typography:** 'Inter', sans-serif.
 - **Backgrounds:**
@@ -46,9 +44,10 @@ The customer-facing application (`fast-delivery-frontend`) follows a specific mo
 **Tech Stack:**
 - **Backend:** Node.js, Express, MongoDB, Socket.IO
 - **Frontend:** React, Bootstrap, Socket.IO Client
+- **Mobile:** React Native (Expo), React Navigation (Nested Stacks)
 - **Database:** MongoDB Atlas
 - **Storage:** Firebase (voice messages)
-- **Maps:** Google Maps API (@react-google-maps/api)
+- **Maps:** Google Maps API (@react-google-maps/api), Expo Location
 
 ---
 
@@ -86,6 +85,23 @@ The customer-facing application (`fast-delivery-frontend`) follows a specific mo
 - ✅ Greek UI (100% translated) with modern "Wolt-style" design system
 - ✅ Responsive Bootstrap design for all devices
 
+### Mobile App (Customer - In Progress)
+- ✅ **Project Structure:** Expo project initialized in `fast-delivery-mobile/customer`.
+- ✅ **Navigation Architecture:** 
+  - Refactored to **Nested Stacks inside Tabs** (`HomeStack`, `SearchStack`, `OrdersStack`).
+  - Ensures Bottom Tab Bar (Footer) remains visible on deeper screens (`OrderScreen`, `TrackOrderScreen`).
+- ✅ **Authentication:** Login and Register screens implemented.
+- ✅ **Store Search:** 
+  - Optimized loading (non-blocking UI).
+  - Uses `react-native-safe-area-context` for proper layout.
+  - Filters stores by name/type.
+- ✅ **Order Tracking:**
+  - Real-time status updates via Socket.IO.
+  - Visual status indicators (colors/text).
+  - Click-to-Call for Store and Driver.
+  - Voice message playback.
+  - Price confirmation flow.
+
 ### Database & Test Data
 - ✅ MongoDB Atlas connected and configured
 - ✅ Test data scripts (seed, clear, verify)
@@ -109,13 +125,22 @@ FastDelivery/
 │   │   └── utils/               # JWT & Socket helpers
 │   └── tests/                   # PowerShell test scripts
 │
-└── fast-delivery-frontend/       # React application
-    └── src/
-        ├── services/            # API & Socket.IO client
-        ├── context/             # Auth context
-        ├── components/          # Reusable components
-        ├── pages/              # Main page components
-        └── styles/             # CSS files
+├── fast-delivery-frontend/       # React application
+│   └── src/
+│       ├── services/            # API & Socket.IO client
+│       ├── context/             # Auth context
+│       ├── components/          # Reusable components
+│       ├── pages/              # Main page components
+│       └── styles/             # CSS files
+│
+└── fast-delivery-mobile/         # React Native Apps
+    ├── customer/                # Customer App
+    │   ├── App.js              # Main Navigation (Tabs > Stacks)
+    │   └── src/
+    │       ├── screens/        # Mobile Screens
+    │       ├── services/       # API & Socket
+    │       └── context/        # Auth Context
+    └── driver/                  # Driver App (Placeholder)
 ```
 
 ---
@@ -135,412 +160,46 @@ node server.js
 # 3. Start frontend (Terminal 2)
 cd fast-delivery-frontend
 npm start
+
+# 4. Start Mobile App (Terminal 3)
+cd fast-delivery-mobile/customer
+npx expo start
 ```
 
 ---
 
 ## 🎯 IMMEDIATE NEXT STEPS (FOR NEXT SESSION)
 
-**Priority 1: Driver App Enhancements**
+**Priority 1: Mobile App Refinement**
+- [ ] **Verify Navigation:** Ensure smooth transitions between Tabs and Stacks.
+- [ ] **Driver App:** Initialize and implement basic order acceptance and tracking.
+- [ ] **Push Notifications:** Implement Expo Push Notifications for mobile.
+
+**Priority 2: Driver App Enhancements (Web)**
 - [ ] **Accept Screen:** Show Map with Route (Store -> Customer) before accepting.
 - [ ] **Live Tracking:** Update `OrderStatus.js` to show Driver's live location moving on the map when status is "On the way".
 
-**Priority 2: Admin Features**
+**Priority 3: Admin Features**
 - [ ] **Statistics Filter:** Add date/period filter in Admin stats tab (today/week/month).
-
-**Priority 3: Advanced Features**
-- [ ] **Chat System:** Real-time chat between customer-store-driver.
 
 ---
 
 ## 📝 QUICK REFERENCE FOR AI ASSISTANTS
 
 ### Current Context
-- **Production:** Deployed and Verified.
-- **Features:** Voice Orders, Navigation, Push Notifications are COMPLETE.
-- **Pending:** Live Tracking, Accept Screen Map, Chat.
+- **Production:** Web Deployed.
+- **Mobile:** Customer App active development. Navigation refactored to support persistent footer.
+- **Features:** Voice Orders, Navigation, Push Notifications (Web) are COMPLETE.
+- **Pending:** Live Tracking, Accept Screen Map, Chat, Mobile Push.
 
 ### Key Files to Know:
-- **Driver Orders:** `fast-delivery-frontend/src/components/driver/DriverOrders.js`
-- **Order Status:** `fast-delivery-frontend/src/pages/customer/OrderStatus.js`
-- **Customer Register:** `fast-delivery-frontend/src/pages/customer/Register.js`
+- **Mobile Navigation:** `fast-delivery-mobile/customer/App.js`
+- **Mobile Search:** `fast-delivery-mobile/customer/src/screens/SearchScreen.js`
+- **Mobile Tracking:** `fast-delivery-mobile/customer/src/screens/TrackOrderScreen.js`
 
 ### Git Commands:
 ```powershell
 git add .
 git commit -m "Your message"
 git push origin master
-``` 
-
-# FAST DELIVERY PROJECT - AI ASSISTANT CONTEXT
-
-**Last Updated:** 2025-11-23
-**Repository:** https://github.com/ZiSo89/FastDelivery
-**Status:** ✅ LOCAL DEVELOPMENT COMPLETE | ⚠️ NEEDS PRODUCTION DEPLOYMENT
-
----
-
-## 🎨 UI/UX DESIGN SYSTEM (CRITICAL FOR FRONTEND)
-
-The customer-facing application (`fast-delivery-frontend`) follows a specific modern design language inspired by Wolt/Uber Eats. **All future UI updates must adhere to this style.**
-
-**Core Styles (`src/styles/CustomerPortal.css`):**
-- **Primary Color:** `#00c2e8` (Cyan/Blue)
-  - Used for: Primary buttons (`.btn-primary-app`), active states, icons, accents.
-  - **NEVER** use standard Bootstrap primary blue (`#0d6efd`) for customer actions.
-- **Typography:** 'Inter', sans-serif.
-- **Backgrounds:**
-  - App Background: White `#fff` or Light Grey `#f8f9fa`.
-  - Input Fields: Light Grey `#f9f9f9` with border `#e0e0e0`.
-- **Components:**
-  - **Buttons:** Flat design, no gradients, `8px` rounded corners.
-  - **Cards:** White, `16px` rounded corners, soft shadow: `box-shadow: 0 4px 12px rgba(0,0,0,0.05)`.
-  - **Inputs:** Large padding (`16px`), focus border color `#00c2e8`.
-
----
-
-## 🎯 PROJECT OVERVIEW
-
-**Fast Delivery** is a full-stack delivery platform for the Greek market (Alexandroupoli region) that connects:
-- **Customers:** Order via text/voice from local stores
-- **Stores:** Accept orders, set prices, prepare items
-- **Admin:** Add delivery fees, assign drivers, manage platform
-- **Drivers:** Accept assignments, deliver orders
-
-**Core Features:**
-- 13-state order lifecycle with real-time updates
-- Role-based authentication (JWT)
-- Greek language UI/data (100% Ελληνικά)
-- Real-time notifications via Socket.IO
-- Voice message support (Firebase Storage)
-- Geolocation-based store discovery
-
-**Tech Stack:**
-- **Backend:** Node.js, Express, MongoDB, Socket.IO
-- **Frontend:** React, Bootstrap, Socket.IO Client
-- **Database:** MongoDB Atlas
-- **Storage:** Firebase (voice messages)
-- **Maps:** Google Maps API
-
----
-
-## ✅ WHAT'S COMPLETED
-
-### Backend (100% Complete)
-- ✅ All 34 REST API endpoints implemented and tested
-- ✅ JWT authentication with role-based authorization
-- ✅ MongoDB models for Admin, Store, Driver, Order, User
-- ✅ 13-state order workflow fully implemented
-- ✅ Socket.IO real-time broadcasting to all parties
-- ✅ Firebase Storage integration for voice messages
-- ✅ Geospatial queries for nearby stores
-- ✅ Auto-generated order numbers (ORD-YYYYMMDD-####)
-- ✅ Password hashing fixed for all user types
-- ✅ Test data seeding scripts with Greek data
-- ✅ **Profile Auto-Update:** User details (name, phone, address) automatically update in DB when changed during new order.
-
-### Frontend (Production-Ready Core Features)
-- ✅ Authentication system with role-based routing (Admin, Store, Driver, Customer)
-- ✅ Admin Dashboard with complete management interface:
-  - ✅ Customers management tab with activation/deactivation
-  - ✅ Stores approval and management tab
-  - ✅ Drivers approval and management tab
-  - ✅ Orders tab with full lifecycle management
-  - ✅ Delivery fee modal for orders in `pending_admin` status
-  - ✅ Cancel order with reason input (persisted to backend)
-- ✅ Store Panel with full order management:
-  - ✅ Accept/Reject incoming orders
-  - ✅ Set product prices (triggers `pricing` → `pending_admin` flow)
-  - ✅ Mark orders as "Προετοιμασία" (preparing status)
-  - ✅ Real-time order updates via Socket.IO
-- ✅ Driver Panel with complete delivery workflow:
-  - ✅ Accept/Reject assigned orders
-  - ✅ Update delivery status (on_the_way, delivered)
-  - ✅ Real-time assignment notifications
-- ✅ Customer interface for ordering and tracking:
-  - ✅ Guest checkout (no registration required)
-  - ✅ Store selection based on location
-  - ✅ Text and voice order support
-  - ✅ Order status tracking page (OrderStatus/TrackOrder)
-  - ✅ Price confirmation flow
-  - ✅ Real-time status updates via Socket.IO
-- ✅ Greek UI (100% translated) with modern "Wolt-style" design system
-- ✅ Responsive Bootstrap design for all devices
-- ✅ Smart forms with auto-fill and auto-update user profile data
-
-### Database & Test Data
-- ✅ MongoDB Atlas connected and configured
-- ✅ Test data scripts (seed, clear, verify)
-- ✅ Greek data for Alexandroupoli region
-- ✅ All user types can login successfully
-
-### Documentation
-- ✅ Complete API documentation (`fast-delivery-backend/docs/API_ENDPOINTS.txt`)
-- ✅ Database schema documentation (`docs/DATABASE.md`)
-- ✅ Deployment guides (`docs/DEPLOYMENT.md`)
-- ✅ User manual in Greek (`docs/ΕΓΧΕΙΡΙΔΙΟ_ΧΡΗΣΤΗ.md`)
-- ✅ Complete workflows and state diagrams (`docs/WORKFLOWS.md`)
-- ✅ Semi-automated test script (`fast-delivery-backend/tests/orderLifecycleScript.js`)
-
----
-
-## 📁 PROJECT STRUCTURE
-
 ```
-FastDelivery/
-├── fast-delivery-backend/         # Express.js API
-│   ├── server.js                 # Main server with Socket.IO
-│   ├── src/
-│   │   ├── config/              # Database & Firebase config
-│   │   ├── models/              # Mongoose schemas (5 models)
-│   │   ├── controllers/         # Business logic (5 controllers)
-│   │   ├── routes/              # API routes (5 route files)
-│   │   ├── middleware/          # Auth middleware
-│   │   └── utils/               # JWT & Socket helpers
-│   └── tests/                   # PowerShell test scripts
-│
-└── fast-delivery-frontend/       # React application
-    └── src/
-        ├── services/            # API & Socket.IO client
-        ├── context/             # Auth context
-        ├── components/          # Reusable components
-        ├── pages/              # Main page components
-        └── styles/             # CSS files
-```
-
----
-
-## 🔑 CREDENTIALS & ENDPOINTS
-
-### Local Development
-- **Backend:** http://localhost:5000
-- **Frontend:** http://localhost:3000
-- **API Base:** http://localhost:5000/api/v1
-
-### Test Accounts (After Running seedTestData.js)
-```
-Admin: admin@fastdelivery.gr / admin123
-Store: kafeteria@test.com / store123
-Driver: driver1@test.com / driver123
-```
-
-### MongoDB Atlas
-```
-URI: mongodb+srv://fastdelivery:56ynGiuw24D1T8b3@cluster0.istyclo.mongodb.net/fast_delivery
-```
-
-### Key API Endpoints
-- `POST /auth/login` - Login for all roles
-- `POST /auth/store/register` - Store registration
-- `POST /auth/driver/register` - Driver registration
-- `POST /orders` - Create customer order
-- `GET /orders/:orderNumber/status` - Track order
-- See `fast-delivery-backend/docs/API_ENDPOINTS.txt` for complete list
-
----
-
-## 🚀 HOW TO RUN LOCALLY
-
-```powershell
-# 1. Setup database with test data
-cd fast-delivery-backend/tests
-node clearAllData.js
-node seedTestData.js
-
-# 2. Start backend (Terminal 1)
-cd fast-delivery-backend
-node server.js
-
-# 3. Start frontend (Terminal 2)
-cd fast-delivery-frontend
-npm start
-
-# 4. Test with credentials above
-```
-
----
-
-## ❌ WHAT'S NOT DONE / PENDING
-
-### 1. PRODUCTION DEPLOYMENT (CRITICAL)
-**Current Status:** Frontend deployed but OUTDATED, Backend deployed but needs update
-**Required Actions:**
-- [ ] Commit all local changes to GitHub
-- [ ] Push to master branch for auto-deploy
-- [ ] Update environment variables in Render dashboard
-- [ ] Test production endpoints
-- [ ] Verify Socket.IO works in production
-
-**Production URLs (Need Update):**
-- Backend: https://fastdelivery-hvff.onrender.com (needs redeploy)
-- Frontend: https://fastdeliveryfontend.onrender.com (needs redeploy)
-
-### 2. ADMIN FEATURES (Remaining)
-**Note:** All core admin features implemented. Only analytics enhancement pending:
-- [ ] Statistics period filter (today/week/month) in Admin dashboard
-
-### 3. ADVANCED FEATURES (Not Started)
-- [ ] **Google Maps Integration**
-  - Store selection with real map
-  - Distance calculation
-  - Delivery zones visualization
-  
-- [ ] **Voice Order System**
-  - Record voice messages in browser
-  - Upload to Firebase Storage
-  - Playback interface for stores
-  
-- [ ] **Chat System**
-  - Real-time chat between customer-store-driver
-  - Text and voice messages
-  - Chat history storage
-  
-- [ ] **Push Notifications**
-  - Browser push notifications  check if is done
-  - Mobile app notifications (if mobile app developed)
-  
-- [ ] **Mobile App**
-  - React Native or Flutter app
-  - Push notifications
-  - GPS tracking
-
-### 4. PRODUCTION CONFIGURATIONS
-- [ ] SSL certificates (Render provides but verify)
-- [ ] Domain name setup (if custom domain needed)
-- [ ] Rate limiting for API endpoints
-- [ ] Error logging service (Sentry, LogRocket)
-- [ ] Analytics (Google Analytics, Mixpanel)
-- [ ] Backup strategy for MongoDB
-
-### 5. BUSINESS FEATURES (Future)
-- [ ] Payment integration (Stripe, PayPal)
-- [ ] Invoice generation
-- [ ] Store analytics dashboard
-- [ ] Driver earnings tracking
-- [ ] Customer loyalty program
-- [ ] Multi-language support (English)
-- [ ] Email notifications
-- [ ] SMS notifications (Twilio)
-
-### 6. TESTING & QUALITY
-- [ ] Unit tests for backend
-- [ ] Integration tests for API
-- [ ] Frontend component tests
-- [ ] End-to-end tests (Cypress)
-- [ ] Load testing
-- [ ] Security audit
-
----
-
-## 🔧 COMMON ISSUES & FIXES
-
-### Login Fails
-```powershell
-# Reseed database
-cd fast-delivery-backend/tests
-node clearAllData.js
-node seedTestData.js
-node testPasswords.js  # Should show ✅ OK for all
-```
-
-### Socket.IO Not Updating
-- Check browser console for connection errors
-- Verify backend shows "Socket connected" logs
-- Check if user object has correct role
-
-### Orders Not Showing
-- Verify order status matches filter
-- Check if store/driver is approved
-- Look for console errors
-
----
-
-## 📝 QUICK REFERENCE FOR AI ASSISTANTS
-
-### When User Asks to Continue Development:
-1. **First Priority:** Deploy to production (all code is ready)
-2. **Second Priority:** Add missing admin UI features
-3. **Third Priority:** Google Maps integration
-4. **Fourth Priority:** Voice order recording
-
-### Key Files to Know:
-- **Backend Entry:** `fast-delivery-backend/server.js`
-- **Frontend Entry:** `fast-delivery-frontend/src/App.js`
-- **API Service:** `fast-delivery-frontend/src/services/api.js`
-- **Socket Service:** `fast-delivery-frontend/src/services/socket.js`
-- **Auth Context:** `fast-delivery-frontend/src/context/AuthContext.js`
-
-### Testing Commands:
-```powershell
-# Semi-automated full order lifecycle test
-cd fast-delivery-backend/tests
-.\open-test-browsers.ps1     # Opens 4 browser profiles (Admin/Store/Driver/Customer)
-node orderLifecycleScript.js # Automated + manual guided test
-
-# Database management
-node clearAllData.js          # Clear all data
-node seedTestData.js          # Add test data
-```
-
-### Git Commands:
-```powershell
-git add .
-git commit -m "Your message"
-git push origin master  # Triggers auto-deploy
-```
-
----
-
-## 📊 CURRENT DATABASE STATE
-
-After running `seedTestData.js`:
-- **1 Admin:** admin@fastdelivery.gr
-- **5 Stores:** 4 approved + 1 pending (Greek businesses)
-- **4 Drivers:** 3 approved + 1 pending (Greek names)
-- **4 Customers:** Greek names with Alexandroupoli addresses
-- **8 Orders:** Various states for testing
-
----
-
-## 🎯 IMMEDIATE NEXT STEPS FOR CONTINUATION
-
-1. **Deploy to Production (30 minutes)**
-   ```powershell
-   git add .
-   git commit -m "Complete local development with real-time updates and full admin features"
-   git push origin master
-   # Wait for Render auto-deploy
-   # Test production URLs
-   ```
-
-2. **Add Statistics Filter (1 hour)**
-   - Add date/period filter in Admin stats tab (today/week/month)
-
-3. **Google Maps Integration (4 hours)**
-   - Replace coordinate inputs with map picker
-   - Show stores on map
-   - Calculate distances
-
-4. **Voice Orders (4 hours)**
-   - Add recording button to customer order form
-   - Implement playback in store panel
-   - Test Firebase upload
-
----
-
-**PROJECT STATUS SUMMARY:**
-✅ Backend: 100% complete with real-time Socket.IO
-✅ Frontend: Production-ready with all core admin/store/driver/customer features
-✅ Database: Working with Greek test data
-✅ Testing: Semi-automated test script ready for E2E verification
-⚠️ Production: Needs deployment of latest changes
-🎯 Next Priority: Deploy to production
-
-**For AI Assistant:** This project is **fully functional** for production deployment. All critical features implemented and tested locally:
-- Complete order lifecycle (13 states)
-- Admin: delivery fees, cancel with reason, customer deactivation, driver/store approval
-- Store: accept/reject, pricing, preparation status
-- Driver: accept/reject, status updates (on_the_way, delivered)
-- Customer: guest checkout, real-time tracking, price confirmation
-- Real-time Socket.IO updates across all roles
-Only minor enhancement pending: statistics date filter. Ready for production push.

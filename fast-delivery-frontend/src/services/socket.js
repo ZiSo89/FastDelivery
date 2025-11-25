@@ -124,6 +124,19 @@ class SocketService {
 
   // Unsubscribe from event
   off(event, callback) {
+    // Remove from pending listeners first
+    if (this.pendingListeners.has(event)) {
+      if (callback) {
+        const pending = this.pendingListeners.get(event);
+        const index = pending.indexOf(callback);
+        if (index > -1) {
+          pending.splice(index, 1);
+        }
+      } else {
+        this.pendingListeners.delete(event);
+      }
+    }
+
     if (!this.socket) return;
 
     if (callback) {

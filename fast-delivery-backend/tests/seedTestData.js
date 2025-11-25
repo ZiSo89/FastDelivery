@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config(); // Default looks for .env in CWD
 
 const Admin = require('../src/models/Admin');
 const Store = require('../src/models/Store');
@@ -135,8 +135,26 @@ const seedTestData = async () => {
       },
       isApproved: false
     });
+
+    const storeGraz = await Store.create({
+      email: 'graz@test.com',
+      password: 'store123',
+      businessName: 'Graz Test Store',
+      ownerName: 'Hans Muller',
+      phone: '43123456789',
+      address: 'Herrengasse 1, Graz',
+      afm: '999999999',
+      storeType: 'Καφετέρια',
+      location: {
+        type: 'Point',
+        coordinates: [15.4307936, 47.0734004]
+      },
+      isApproved: true,
+      status: 'approved',
+      workingHours: '08:00 - 22:00'
+    });
     
-    const stores = [store1, store2, store3, store4, store5, store6];
+    const stores = [store1, store2, store3, store4, store5, store6, storeGraz];
     console.log(`✅ Δημιουργήθηκαν ${stores.length} Καταστήματα`);
 
     // 3. Δημιουργία Οδηγών (ένα-ένα για να τρέξουν τα pre-save hooks)
