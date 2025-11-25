@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert, ListGroup } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
 import '../../styles/Customer.css';
+
+const libraries = ['places'];
 
 const NewOrder = () => {
   const navigate = useNavigate();
@@ -23,6 +26,15 @@ const NewOrder = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [autocomplete, setAutocomplete] = useState(null);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+    libraries,
+    language: 'el',
+    region: 'GR'
+  });
 
   // Voice Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -51,6 +63,18 @@ const NewOrder = () => {
         customerEmail: user.email || '', // Auto-fill email
         deliveryAddress: user.address || ''
       }));
+    } else {
+      // Check for guest info
+      const guestInfo = JSON.parse(localStorage.getItem('guestInfo') || '{}');
+      if (guestInfo.name) {
+        console.log('👤 Auto-filling form with guest data:', guestInfo);
+        setFormData(prev => ({
+          ...prev,
+          customerName: guestInfo.name || '',
+          customerPhone: guestInfo.phone || '',
+          deliveryAddress: guestInfo.address || ''
+        }));
+      }
     }
   }, [user]);
 
@@ -208,6 +232,23 @@ const NewOrder = () => {
     }
   };
 
+  const onPlaceChanged = () => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      if (place.formatted_address) {
+        setFormData(prev => ({
+          ...prev,
+          deliveryAddress: place.formatted_address
+        }));
+      }
+    }
+  };
+
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData({...formData, customerPhone: value});
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -301,35 +342,94 @@ const NewOrder = () => {
 
                 <h5 className="mb-3">Στοιχεία Πελάτη</h5>
                 
-                <div className="customer-details-card mb-4 p-3 bg-light rounded" style={{ borderLeft: '4px solid #00c2e8' }}>
-                  <div className="d-flex justify-content-between align-items-start">
-                    <div className="w-100">
-                      <div className="d-flex align-items-center mb-2">
-                        <i className="fas fa-user me-3 text-secondary" style={{ width: '20px' }}></i>
-                        <h6 className="mb-0 fw-bold text-dark">{formData.customerName || 'Όνομα Πελάτη'}</h6>
-                      </div>
-                      
-                      <div className="d-flex align-items-center mb-2">
-                        <i className="fas fa-phone me-3 text-secondary" style={{ width: '20px' }}></i>
-                        <span className="text-dark fw-bold">{formData.customerPhone || 'Τηλέφωνο'}</span>
-                      </div>
+                {user ? (
+                  <div className="customer-details-card mb-4 p-3 bg-light rounded" style={{ borderLeft: '4px solid #00c2e8' }}>
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div className="w-100">
+                        <div className="d-flex align-items-center mb-2">
+                          <i className="fas fa-user me-3 text-secondary" style={{ width: '20px' }}></i>
+                          <h6 className="mb-0 fw-bold text-dark">{formData.customerName || 'Όνομα Πελάτη'}</h6>
+                        </div>
+                        
+                        <div className="d-flex align-items-center mb-2">
+                          <i className="fas fa-phone me-3 text-secondary" style={{ width: '20px' }}></i>
+                          <span className="text-dark fw-bold">{formData.customerPhone || 'Τηλέφωνο'}</span>
+                        </div>
 
-                      <div className="d-flex align-items-center mb-2">
-                        <i className="fas fa-map-marker-alt me-3 text-secondary" style={{ width: '20px' }}></i>
-                        <span className="text-dark">{formData.deliveryAddress || 'Διεύθυνση'}</span>
-                      </div>
-                      
-                      <div className="mt-3 text-end">
-                        <small>
-                          <a href="/profile" className="text-decoration-none" style={{ color: '#00c2e8' }}>
-                            <i className="fas fa-edit me-1"></i>
-                            Αλλαγή στοιχείων
-                          </a>
-                        </small>
+                        <div className="d-flex align-items-center mb-2">
+                          <i className="fas fa-map-marker-alt me-3 text-secondary" style={{ width: '20px' }}></i>
+                          <span className="text-dark">{formData.deliveryAddress || 'Διεύθυνση'}</span>
+                        </div>
+                        
+                        <div className="mt-3 text-end">
+                          <small>
+                            <a href="/profile" className="text-decoration-none" style={{ color: '#00c2e8' }}>
+                              <i className="fas fa-edit me-1"></i>
+                              Αλλαγή στοιχείων
+                            </a>
+                          </small>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="guest-form mb-4 p-3 bg-white border rounded shadow-sm">
+                    <div className="mb-3">
+                      <label className="form-label">Ονοματεπώνυμο</label>
+                      <input
+                        type="text"
+                        name="customerName"
+                        className="form-control"
+                        placeholder="π.χ. Γιώργος Παπαδόπουλος"
+                        value={formData.customerName}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Τηλέφωνο (10 ψηφία)</label>
+                      <input
+                        type="tel"
+                        name="customerPhone"
+                        className="form-control"
+                        placeholder="π.χ. 6912345678"
+                        value={formData.customerPhone}
+                        onChange={handlePhoneChange}
+                        required
+                        maxLength={10}
+                      />
+                    </div>
+                    <div className="mb-3">
+                      <label className="form-label">Διεύθυνση</label>
+                      {isLoaded ? (
+                        <Autocomplete
+                          onLoad={autocomplete => setAutocomplete(autocomplete)}
+                          onPlaceChanged={onPlaceChanged}
+                        >
+                          <input
+                            type="text"
+                            name="deliveryAddress"
+                            className="form-control"
+                            placeholder="Αναζήτηση διεύθυνσης..."
+                            value={formData.deliveryAddress}
+                            onChange={handleChange}
+                            required
+                          />
+                        </Autocomplete>
+                      ) : (
+                        <input
+                          type="text"
+                          name="deliveryAddress"
+                          className="form-control"
+                          placeholder="π.χ. Λεωφόρος Δημοκρατίας 10"
+                          value={formData.deliveryAddress}
+                          onChange={handleChange}
+                          required
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="mb-4">
                   <label className="form-label">Φωνητική Παραγγελία</label>

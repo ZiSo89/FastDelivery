@@ -32,6 +32,10 @@ const CustomerHome = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [map, setMap] = useState(null);
   const categoriesRef = React.useRef(null);
+  
+  // Get guest info from localStorage
+  const guestInfo = !user ? JSON.parse(localStorage.getItem('guestInfo') || '{}') : null;
+  const displayAddress = user?.address || guestInfo?.address || 'Αλεξανδρούπολη';
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -199,7 +203,7 @@ const CustomerHome = () => {
               <div className="header-content">
                 <div className="location-pill">
                   <span className="icon">📍</span>
-                  <span className="text">{user?.address || 'Αλεξανδρούπολη'}</span>
+                  <span className="text">{displayAddress}</span>
                 </div>
                 {user ? (
                   <div className="user-profile-container" style={{ position: 'relative' }}>

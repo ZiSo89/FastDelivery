@@ -31,6 +31,13 @@ const CustomerPortal = () => {
     setLoading(false);
   };
 
+  const handleGuestClick = (e) => {
+    e.preventDefault();
+    // Clear any previous guest info to ensure fresh start
+    localStorage.removeItem('guestInfo');
+    navigate('/order');
+  };
+
   return (
     <div className="app-container" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
       <Container className="p-0" fluid>
@@ -73,7 +80,7 @@ const CustomerPortal = () => {
                 <div className="secondary-actions">
                   <p>Δεν έχεις λογαριασμό; <Link to="/register" onClick={() => console.log('🖱️ Clicked Register Link')}>Εγγραφή</Link></p>
                   <div className="divider">ή</div>
-                  <Link to="/order" className="guest-link" onClick={() => console.log('🖱️ Clicked Guest Link')}>Συνέχεια ως Επισκέπτης</Link>
+                  <a href="#" className="guest-link" onClick={handleGuestClick}>Συνέχεια ως Επισκέπτης</a>
                 </div>
               </div>
             </div>

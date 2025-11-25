@@ -74,8 +74,8 @@ body {
 }
 
 /* Google Maps Autocomplete wrapper fix */
-.input-group .pac-container {
-    z-index: 10000;
+.pac-container {
+    z-index: 10000 !important;
 }
 
 .input-group > div {
