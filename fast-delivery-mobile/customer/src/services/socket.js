@@ -1,7 +1,5 @@
 import io from 'socket.io-client';
-
-// ΙΔΙΑ IP ΜΕ ΤΟ API
-const SOCKET_URL = 'http://192.168.31.160:5000';
+import { SOCKET_URL } from '../config';
 
 class SocketService {
   socket = null;

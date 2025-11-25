@@ -1,10 +1,6 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-
-// ΑΛΛΑΞΕ ΤΟ ΜΕ ΤΗΝ IP ΤΟΥ ΥΠΟΛΟΓΙΣΤΗ ΣΟΥ (π.χ. 192.168.1.5)
-// Αν τρέχεις σε Android Emulator: 'http://10.0.2.2:5000/api/v1'
-// Αν τρέχεις σε φυσική συσκευή: 'http://YOUR_PC_IP:5000/api/v1'
-const API_URL = 'http://192.168.31.160:5000/api/v1'; 
+import { API_URL } from '../config';
 
 const api = axios.create({
   baseURL: API_URL,
