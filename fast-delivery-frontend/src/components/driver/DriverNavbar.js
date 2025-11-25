@@ -48,7 +48,8 @@ const DriverNavbar = ({ user, profile }) => {
   return (
     <Navbar bg="white" variant="light" expand="lg" className="shadow-sm" style={{ 
       borderBottom: '1px solid #f0f0f0',
-      zIndex: 100
+      zIndex: 1100,
+      position: 'relative'
     }}>
       <Container fluid>
         <Navbar.Brand onClick={() => navigate('/driver')} style={{ cursor: 'pointer' }}>
@@ -93,7 +94,7 @@ const DriverNavbar = ({ user, profile }) => {
                   borderRadius: '12px',
                   padding: '8px 0',
                   marginTop: '8px',
-                  zIndex: 1000,
+                  zIndex: 2000,
                   minWidth: '160px'
                 }}
               >

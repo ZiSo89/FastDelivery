@@ -87,126 +87,118 @@ const DriverRegister = () => {
 
   return (
     <div className="login-page">
-      <Container className="py-0 py-md-5" fluid="sm">
-        <Row className="justify-content-center m-0">
-          <Col xs={12} md={8} lg={6} className="p-0 p-md-3">
-            <Card className="shadow-lg border-0 rounded-0 rounded-md-3">
-              <Card.Body className="p-4 p-md-5">
-                <div className="text-center mb-4">
-                  <div style={{ fontSize: '48px' }}>🚗</div>
-                  <h2 className="fw-bold" style={{ color: '#00c2e8' }}>Εγγραφή Οδηγού</h2>
-                  <p className="text-muted">Συμπληρώστε τα στοιχεία σας</p>
-                </div>
+      <div className="dashboard-content-wrapper">
+        <div className="login-content">
+          <div className="text-center mb-4">
+            <div className="logo-emoji">🚗</div>
+            <h2 className="app-title">Εγγραφή Οδηγού</h2>
+            <p className="app-subtitle">Συμπληρώστε τα στοιχεία σας</p>
+          </div>
 
-                {error && <Alert variant="danger">{error}</Alert>}
-                {success && <Alert variant="success">{success}</Alert>}
+          {error && <Alert variant="danger" className="custom-alert">{error}</Alert>}
+          {success && <Alert variant="success" className="custom-alert">{success}</Alert>}
 
-                <Form onSubmit={handleSubmit}>
-                  <Form.Group className="mb-3">
-                    <Form.Label>Ονοματεπώνυμο <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="name"
-                      placeholder="π.χ. Γιάννης Παπαδόπουλος"
-                      value={formData.name}
-                      onChange={handleChange}
-                      disabled={loading}
-                      required
-                    />
-                  </Form.Group>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label className="form-label-custom">Ονοματεπώνυμο <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="text"
+                name="name"
+                placeholder="π.χ. Γιάννης Παπαδόπουλος"
+                value={formData.name}
+                onChange={handleChange}
+                disabled={loading}
+                required
+                className="form-input-custom"
+              />
+            </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Email <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="email"
-                      name="email"
-                      placeholder="driver@example.com"
-                      value={formData.email}
-                      onChange={handleChange}
-                      disabled={loading}
-                      required
-                    />
-                  </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="form-label-custom">Email <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="email"
+                name="email"
+                placeholder="driver@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={loading}
+                required
+                className="form-input-custom"
+              />
+            </Form.Group>
 
-                  <Form.Group className="mb-3">
-                    <Form.Label>Τηλέφωνο <span className="text-danger">*</span></Form.Label>
-                    <Form.Control
-                      type="text"
-                      name="phone"
-                      placeholder="10 ψηφία (π.χ. 6912345678)"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      disabled={loading}
-                      maxLength={10}
-                      required
-                    />
-                  </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="form-label-custom">Τηλέφωνο <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="text"
+                name="phone"
+                placeholder="10 ψηφία (π.χ. 6912345678)"
+                value={formData.phone}
+                onChange={handleChange}
+                disabled={loading}
+                maxLength={10}
+                required
+                className="form-input-custom"
+              />
+            </Form.Group>
 
-                  <Row>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Κωδικός <span className="text-danger">*</span></Form.Label>
-                        <Form.Control
-                          type="password"
-                          name="password"
-                          placeholder="Τουλάχιστον 6 χαρακτήρες"
-                          value={formData.password}
-                          onChange={handleChange}
-                          disabled={loading}
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Επιβεβαίωση Κωδικού <span className="text-danger">*</span></Form.Label>
-                        <Form.Control
-                          type="password"
-                          name="confirmPassword"
-                          placeholder="Επαναλάβετε τον κωδικό"
-                          value={formData.confirmPassword}
-                          onChange={handleChange}
-                          disabled={loading}
-                          required
-                        />
-                      </Form.Group>
-                    </Col>
-                  </Row>
+            <Form.Group className="mb-3">
+              <Form.Label className="form-label-custom">Κωδικός <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="password"
+                name="password"
+                placeholder="Τουλάχιστον 6 χαρακτήρες"
+                value={formData.password}
+                onChange={handleChange}
+                disabled={loading}
+                required
+                className="form-input-custom"
+              />
+            </Form.Group>
 
-                  <Alert variant="info" className="mt-3">
-                    <small>
-                      <strong>Σημείωση:</strong> Μετά την υποβολή της αίτησης, θα χρειαστεί να εγκριθείτε από τον διαχειριστή πριν μπορέσετε να συνδεθείτε.
-                    </small>
-                  </Alert>
+            <Form.Group className="mb-3">
+              <Form.Label className="form-label-custom">Επιβεβαίωση Κωδικού <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="password"
+                name="confirmPassword"
+                placeholder="Επαναλάβετε τον κωδικό"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                disabled={loading}
+                required
+                className="form-input-custom"
+              />
+            </Form.Group>
 
-                  <Button
-                    variant="primary"
-                    type="submit"
-                    className="w-100 mt-3"
-                    disabled={loading}
-                    style={{ backgroundColor: '#00c2e8', border: 'none', padding: '12px', fontWeight: '600' }}
-                  >
-                    {loading ? 'Υποβολή...' : 'Εγγραφή'}
-                  </Button>
-                </Form>
+            <Alert variant="info" className="custom-alert mt-3">
+              <small>
+                <strong>Σημείωση:</strong> Μετά την υποβολή της αίτησης, θα χρειαστεί να εγκριθείτε από τον διαχειριστή πριν μπορέσετε να συνδεθείτε.
+              </small>
+            </Alert>
 
-                <div className="mt-4 text-center">
-                  <small className="text-muted">
-                    Έχετε ήδη λογαριασμό;{' '}
-                    <span 
-                      className="text-primary" 
-                      style={{ cursor: 'pointer', fontWeight: '600' }} 
-                      onClick={() => navigate('/login')}
-                    >
-                      Σύνδεση
-                    </span>
-                  </small>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+            <Button
+              type="submit"
+              className="btn-primary-app w-100 mt-3"
+              disabled={loading}
+            >
+              {loading ? 'Υποβολή...' : 'Εγγραφή'}
+            </Button>
+          </Form>
+
+          <div className="mt-4 text-center">
+            <small className="text-muted">
+              Έχετε ήδη λογαριασμό;{' '}
+              <span 
+                className="text-primary" 
+                style={{ cursor: 'pointer', fontWeight: '600' }} 
+                onClick={() => navigate('/login')}
+              >
+                Σύνδεση
+              </span>
+            </small>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

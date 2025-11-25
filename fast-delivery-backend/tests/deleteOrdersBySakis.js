@@ -10,7 +10,7 @@ const deleteOrdersBySakis = async () => {
 
     // Find all orders where customer name contains "Σακης"
     const ordersToDelete = await Order.find({
-      'customer.name': { $regex: 'Σακης', $options: 'i' }
+      'customer.name': { $regex: 'Ζήσογλου', $options: 'i' }
     });
 
     console.log(`\n📦 Found ${ordersToDelete.length} orders with customer name containing "Σακης":`);

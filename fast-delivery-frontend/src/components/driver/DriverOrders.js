@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col, Modal, Form } from 'react-bootstrap';
+import { Button, Badge, Spinner, Alert, Card, Modal, Form } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { driverService } from '../../services/api';
 import socketService from '../../services/socket';
@@ -12,7 +12,6 @@ const DriverOrders = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [processingId, setProcessingId] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   
   // Modal states
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -22,17 +21,10 @@ const DriverOrders = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       const response = await driverService.getOrders();
-      // Backend επιστρέφει { success: true, orders: [...] }
       setOrders(response.orders || []);
       setError('');
     } catch (err) {
@@ -45,19 +37,15 @@ const DriverOrders = () => {
   useEffect(() => {
     fetchOrders();
     
-    // Socket.IO real-time listeners for driver
-    // For drivers, we refresh on ANY order event since the API filters by driverId anyway
     const handleOrderEvent = (data) => {
-      fetchOrders(); // Always refresh - API will filter by driverId
+      fetchOrders();
     };
 
-    // Subscribe to events
     socketService.on('order:assigned', handleOrderEvent);
     socketService.on('order:status_changed', handleOrderEvent);
     socketService.on('order:cancelled', handleOrderEvent);
     socketService.on('order:completed', handleOrderEvent);
 
-    // Cleanup on unmount
     return () => {
       socketService.off('order:assigned', handleOrderEvent);
       socketService.off('order:status_changed', handleOrderEvent);
@@ -70,11 +58,8 @@ const DriverOrders = () => {
     try {
       setProcessingId(orderId);
       await driverService.acceptOrder(orderId, true);
-      
-      // Find order to get orderNumber
       const order = orders.find(o => o._id === orderId);
       if (order) removeNotificationsByRelatedId(order.orderNumber);
-
       await fetchOrders();
     } catch (err) {
       setErrorMessage(err.response?.data?.message || 'Σφάλμα αποδοχής παραγγελίας');
@@ -100,11 +85,8 @@ const DriverOrders = () => {
     try {
       setProcessingId(selectedOrderId);
       await driverService.acceptOrder(selectedOrderId, false, rejectReason);
-      
-      // Find order to get orderNumber
       const order = orders.find(o => o._id === selectedOrderId);
       if (order) removeNotificationsByRelatedId(order.orderNumber);
-
       await fetchOrders();
       setShowRejectModal(false);
       setRejectReason('');
@@ -122,11 +104,8 @@ const DriverOrders = () => {
     try {
       setProcessingId(orderId);
       await driverService.updateStatus(orderId, 'in_delivery');
-      
-      // Find order to get orderNumber
       const order = orders.find(o => o._id === orderId);
       if (order) removeNotificationsByRelatedId(order.orderNumber);
-
       await fetchOrders();
     } catch (err) {
       setErrorMessage(err.response?.data?.message || 'Σφάλμα παραλαβής παραγγελίας');
@@ -145,11 +124,8 @@ const DriverOrders = () => {
     try {
       setProcessingId(selectedOrderId);
       await driverService.updateStatus(selectedOrderId, 'completed');
-      
-      // Find order to get orderNumber
       const order = orders.find(o => o._id === selectedOrderId);
       if (order) removeNotificationsByRelatedId(order.orderNumber);
-
       await fetchOrders();
       setShowCompleteModal(false);
     } catch (err) {
@@ -162,17 +138,23 @@ const DriverOrders = () => {
     }
   };
 
+  const openNavigation = (address) => {
+    if (!address) return;
+    // Open Google Maps in new tab
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+  };
+
   const getStatusBadge = (status) => {
     const config = {
-      assigned: { bg: 'warning', label: 'Ανάθεση' },
-      accepted_driver: { bg: 'info', label: 'Αποδοχή' },
+      assigned: { bg: 'warning', label: 'Νέα Ανάθεση' },
+      accepted_driver: { bg: 'info', label: 'Αναμονή' },
       preparing: { bg: 'warning', label: 'Προετοιμασία' },
       in_delivery: { bg: 'primary', label: 'Σε Παράδοση' },
       completed: { bg: 'success', label: 'Ολοκληρώθηκε' },
       rejected_driver: { bg: 'danger', label: 'Απορρίφθηκε' }
     };
     const c = config[status] || { bg: 'secondary', label: status };
-    return <Badge bg={c.bg}>{c.label}</Badge>;
+    return <Badge bg={c.bg} className="status-badge">{c.label}</Badge>;
   };
 
   return (
@@ -182,85 +164,117 @@ const DriverOrders = () => {
           <Spinner animation="border" variant="primary" />
         </div>
       ) : error ? (
-        <Alert variant="danger">{error}</Alert>
+        <Alert variant="danger" className="border-0 shadow-sm">{error}</Alert>
       ) : orders.length === 0 ? (
-        <Alert variant="info">Δεν έχετε ανατεθειμένες παραγγελίες</Alert>
-      ) : isMobile ? (
-        // Mobile Card View
-        <Row className="g-3">
+        <div className="text-center py-5 text-muted">
+          <div className="mb-3" style={{ fontSize: '40px' }}>😴</div>
+          <h5>Δεν υπάρχουν ενεργές παραγγελίες</h5>
+          <p>Περιμένετε για νέες αναθέσεις...</p>
+        </div>
+      ) : (
+        <div className="orders-list">
           {orders.map((order) => (
-            <Col xs={12} key={order._id}>
-              <Card className="shadow-sm">
-                <Card.Header className="d-flex justify-content-between align-items-center">
-                  <strong>{order.orderNumber}</strong>
+            <Card key={order._id} className="order-card mb-3 border-0 shadow-sm">
+              <Card.Body className="p-0">
+                {/* Header */}
+                <div className="d-flex justify-content-between align-items-center p-3 border-bottom bg-light-subtle">
+                  <div>
+                    <span className="fw-bold text-dark" style={{ fontSize: '1.1rem' }}>
+                      Είσπραξη: €{order.totalPrice?.toFixed(2)}
+                    </span>
+                    <div className="text-muted small mt-1">#{order.orderNumber}</div>
+                  </div>
                   {getStatusBadge(order.status)}
-                </Card.Header>
-                <Card.Body>
-                  <div className="mb-2">
-                    <small className="text-muted">🏪 Κατάστημα:</small><br />
-                    <strong>{order.storeId?.businessName || order.storeName}</strong><br />
-                    <small>{order.storeId?.address}</small><br />
-                    <a href={`tel:${order.storeId?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <small>📞 {order.storeId?.phone}</small>
-                    </a>
-                    {order.storeId?.managerPhone && (
-                      <>
-                        <br />
-                        <a href={`tel:${order.storeId?.managerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }} className="text-muted">
-                          <small>👤 Υπεύθυνος: {order.storeId?.managerPhone}</small>
-                        </a>
-                      </>
-                    )}
+                </div>
+
+                {/* Timeline Content */}
+                <div className="p-3">
+                  {/* Store */}
+                  <div className="timeline-item">
+                    <div className="timeline-marker store-marker"></div>
+                    <div className="timeline-content ms-3">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1 fw-bold">{order.storeId?.businessName || order.storeName}</h6>
+                          <p className="mb-1 text-muted small">{order.storeId?.address}</p>
+                        </div>
+                        <Button 
+                          variant="light" 
+                          size="sm" 
+                          className="nav-btn rounded-circle shadow-sm"
+                          onClick={() => openNavigation(order.storeId?.address)}
+                          title="Πλοήγηση στο κατάστημα"
+                        >
+                          📍
+                        </Button>
+                      </div>
+                      <a href={`tel:${order.storeId?.phone}`} className="text-decoration-none small text-secondary d-block mt-1">
+                        📞 {order.storeId?.phone}
+                      </a>
+                    </div>
                   </div>
-                  
-                  <div className="mb-2">
-                    <small className="text-muted">📍 Διεύθυνση Παράδοσης:</small><br />
-                    {order.customer?.address || order.deliveryAddress}
+
+                  {/* Connector */}
+                  <div className="timeline-connector ms-1"></div>
+
+                  {/* Customer */}
+                  <div className="timeline-item mt-1">
+                    <div className="timeline-marker customer-marker"></div>
+                    <div className="timeline-content ms-3">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <h6 className="mb-1 fw-bold">{order.customer?.name || 'Πελάτης'}</h6>
+                          <p className="mb-1 text-muted small">{order.customer?.address || order.deliveryAddress}</p>
+                        </div>
+                        <Button 
+                          variant="light" 
+                          size="sm" 
+                          className="nav-btn rounded-circle shadow-sm"
+                          onClick={() => openNavigation(order.customer?.address || order.deliveryAddress)}
+                          title="Πλοήγηση στον πελάτη"
+                        >
+                          📍
+                        </Button>
+                      </div>
+                      <a href={`tel:${order.customer?.phone || order.customerPhone}`} className="text-decoration-none small text-secondary d-block mt-1">
+                        📞 {order.customer?.phone || order.customerPhone}
+                      </a>
+                    </div>
                   </div>
-                  
-                  <div className="mb-2">
-                    <small className="text-muted">📞 Τηλέφωνο:</small><br />
-                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <strong>{order.customer?.phone || order.customerPhone}</strong>
-                    </a>
-                  </div>
-                  
-                  <div className="mb-3">
-                    <small className="text-muted">Αξία Παραγγελίας:</small><br />
-                    <h5 className="text-success mb-0">€{order.totalPrice?.toFixed(2)}</h5>
-                  </div>
-                  
-                  {/* Action Buttons */}
+                </div>
+
+                {/* Actions Footer */}
+                <div className="p-3 bg-light border-top">
                   <div className="d-grid gap-2">
                     {order.status === 'assigned' && (
-                      <>
+                      <div className="d-flex gap-2">
                         <Button
                           variant="success"
+                          className="flex-grow-1 fw-bold py-2"
                           onClick={() => handleAccept(order._id)}
                           disabled={processingId === order._id}
                         >
-                          ✅ Αποδοχή Παραγγελίας
+                          Αποδοχή
                         </Button>
                         <Button
-                          variant="danger"
+                          variant="outline-danger"
+                          className="fw-bold py-2"
                           onClick={() => handleReject(order._id)}
                           disabled={processingId === order._id}
                         >
-                          ❌ Απόρριψη
+                          Απόρριψη
                         </Button>
-                      </>
+                      </div>
                     )}
                     {order.status === 'accepted_driver' && (
-                      <Alert variant="info" className="mb-0">
-                        <div className="text-center">
-                          <strong>⏳ Αναμονή Προετοιμασίας</strong>
-                          <p className="mb-0 mt-2 small">Το κατάστημα ετοιμάζει την παραγγελία</p>
-                        </div>
+                      <Alert variant="info" className="mb-0 py-2 text-center small border-0">
+                        <strong>⏳ Αναμονή Προετοιμασίας</strong>
                       </Alert>
                     )}
                     {order.status === 'preparing' && (
                       <Button
                         variant="primary"
+                        className="fw-bold py-2"
                         onClick={() => handlePickup(order._id)}
                         disabled={processingId === order._id}
                       >
@@ -270,6 +284,7 @@ const DriverOrders = () => {
                     {order.status === 'in_delivery' && (
                       <Button
                         variant="success"
+                        className="fw-bold py-2"
                         onClick={() => handleComplete(order._id)}
                         disabled={processingId === order._id}
                       >
@@ -277,108 +292,15 @@ const DriverOrders = () => {
                       </Button>
                     )}
                     {order.status === 'completed' && (
-                      <Badge bg="success" className="p-2">✅ Ολοκληρώθηκε</Badge>
+                      <div className="text-center text-success fw-bold">
+                        ✅ Η παραγγελία ολοκληρώθηκε
+                      </div>
                     )}
                   </div>
-                </Card.Body>
-              </Card>
-            </Col>
+                </div>
+              </Card.Body>
+            </Card>
           ))}
-        </Row>
-      ) : (
-        // Desktop Table View
-        <div className="table-responsive">
-          <Table striped bordered hover>
-            <thead>
-              <tr>
-                <th>Αριθμός</th>
-                <th>Κατάστημα</th>
-                <th>Διεύθυνση Παράδοσης</th>
-                <th>Τηλέφωνο</th>
-                <th>Αξία</th>
-                <th>Κατάσταση</th>
-                <th>Ενέργειες</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order._id}>
-                  <td className="fw-bold">{order.orderNumber}</td>
-                  <td>
-                    {order.storeId?.businessName || order.storeName}<br />
-                    <small className="text-muted">{order.storeId?.address}</small><br />
-                    <a href={`tel:${order.storeId?.phone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <small className="text-muted">📞 {order.storeId?.phone}</small>
-                    </a>
-                    {order.storeId?.managerPhone && (
-                      <>
-                        <br />
-                        <a href={`tel:${order.storeId?.managerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                          <small className="text-muted">👤 {order.storeId?.managerPhone}</small>
-                        </a>
-                      </>
-                    )}
-                  </td>
-                  <td>{order.customer?.address || order.deliveryAddress}</td>
-                  <td>
-                    <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      {order.customer?.phone || order.customerPhone}
-                    </a>
-                  </td>
-                  <td className="fw-bold">€{order.totalPrice?.toFixed(2)}</td>
-                  <td>{getStatusBadge(order.status)}</td>
-                  <td>
-                    {order.status === 'assigned' && (
-                      <ButtonGroup size="sm">
-                        <Button
-                          variant="success"
-                          onClick={() => handleAccept(order._id)}
-                          disabled={processingId === order._id}
-                        >
-                          ✅ Αποδοχή
-                        </Button>
-                        <Button
-                          variant="danger"
-                          onClick={() => handleReject(order._id)}
-                          disabled={processingId === order._id}
-                        >
-                          ❌ Απόρριψη
-                        </Button>
-                      </ButtonGroup>
-                    )}
-                    {order.status === 'accepted_driver' && (
-                      <Badge bg="info" className="p-2">
-                        ⏳ Αναμονή Προετοιμασίας
-                      </Badge>
-                    )}
-                    {order.status === 'preparing' && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handlePickup(order._id)}
-                        disabled={processingId === order._id}
-                      >
-                        🚗 Παραλαβή & Αποστολή
-                      </Button>
-                    )}
-                    {order.status === 'in_delivery' && (
-                      <Button
-                        variant="success"
-                        size="sm"
-                        onClick={() => handleComplete(order._id)}
-                        disabled={processingId === order._id}
-                      >
-                        ✅ Ολοκλήρωση
-                      </Button>
-                    )}
-                    {order.status === 'completed' && (
-                      <Badge bg="success">Ολοκληρώθηκε</Badge>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
         </div>
       )}
 
@@ -390,7 +312,7 @@ const DriverOrders = () => {
         className="driver-modal"
       >
         <Modal.Header closeButton>
-          <Modal.Title>❌ Απόρριψη Παραγγελίας</Modal.Title>
+          <Modal.Title>❌ Απόρριψη</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
@@ -401,7 +323,7 @@ const DriverOrders = () => {
                 rows={3}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="π.χ. Πολύ μακριά, Δεν είμαι διαθέσιμος κτλ."
+                placeholder="π.χ. Πολύ μακριά..."
               />
             </Form.Group>
           </Form>
@@ -411,7 +333,7 @@ const DriverOrders = () => {
             Άκυρο
           </Button>
           <Button variant="danger" onClick={confirmReject} disabled={!rejectReason.trim()}>
-            Απόρριψη Παραγγελίας
+            Απόρριψη
           </Button>
         </Modal.Footer>
       </Modal>
@@ -424,19 +346,16 @@ const DriverOrders = () => {
         className="driver-modal"
       >
         <Modal.Header closeButton>
-          <Modal.Title>✅ Ολοκλήρωση Παράδοσης</Modal.Title>
+          <Modal.Title>✅ Ολοκλήρωση</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>Είστε σίγουρος ότι ολοκληρώθηκε η παράδοση;</p>
-          <p className="text-muted mb-0">
-            <small>Μετά την επιβεβαίωση, η παραγγελία θα μεταφερθεί στο ιστορικό.</small>
-          </p>
+          <p>Επιβεβαιώνετε την παράδοση;</p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowCompleteModal(false)}>
-            Όχι, Ακύρωση
+            Άκυρο
           </Button>
-          <Button variant="primary" onClick={confirmComplete}>
+          <Button variant="success" onClick={confirmComplete}>
             Ναι, Ολοκληρώθηκε
           </Button>
         </Modal.Footer>

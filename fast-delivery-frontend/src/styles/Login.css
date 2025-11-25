@@ -1,8 +1,32 @@
-/* Login & Register Pages - Wolt Style Design */
+/* Login & Register Pages - Mobile App Style */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 .login-page {
-  background: #f8f9fa;
+  background-color: #f0f2f5;
   min-height: 100vh;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  display: flex;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Main Container - Mobile App feel on Desktop */
+.dashboard-content-wrapper {
+  width: 100%;
+  max-width: 450px; /* Narrow width like a phone */
+  background-color: #fff;
+  min-height: 100vh;
+  box-shadow: 0 0 20px rgba(0,0,0,0.05);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.login-content {
+  padding: 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* Logo & Branding */
@@ -12,32 +36,40 @@
 }
 
 .app-title {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   color: #00c2e8;
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
 }
 
 .app-subtitle {
   font-size: 16px;
   color: #666;
-  font-weight: 400;
-  margin-bottom: 0;
+  font-weight: 500;
+  margin-bottom: 32px;
 }
 
-/* Cards */
+/* Cards - Removed card look for mobile feel, just clean inputs */
 .login-card,
 .register-option-card {
-  background: white;
+  background: transparent;
   border: none;
+  box-shadow: none;
+}
+
+.register-option-card {
+  background: #f8f9fa;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  margin-bottom: 16px;
+  border: 1px solid #eee;
+  transition: all 0.2s ease;
 }
 
 .register-option-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 194, 232, 0.15);
+  transform: translateY(-2px);
+  border-color: #00c2e8;
+  background: #f0faff;
 }
 
 /* Form Elements */
@@ -50,23 +82,19 @@
 
 .form-input-custom {
   padding: 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid #e0e0e0;
   background: #f9f9f9;
-  font-size: 15px;
+  font-size: 16px; /* Prevent zoom on mobile */
   transition: all 0.2s ease;
+  margin-bottom: 16px;
 }
 
 .form-input-custom:focus {
   background: white;
   border-color: #00c2e8;
-  box-shadow: 0 0 0 3px rgba(0, 194, 232, 0.1);
+  box-shadow: 0 0 0 4px rgba(0, 194, 232, 0.1);
   outline: none;
-}
-
-.form-input-custom:disabled {
-  background: #f5f5f5;
-  opacity: 0.7;
 }
 
 /* Primary Button - Wolt Style */
@@ -74,12 +102,13 @@
   background: #00c2e8;
   color: white;
   border: none;
-  padding: 16px 24px;
+  padding: 16px;
   font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
+  font-weight: 700;
+  border-radius: 12px;
   transition: all 0.2s ease;
-  text-transform: none;
+  width: 100%;
+  margin-bottom: 16px;
 }
 
 .btn-primary-app:hover {
@@ -89,38 +118,25 @@
 }
 
 .btn-primary-app:active {
-  transform: translateY(0);
-  background: #0090b0;
-}
-
-.btn-primary-app:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-  transform: none;
+  transform: scale(0.98);
 }
 
 /* Outline Button */
 .btn-outline-app {
-  background: white;
+  background: transparent;
   color: #00c2e8;
   border: 2px solid #00c2e8;
-  padding: 14px 28px;
+  padding: 14px;
   font-size: 16px;
-  font-weight: 600;
-  border-radius: 8px;
+  font-weight: 700;
+  border-radius: 12px;
   transition: all 0.2s ease;
+  width: 100%;
 }
 
 .btn-outline-app:hover {
-  background: #00c2e8;
-  color: white;
-  border-color: #00c2e8;
+  background: #f0faff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 194, 232, 0.2);
-}
-
-.btn-outline-app:active {
-  transform: translateY(0);
 }
 
 /* Divider */
@@ -137,7 +153,7 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: #e0e0e0;
+  background: #eee;
   z-index: 0;
 }
 
@@ -153,125 +169,65 @@
 
 /* Register Selection Page */
 .option-icon {
-  font-size: 56px;
-  margin-bottom: 16px;
-}
-
-.option-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #00c2e8;
+  font-size: 40px;
   margin-bottom: 12px;
 }
 
+.option-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 4px;
+}
+
 .option-description {
-  font-size: 14px;
+  font-size: 13px;
   color: #666;
-  margin-bottom: 20px;
-  line-height: 1.5;
+  margin-bottom: 12px;
+  line-height: 1.4;
 }
 
 .option-features {
   list-style: none;
   padding: 0;
-  margin: 0 0 16px 0;
+  margin: 0;
   text-align: left;
 }
 
 .option-features li {
-  font-size: 14px;
+  font-size: 13px;
   color: #555;
-  margin-bottom: 10px;
-  padding-left: 8px;
+  margin-bottom: 6px;
+  padding-left: 0;
+  display: flex;
+  align-items: center;
+}
+
+.option-features li::before {
+  content: '✓';
+  color: #00c2e8;
+  font-weight: bold;
+  margin-right: 8px;
 }
 
 /* Alert */
 .custom-alert {
-  border-radius: 8px;
+  border-radius: 12px;
   border: none;
-  padding: 14px;
+  padding: 16px;
   font-size: 14px;
+  background-color: #ffebee;
+  color: #c62828;
+  margin-bottom: 24px;
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
-  .logo-emoji {
-    font-size: 40px;
-    margin-bottom: 12px;
-  }
-
-  .app-title {
-    font-size: 28px;
-  }
-
-  .app-subtitle {
-    font-size: 14px;
-  }
-
-  .login-card,
-  .register-option-card {
-    border-radius: 12px;
-  }
-
-  .login-card .card-body,
-  .register-option-card .card-body {
-    padding: 24px !important;
-  }
-
-  .btn-primary-app {
-    padding: 14px 20px;
-    font-size: 15px;
-  }
-
-  .btn-outline-app {
-    padding: 12px 24px;
-    font-size: 15px;
-  }
-
-  .option-icon {
-    font-size: 48px;
-  }
-
-  .option-title {
-    font-size: 20px;
-  }
-
-  .option-description {
-    font-size: 13px;
-  }
-
-  .option-features li {
-    font-size: 13px;
-    margin-bottom: 8px;
-  }
-}
-
 @media (max-width: 576px) {
-  .login-page {
-    padding: 0;
-  }
-
-  .login-card,
-  .register-option-card {
-    border-radius: 0;
+  .dashboard-content-wrapper {
     box-shadow: none;
   }
-
-  .logo-emoji {
-    font-size: 36px;
-  }
-
-  .app-title {
-    font-size: 24px;
-  }
-
-  .btn-primary-app,
-  .btn-outline-app {
-    font-size: 14px;
-  }
-
-  .form-input-custom {
-    padding: 14px;
-    font-size: 14px;
+  
+  .login-content {
+    padding: 20px;
   }
 }
