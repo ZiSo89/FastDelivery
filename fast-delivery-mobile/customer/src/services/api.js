@@ -33,6 +33,22 @@ api.interceptors.response.use(
   }
 );
 
+// Health check to wake up the server (MongoDB cold start)
+export const healthCheck = async (maxRetries = 3) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await api.get('/health', { timeout: 10000 });
+      return { success: true, data: response.data };
+    } catch (error) {
+      if (i === maxRetries - 1) {
+        return { success: false, error: 'Server unavailable' };
+      }
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+};
+
 export const customerService = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/customer/register', data),

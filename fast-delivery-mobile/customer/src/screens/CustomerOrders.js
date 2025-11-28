@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, ScrollView, Keyboard } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import CustomAlert from '../components/CustomAlert';
 
 const CustomerOrders = ({ navigation }) => {
   const { user } = useAuth();
@@ -11,6 +12,15 @@ const CustomerOrders = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [guestPhone, setGuestPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+  const phoneInputRef = useRef(null);
+  const scrollViewRef = useRef(null);
 
   const loadOrders = async () => {
     if (user?.isGuest) {
@@ -30,25 +40,63 @@ const CustomerOrders = ({ navigation }) => {
     }
   };
 
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig({ ...alertConfig, visible: false });
+  };
+
   const handleTrackOrder = async () => {
-    if (!guestPhone || guestPhone.length !== 10) {
-      console.log('Invalid phone number');
+    Keyboard.dismiss();
+    
+    // Validate phone
+    if (!guestPhone) {
+      setPhoneError('Εισάγετε το τηλέφωνό σας');
+      phoneInputRef.current?.focus();
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    
+    if (guestPhone.length !== 10) {
+      setPhoneError('Το τηλέφωνο πρέπει να έχει 10 ψηφία');
+      phoneInputRef.current?.focus();
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
 
     try {
       setLoading(true);
+      setPhoneError('');
       const response = await customerService.getActiveOrderByPhone(guestPhone);
       setLoading(false);
       
       if (response.data.success && response.data.order) {
         navigation.navigate('TrackOrder', { orderNumber: response.data.order.orderNumber });
       } else {
-        console.log('No active order found');
+        showAlert(
+          'Δεν βρέθηκε παραγγελία',
+          'Δεν υπάρχει ενεργή παραγγελία για αυτό το τηλέφωνο. Ελέγξτε τον αριθμό ή περιμένετε να ενημερωθεί η κατάσταση.',
+          'warning'
+        );
       }
     } catch (error) {
       setLoading(false);
-      console.log('Track order error:', error.message);
+      
+      if (error.response?.status === 404) {
+        showAlert(
+          'Δεν βρέθηκε παραγγελία',
+          'Δεν υπάρχει ενεργή παραγγελία για αυτό το τηλέφωνο. Αν έχετε ολοκληρωμένη παραγγελία, δεν εμφανίζεται εδώ.',
+          'info'
+        );
+      } else {
+        showAlert(
+          'Σφάλμα',
+          'Κάτι πήγε στραβά. Δοκιμάστε ξανά.',
+          'error'
+        );
+      }
     }
   };
 
@@ -126,30 +174,63 @@ const CustomerOrders = ({ navigation }) => {
   if (user?.isGuest) {
     return (
       <View style={styles.container}>
-        <View style={styles.guestContainer}>
-          <Ionicons name="search-circle-outline" size={100} color="#00c2e8" />
-          <Text style={styles.guestTitle}>Παρακολούθηση Παραγγελίας</Text>
-          <Text style={styles.guestSubtitle}>
-            Εισάγετε το τηλέφωνό σας για να δείτε την εξέλιξη της τρέχουσας παραγγελίας σας
-          </Text>
-          
-          <View style={styles.inputContainer}>
-            <Ionicons name="call-outline" size={20} color="#666" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Τηλέφωνο (π.χ. 6912345678)"
-              value={guestPhone}
-              onChangeText={setGuestPhone}
-              keyboardType="phone-pad"
-              maxLength={10}
-              placeholderTextColor="#999"
-            />
+        <ScrollView 
+          ref={scrollViewRef}
+          contentContainerStyle={styles.guestScrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={true}
+          bounces={true}
+          alwaysBounceVertical={true}
+        >
+          <View style={styles.guestContainer}>
+            <Ionicons name="search-circle-outline" size={100} color="#00c2e8" />
+            <Text style={styles.guestTitle}>Παρακολούθηση Παραγγελίας</Text>
+            <Text style={styles.guestSubtitle}>
+              Εισάγετε το τηλέφωνό σας για να δείτε την εξέλιξη της τρέχουσας παραγγελίας σας
+            </Text>
+            
+            <View style={[styles.inputContainer, phoneError && styles.inputContainerError]}>
+              <Ionicons name="call-outline" size={20} color={phoneError ? "#e74c3c" : "#666"} style={styles.inputIcon} />
+              <TextInput
+                ref={phoneInputRef}
+                style={styles.input}
+                placeholder="Τηλέφωνο (π.χ. 6912345678)"
+                value={guestPhone}
+                onChangeText={(text) => {
+                  const cleaned = text.replace(/[^0-9]/g, '');
+                  if (cleaned.length <= 10) {
+                    setGuestPhone(cleaned);
+                    if (phoneError) setPhoneError('');
+                  }
+                }}
+                keyboardType="phone-pad"
+                maxLength={10}
+                placeholderTextColor="#999"
+              />
+            </View>
+            {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
+            
+            <TouchableOpacity 
+              style={[styles.trackButton, loading && styles.trackButtonDisabled]} 
+              onPress={handleTrackOrder}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.trackButtonText}>Αναζήτηση</Text>
+              )}
+            </TouchableOpacity>
           </View>
-          
-          <TouchableOpacity style={styles.trackButton} onPress={handleTrackOrder}>
-             <Text style={styles.trackButtonText}>Αναζήτηση</Text>
-          </TouchableOpacity>
-        </View>
+        </ScrollView>
+        
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={hideAlert}
+        />
       </View>
     );
   }
@@ -249,12 +330,17 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 16,
   },
-  guestContainer: {
-    flex: 1,
+  guestScrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+  },
+  guestContainer: {
     alignItems: 'center',
     padding: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
     backgroundColor: '#fff',
+    minHeight: '100%',
   },
   guestTitle: {
     fontSize: 22,
@@ -275,12 +361,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
     borderRadius: 10,
-    marginBottom: 20,
+    marginBottom: 8,
     paddingHorizontal: 15,
     height: 50,
     width: '100%',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#eee',
+  },
+  inputContainerError: {
+    borderColor: '#e74c3c',
+    backgroundColor: '#fff5f5',
   },
   inputIcon: {
     marginRight: 10,
@@ -291,6 +381,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 13,
+    marginBottom: 15,
+    alignSelf: 'flex-start',
+  },
   trackButton: {
     backgroundColor: '#00c2e8',
     borderRadius: 10,
@@ -298,6 +394,10 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 10,
+  },
+  trackButtonDisabled: {
+    backgroundColor: '#b0e8f5',
   },
   trackButtonText: {
     color: '#fff',

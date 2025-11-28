@@ -421,34 +421,46 @@ const TrackOrderScreen = ({ route, navigation }) => {
             showsScale={false}
             toolbarEnabled={false}
           >
-            {/* Store Marker - Orange Pin */}
+            {/* Store Marker - Orange */}
             {storeLocation && (
               <Marker
                 coordinate={storeLocation}
                 title={order.storeName}
-                pinColor="#FF6B35"
-                tracksViewChanges={false}
-              />
+              >
+                <View style={styles.markerContainer}>
+                  <View style={[styles.marker, styles.storeMarker]}>
+                    <Ionicons name="storefront" size={16} color="#fff" />
+                  </View>
+                </View>
+              </Marker>
             )}
 
-            {/* Customer Home Marker - Green Pin */}
+            {/* Customer Home Marker - Green */}
             {customerLocation && (
               <Marker
                 coordinate={customerLocation}
                 title="Διεύθυνση Παράδοσης"
-                pinColor="#00C853"
-                tracksViewChanges={false}
-              />
+              >
+                <View style={styles.markerContainer}>
+                  <View style={[styles.marker, styles.customerMarker]}>
+                    <Ionicons name="home" size={16} color="#fff" />
+                  </View>
+                </View>
+              </Marker>
             )}
 
-            {/* Driver Marker - Blue Pin (only when in_delivery) */}
+            {/* Driver Marker - Blue (only when in_delivery) */}
             {driverLocation && order.status === 'in_delivery' && (
               <Marker
                 coordinate={driverLocation}
                 title={order.driverName || 'Οδηγός'}
-                pinColor="#00c1e8"
-                tracksViewChanges={false}
-              />
+              >
+                <View style={styles.markerContainer}>
+                  <View style={[styles.marker, styles.driverMarker]}>
+                    <Ionicons name="bicycle" size={16} color="#fff" />
+                  </View>
+                </View>
+              </Marker>
             )}
           </MapView>
 
@@ -545,18 +557,18 @@ const TrackOrderScreen = ({ route, navigation }) => {
         </View>
 
         {/* Driver Details Card - Only show if assigned */}
-        {order.driverId && (
+        {order.driverId && order.driverId.name && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Στοιχεία Οδηγού</Text>
             <View style={styles.infoRow}>
               <Ionicons name="bicycle-outline" size={18} color="#666" />
-              <Text style={styles.infoTextBold}>{order.driverId.name}</Text>
+              <Text style={styles.infoTextBold}>{order.driverId?.name || 'Οδηγός'}</Text>
             </View>
             <View style={styles.infoRow}>
               <Ionicons name="car-sport-outline" size={18} color="#666" />
-              <Text style={styles.infoText}>{order.driverId.vehicle || 'Όχημα'}</Text>
+              <Text style={styles.infoText}>{order.driverId?.vehicle || 'Όχημα'}</Text>
             </View>
-            {order.driverId.phone && (
+            {order.driverId?.phone && (
               <TouchableOpacity style={styles.infoRow} onPress={handleCallDriver}>
                 <Ionicons name="call-outline" size={18} color="#00c1e8" />
                 <Text style={[styles.infoText, { color: '#00c1e8', fontWeight: '600' }]}>
@@ -572,7 +584,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
           <Text style={styles.cardTitle}>Στοιχεία Πελάτη</Text>
           <View style={styles.infoRow}>
             <Ionicons name="person-outline" size={18} color="#666" />
-            <Text style={styles.infoTextBold}>{order.customer?.name}</Text>
+            <Text style={styles.infoTextBold}>{order.customer?.name || 'Πελάτης'}</Text>
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="call-outline" size={18} color="#666" />
@@ -1060,6 +1072,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  // Custom map markers
+  markerContainer: {
+    alignItems: 'center',
+  },
+  marker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  storeMarker: {
+    backgroundColor: '#FF5722',
+  },
+  customerMarker: {
+    backgroundColor: '#4CAF50',
+  },
+  driverMarker: {
+    backgroundColor: '#2196F3',
   },
 });
 

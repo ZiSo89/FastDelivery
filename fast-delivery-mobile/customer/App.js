@@ -8,6 +8,7 @@ import { AlertProvider } from './src/context/AlertContext';
 import { ActivityIndicator, View, LogBox } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
+import ServerLoadingScreen from './src/components/ServerLoadingScreen';
 
 // Hide Expo Go specific warnings
 LogBox.ignoreLogs([
@@ -111,16 +112,32 @@ const MainTabNavigator = () => {
         name="HomeTab" 
         component={HomeStackScreen} 
         options={{ title: 'Αρχική' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Always navigate to the Home screen (root of the stack)
+            navigation.navigate('HomeTab', { screen: 'Home' });
+          },
+        })}
       />
       <Tab.Screen 
         name="SearchTab" 
         component={SearchStackScreen} 
         options={{ title: 'Αναζήτηση' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('SearchTab', { screen: 'Search' });
+          },
+        })}
       />
       <Tab.Screen 
         name="OrdersTab" 
         component={OrdersStackScreen} 
         options={{ title: 'Παραγγελίες' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('OrdersTab', { screen: 'Orders' });
+          },
+        })}
       />
       <Tab.Screen 
         name="ProfileTab" 
@@ -132,12 +149,18 @@ const MainTabNavigator = () => {
 };
 
 const AppNavigator = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, serverReady, serverStatus } = useAuth();
 
+  // Show server loading screen while connecting to backend
+  if (!serverReady) {
+    return <ServerLoadingScreen status={serverStatus} />;
+  }
+
+  // Show loading spinner while checking auth state
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#00c2e8" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#00c2e8' }}>
+        <ActivityIndicator size="large" color="#fff" />
       </View>
     );
   }

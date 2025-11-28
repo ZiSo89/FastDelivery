@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { customerService } from '../services/api';
+import { customerService, healthCheck } from '../services/api';
 import socketService from '../services/socket';
 
 const AuthContext = createContext();
@@ -15,11 +15,33 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [serverReady, setServerReady] = useState(false);
+  const [serverStatus, setServerStatus] = useState('Σύνδεση με τον server...');
   const [expoPushToken, setExpoPushToken] = useState('');
 
   useEffect(() => {
-    loadUser();
+    initializeApp();
   }, []);
+
+  const initializeApp = async () => {
+    // Step 1: Wake up server (MongoDB cold start fix)
+    setServerStatus('Εκκίνηση συστήματος...');
+    const healthResult = await healthCheck(3);
+    
+    if (healthResult.success) {
+      setServerReady(true);
+      setServerStatus('Έλεγχος σύνδεσης...');
+      // Step 2: Load user
+      await loadUser();
+    } else {
+      setServerStatus('Αδυναμία σύνδεσης. Ελέγξτε το internet.');
+      // Still allow app to load after delay
+      setTimeout(() => {
+        setServerReady(true);
+        loadUser();
+      }, 3000);
+    }
+  };
 
   const registerForPushNotificationsAsync = async () => {
     let token;
@@ -173,7 +195,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, loginAsGuest }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      serverReady, 
+      serverStatus, 
+      login, 
+      register, 
+      logout, 
+      loginAsGuest 
+    }}>
       {children}
     </AuthContext.Provider>
   );

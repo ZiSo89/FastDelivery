@@ -10,8 +10,9 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
-  Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  TouchableWithoutFeedback,
+  Modal
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -19,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import GuestDetailsModal from '../components/GuestDetailsModal';
 
 const CATEGORIES = [
   { id: 'all', label: 'Όλα', icon: '🍽️' },
@@ -43,6 +45,12 @@ const HomeScreen = ({ navigation }) => {
   const [showSearch, setShowSearch] = useState(false);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef(null);
+  
+  // Modal states
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [selectedStore, setSelectedStore] = useState(null);
+  const [guestDetails, setGuestDetails] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const fitMapToMarkers = () => {
     if (filteredStores.length > 0 && mapRef.current) {
@@ -180,32 +188,53 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Αποσύνδεση",
-      "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;",
-      [
-        { text: "Ακύρωση", style: "cancel" },
-        { text: "Αποσύνδεση", onPress: logout, style: "destructive" }
-      ]
-    );
+    setShowProfileMenu(false);
+    logout();
+  };
+
+  const handleAvatarPress = () => {
+    setShowProfileMenu(!showProfileMenu);
+  };
+
+  const handleStoreSelect = (store) => {
+    if (!store) return;
+    
+    // If user is guest or not logged in, show the guest details modal
+    if (!user || user.isGuest) {
+      setSelectedStore(store);
+      setShowGuestModal(true);
+    } else {
+      // Logged in user, go directly to order
+      navigation.navigate('Order', { store });
+    }
+  };
+
+  const handleGuestDetailsSubmit = (details) => {
+    setGuestDetails(details);
+    setShowGuestModal(false);
+    // Navigate to Order with store and guest details
+    navigation.navigate('Order', { 
+      store: selectedStore, 
+      guestDetails: details 
+    });
   };
 
   const getInitials = () => {
-    if (!user) return 'G';
+    if (!user || user.isGuest) return 'G';
     // Check for 'name' field first (as used in User/Customer model)
-    const name = user.name || '';
+    const name = user?.name || '';
     if (name) {
       const parts = name.trim().split(' ');
       if (parts.length >= 2) {
         return (parts[0][0] + parts[1][0]).toUpperCase();
-      } else if (parts.length === 1) {
+      } else if (parts.length === 1 && parts[0].length > 0) {
         return parts[0].substring(0, 2).toUpperCase();
       }
     }
     
     // Fallback to firstName/lastName if they exist (legacy)
-    const first = user.firstName ? user.firstName.charAt(0).toUpperCase() : '';
-    const last = user.lastName ? user.lastName.charAt(0).toUpperCase() : '';
+    const first = user?.firstName ? user.firstName.charAt(0).toUpperCase() : '';
+    const last = user?.lastName ? user.lastName.charAt(0).toUpperCase() : '';
     return (first + last) || 'U';
   };
 
@@ -223,7 +252,7 @@ const HomeScreen = ({ navigation }) => {
   const renderStoreItem = ({ item }) => (
     <TouchableOpacity 
       style={styles.card}
-      onPress={() => navigation.navigate('Order', { store: item })}
+      onPress={() => handleStoreSelect(item)}
       activeOpacity={0.9}
     >
       <View style={styles.cardImagePlaceholder}>
@@ -253,12 +282,31 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.locationText} numberOfLines={1}>{address}</Text>
           <Ionicons name="chevron-down" size={12} color="#666" />
         </View>
-        <TouchableOpacity style={styles.profileButton} onPress={handleLogout}>
+        <TouchableOpacity style={styles.profileButton} onPress={handleAvatarPress}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials()}</Text>
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* Profile Dropdown Menu */}
+      <Modal
+        visible={showProfileMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowProfileMenu(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowProfileMenu(false)}>
+          <View style={styles.dropdownOverlay}>
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity style={styles.dropdownItem} onPress={handleLogout}>
+                <Ionicons name="log-out-outline" size={20} color="#e74c3c" />
+                <Text style={styles.dropdownText}>Αποσύνδεση</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* Search Bar (Conditional) */}
       {showSearch && (
@@ -378,8 +426,14 @@ const HomeScreen = ({ navigation }) => {
                       }}
                       title={store.businessName}
                       description={store.storeType}
-                      onCalloutPress={() => navigation.navigate('Order', { store })}
-                    />
+                      onCalloutPress={() => handleStoreSelect(store)}
+                    >
+                      <View style={styles.markerContainer}>
+                        <View style={[styles.marker, styles.storeMarker]}>
+                          <Ionicons name="storefront" size={14} color="#fff" />
+                        </View>
+                      </View>
+                    </Marker>
                   );
                 }
                 return null;
@@ -388,6 +442,14 @@ const HomeScreen = ({ navigation }) => {
           </View>
         )}
       </View>
+
+      {/* Guest Details Modal */}
+      <GuestDetailsModal
+        visible={showGuestModal}
+        onClose={() => setShowGuestModal(false)}
+        onSubmit={handleGuestDetailsSubmit}
+        initialData={guestDetails || {}}
+      />
 
       {/* Bottom Navigation - REMOVED as we use Tab Navigator now */}
     </View>
@@ -425,6 +487,39 @@ const styles = StyleSheet.create({
   },
   profileButton: {
     padding: 2,
+  },
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 80,
+    paddingRight: 15,
+  },
+  dropdownMenu: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#e74c3c',
+    marginLeft: 12,
+    fontWeight: '600',
   },
   avatar: {
     width: 36,
@@ -639,6 +734,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
+  },
+  markerContainer: {
+    alignItems: 'center',
+  },
+  marker: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  storeMarker: {
+    backgroundColor: '#FF5722',
   },
 });
 

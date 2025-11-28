@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { customerService } from '../services/api';
 import { Ionicons } from '@expo/vector-icons';
+import CustomAlert from '../components/CustomAlert';
 
 const CustomerProfile = () => {
   const { user, logout } = useAuth();
@@ -12,6 +13,23 @@ const CustomerProfile = () => {
     phone: '',
     address: ''
   });
+  
+  // Alert states
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    buttons: []
+  });
+
+  const showAlert = (title, message, type = 'info', buttons = []) => {
+    setAlertConfig({ visible: true, title, message, type, buttons });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig({ ...alertConfig, visible: false });
+  };
 
   useEffect(() => {
     if (user) {
@@ -25,15 +43,15 @@ const CustomerProfile = () => {
 
   const handleUpdate = async () => {
     if (user?.isGuest) {
-      Alert.alert('Ειδοποίηση', 'Παρακαλώ συνδεθείτε για να επεξεργαστείτε το προφίλ σας');
+      showAlert('Ειδοποίηση', 'Παρακαλώ συνδεθείτε για να επεξεργαστείτε το προφίλ σας', 'warning');
       return;
     }
     setLoading(true);
     try {
       await customerService.updateProfile(formData);
-      Alert.alert('Επιτυχία', 'Το προφίλ ενημερώθηκε');
+      showAlert('Επιτυχία', 'Το προφίλ ενημερώθηκε', 'success');
     } catch (error) {
-      Alert.alert('Σφάλμα', 'Η ενημέρωση απέτυχε');
+      showAlert('Σφάλμα', 'Η ενημέρωση απέτυχε', 'error');
     } finally {
       setLoading(false);
     }
@@ -44,12 +62,13 @@ const CustomerProfile = () => {
       logout();
       return;
     }
-    Alert.alert(
-      "Αποσύνδεση",
-      "Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;",
+    showAlert(
+      'Αποσύνδεση',
+      'Είστε σίγουροι ότι θέλετε να αποσυνδεθείτε;',
+      'warning',
       [
-        { text: "Ακύρωση", style: "cancel" },
-        { text: "Αποσύνδεση", onPress: logout, style: "destructive" }
+        { text: 'Ακύρωση', style: 'cancel' },
+        { text: 'Αποσύνδεση', style: 'destructive', onPress: logout }
       ]
     );
   };
@@ -125,6 +144,16 @@ const CustomerProfile = () => {
           <Text style={styles.logoutText}>Αποσύνδεση</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        buttons={alertConfig.buttons}
+        onClose={hideAlert}
+      />
     </ScrollView>
   );
 };

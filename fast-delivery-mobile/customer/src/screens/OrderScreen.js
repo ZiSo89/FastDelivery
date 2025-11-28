@@ -4,9 +4,10 @@ import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import CustomAlert from '../components/CustomAlert';
 
 const OrderScreen = ({ route, navigation }) => {
-  const { store } = route.params;
+  const { store, guestDetails } = route.params;
   const { user } = useAuth();
   const [orderText, setOrderText] = useState('');
   const [name, setName] = useState('');
@@ -15,6 +16,17 @@ const OrderScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   
+  // Alert state
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+  
+  // Check if user is guest (no user or isGuest flag)
+  const isGuest = !user || user.isGuest;
+  
   // Voice recording states
   const [recordedUri, setRecordedUri] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -22,11 +34,21 @@ const OrderScreen = ({ route, navigation }) => {
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
+  const showAlert = (title, message, type = 'info') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig({ ...alertConfig, visible: false });
+  };
   // Refs for robust recording handling
   const recordingRef = useRef(null);
   const isRecordingRef = useRef(false);
   const startRecordingTimeoutRef = useRef(null);
+  const recordingStartTimeRef = useRef(null);
   const scrollViewRef = useRef(null);
+  
+  const MIN_RECORDING_DURATION = 500; // Minimum 500ms of recording
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -44,30 +66,37 @@ const OrderScreen = ({ route, navigation }) => {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    // Priority: guestDetails > user data
+    if (guestDetails) {
+      setName(guestDetails.name || '');
+      setPhone(guestDetails.phone || '');
+      setAddress(guestDetails.address || '');
+    } else if (user && !user.isGuest) {
       setName(user.name || '');
       setPhone(user.phone || '');
       setAddress(user.address || '');
     }
-    
-    // Cleanup on unmount
+  }, [user, guestDetails]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       if (recordingRef.current) {
         try {
           recordingRef.current.stopAndUnloadAsync();
         } catch (e) {
-          console.log('Cleanup error:', e);
+          // Silent cleanup
         }
       }
       if (sound) {
         try {
           sound.unloadAsync();
         } catch (e) {
-          console.log('Sound cleanup error:', e);
+          // Silent cleanup
         }
       }
     };
-  }, [user, sound]);
+  }, [sound]);
 
   // Timer for recording duration
   useEffect(() => {
@@ -95,7 +124,6 @@ const OrderScreen = ({ route, navigation }) => {
       try {
         const permission = await Audio.requestPermissionsAsync();
         if (permission.status !== 'granted') {
-          console.log('Microphone permission denied');
           return;
         }
 
@@ -104,13 +132,14 @@ const OrderScreen = ({ route, navigation }) => {
         
         isRecordingRef.current = true;
         setIsRecording(true);
+        recordingStartTimeRef.current = Date.now();
 
         // Ensure any previous recording is unloaded
         if (recordingRef.current) {
           try {
             await recordingRef.current.stopAndUnloadAsync();
           } catch (e) {
-            console.log('Unload error:', e);
+            // Silent
           }
           recordingRef.current = null;
         }
@@ -126,18 +155,21 @@ const OrderScreen = ({ route, navigation }) => {
         
         // Check if user released button during initialization
         if (!isRecordingRef.current) {
-          await newRecording.stopAndUnloadAsync();
+          try {
+            await newRecording.stopAndUnloadAsync();
+          } catch (e) {
+            // Silent
+          }
           return;
         }
 
         recordingRef.current = newRecording;
       } catch (err) {
-        console.error('Failed to start recording', err);
+        // Silent error - user might have released too fast
         setIsRecording(false);
         isRecordingRef.current = false;
-        console.error('Recording error');
       }
-    }, 200);
+    }, 300); // Increased delay to 300ms
   };
 
   const stopRecording = async () => {
@@ -147,32 +179,45 @@ const OrderScreen = ({ route, navigation }) => {
       startRecordingTimeoutRef.current = null;
     }
 
-    if (!isRecordingRef.current) return;
+    // If recording never started or already stopped
+    if (!isRecordingRef.current && !recordingRef.current) return;
+    
+    // Check if recording was long enough
+    const recordingElapsed = Date.now() - (recordingStartTimeRef.current || 0);
+    const wasRecordingLongEnough = recordingElapsed >= MIN_RECORDING_DURATION;
     
     isRecordingRef.current = false;
     setIsRecording(false);
 
+    const recording = recordingRef.current;
+    recordingRef.current = null;
+    recordingStartTimeRef.current = null;
+
+    if (!recording) return;
+
     try {
-      const recording = recordingRef.current;
-      if (recording) {
+      // Check recording status before stopping
+      const status = await recording.getStatusAsync().catch(() => null);
+      
+      // If recording wasn't long enough or not recording, discard silently
+      if (!wasRecordingLongEnough || !status?.isRecording) {
         try {
           await recording.stopAndUnloadAsync();
-          const uri = recording.getURI();
-          // Optional: check duration if available, but usually stopAndUnloadAsync throws if empty
-          setRecordedUri(uri);
-        } catch (error) {
-          // Ignore "no valid audio data" error for short taps
-          if (error.message && error.message.includes('no valid audio data')) {
-            console.log('Recording too short/empty');
-          } else {
-            console.error('Recording stop error:', error);
-          }
-          setRecordedUri(null);
+        } catch (e) {
+          // Silent
         }
-        recordingRef.current = null;
+        return;
       }
-    } catch (err) {
-      console.error('Failed to stop recording wrapper', err);
+      
+      // Stop and save the recording
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      if (uri) {
+        setRecordedUri(uri);
+      }
+    } catch (error) {
+      // All errors are silent - user doesn't need to see these
+      setRecordedUri(null);
     }
   };
 
@@ -224,8 +269,27 @@ const OrderScreen = ({ route, navigation }) => {
   };
 
   const handleSubmit = async () => {
-    if ((!orderText && !recordedUri) || !name || !phone || !address) {
-      console.log('Validation failed - missing fields');
+    // Validate required fields
+    if (!orderText && !recordedUri) {
+      showAlert(
+        'Ελλιπή Στοιχεία',
+        'Παρακαλώ γράψτε ή ηχογραφήστε την παραγγελία σας.',
+        'warning'
+      );
+      return;
+    }
+    
+    if (!name || !phone || !address) {
+      let missingFields = [];
+      if (!name) missingFields.push('Όνομα');
+      if (!phone) missingFields.push('Τηλέφωνο');
+      if (!address) missingFields.push('Διεύθυνση');
+      
+      showAlert(
+        'Ελλιπή Στοιχεία',
+        `Παρακαλώ συμπληρώστε: ${missingFields.join(', ')}`,
+        'warning'
+      );
       return;
     }
 
@@ -407,6 +471,14 @@ const OrderScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={hideAlert}
+      />
     </KeyboardAvoidingView>
   );
 };
