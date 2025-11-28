@@ -79,6 +79,21 @@ io.on('connection', (socket) => {
     // console.log(`📦 Joined order room: ${orderId}`);
   });
 
+  // Driver location update - broadcast to order watchers
+  socket.on('driver:location_update', (data) => {
+    // data = { orderId, driverId, location: { lat, lng }, timestamp }
+    if (data && data.orderId) {
+      // Broadcast to everyone watching this order (customer, store, admin)
+      io.to(`order:${data.orderId}`).emit('driver:location', {
+        orderId: data.orderId,
+        driverId: data.driverId,
+        location: data.location,
+        timestamp: data.timestamp || Date.now()
+      });
+      // console.log(`📍 Driver location update for order ${data.orderId}:`, data.location);
+    }
+  });
+
   socket.on('disconnect', () => {
     // console.log(`❌ Client disconnected: ${socket.id}`);
   });

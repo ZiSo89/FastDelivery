@@ -4,6 +4,7 @@ const Admin = require('../models/Admin');
 const Customer = require('../models/Customer');
 const jwt = require('jsonwebtoken');
 const { generateToken } = require('../utils/jwt');
+const { geocodeAddress } = require('../utils/geocoding');
 
 // @desc    Login (Store/Driver/Admin)
 // @route   POST /api/v1/auth/login
@@ -64,6 +65,30 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user._id, user.role || role);
 
+    // For customers, check if we need to geocode their address
+    let userLocation = user.location;
+    if (role === 'customer' && user.address) {
+      // Check if location is missing or default [0,0]
+      const hasValidLocation = user.location?.coordinates && 
+        (user.location.coordinates[0] !== 0 || user.location.coordinates[1] !== 0);
+      
+      if (!hasValidLocation) {
+        try {
+          const coords = await geocodeAddress(user.address);
+          if (coords) {
+            userLocation = {
+              type: 'Point',
+              coordinates: [coords.lng, coords.lat]
+            };
+            // Update user in database
+            await Customer.findByIdAndUpdate(user._id, { location: userLocation });
+          }
+        } catch (geocodeError) {
+          // Silent fail - continue without location
+        }
+      }
+    }
+
     // Prepare user object for response
     const userResponse = {
         _id: user._id,
@@ -72,6 +97,7 @@ exports.login = async (req, res) => {
         name: user.name || user.businessName,
         phone: user.phone,
         address: user.address,
+        location: userLocation,
         isApproved: user.isApproved,
         status: user.status
     };
@@ -213,7 +239,6 @@ exports.registerDriver = async (req, res, next) => {
 exports.registerCustomer = async (req, res, next) => {
   try {
     const { name, email, password, phone, address, location } = req.body;
-    console.log('📥 Register Customer Request:', { name, email, phone, address, location });
 
     // Check if customer exists
     const existingCustomer = await Customer.findOne({ email });

@@ -10,3 +10,6 @@ export const BASE_URL = 'http://192.168.31.160:5000';
 
 export const API_URL = `${BASE_URL}/api/v1`;
 export const SOCKET_URL = BASE_URL;
+
+// Google Maps API Key
+export const GOOGLE_MAPS_API_KEY = 'AIzaSyDUy3hiyc50qQv1ox6wyH4U9O_YsKyKdVE';

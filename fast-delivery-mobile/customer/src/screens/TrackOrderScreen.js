@@ -1,11 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking, Dimensions, Animated } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { customerService } from '../services/api';
 import socketService from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+
+const { width, height } = Dimensions.get('window');
+const MAP_HEIGHT = height * 0.35; // 35% of screen height for map
 
 const TrackOrderScreen = ({ route, navigation }) => {
   const { user } = useAuth();
@@ -14,6 +18,11 @@ const TrackOrderScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Driver location - with throttling to prevent crashes
+  const [driverLocation, setDriverLocation] = useState(null);
+  const lastDriverUpdateRef = useRef(0);
+  const DRIVER_UPDATE_THROTTLE = 3000; // Update every 3 seconds max
+  const mapRef = useRef(null);
   
   // Safely get orderNumber if passed
   const paramOrderNumber = route.params?.orderNumber;
@@ -27,7 +36,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
     // Listen for updates - just reload data, no toasts or local notifications
     const handleStatusChange = (data) => {
       if (paramOrderNumber) {
-        if (data.orderNumber === paramOrderNumber) {
+        if (data?.orderNumber === paramOrderNumber) {
           loadOrderData();
         }
       } else {
@@ -35,6 +44,27 @@ const TrackOrderScreen = ({ route, navigation }) => {
       }
     };
 
+    // Driver location tracking with throttling
+    const handleDriverLocation = (data) => {
+      const now = Date.now();
+      // Throttle updates to prevent crashes
+      if (now - lastDriverUpdateRef.current < DRIVER_UPDATE_THROTTLE) {
+        return;
+      }
+      lastDriverUpdateRef.current = now;
+      
+      // Only update if we're tracking this order
+      if (data?.orderId === order?._id || data?.orderNumber === paramOrderNumber) {
+        if (data?.location?.lat && data?.location?.lng) {
+          setDriverLocation({
+            latitude: data.location.lat,
+            longitude: data.location.lng,
+          });
+        }
+      }
+    };
+
+    socketService.on('driver:location', handleDriverLocation);
     socketService.on('order:status_changed', handleStatusChange);
     socketService.on('order:confirmed', handleStatusChange);
     socketService.on('order:cancelled', handleStatusChange);
@@ -42,8 +72,10 @@ const TrackOrderScreen = ({ route, navigation }) => {
     socketService.on('order:pending_admin', handleStatusChange);
     socketService.on('order:price_ready', handleStatusChange);
     socketService.on('order:assigned', handleStatusChange);
+    socketService.on('order:completed', handleStatusChange);
 
     return () => {
+      socketService.off('driver:location', handleDriverLocation);
       socketService.off('order:status_changed', handleStatusChange);
       socketService.off('order:confirmed', handleStatusChange);
       socketService.off('order:cancelled', handleStatusChange);
@@ -51,18 +83,32 @@ const TrackOrderScreen = ({ route, navigation }) => {
       socketService.off('order:pending_admin', handleStatusChange);
       socketService.off('order:price_ready', handleStatusChange);
       socketService.off('order:assigned', handleStatusChange);
+      socketService.off('order:completed', handleStatusChange);
       if (sound) {
         sound.unloadAsync();
       }
     };
-  }, [paramOrderNumber]);
+  }, [paramOrderNumber, order?._id]);
 
   // Join customer room when order is loaded (crucial for guests)
+  // Don't join if order is already completed or cancelled
   useEffect(() => {
+    const finalStatuses = ['completed', 'cancelled', 'rejected_store', 'rejected_driver'];
+    if (order?.status && finalStatuses.includes(order.status)) {
+      // Order is finished, no need for socket updates
+      return;
+    }
+    
     if (order?.customer?.phone) {
       socketService.joinRoom({ role: 'customer', userId: order.customer.phone });
     }
-  }, [order]);
+    // Also join order-specific room for driver location updates
+    if (order?._id) {
+      if (socketService.socket) {
+        socketService.socket.emit('join_order', order._id);
+      }
+    }
+  }, [order?._id, order?.status]);
 
   const loadOrderData = async () => {
     setLoading(true);
@@ -98,7 +144,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
         }
       }
     } catch (error) {
-      console.log('Error loading order:', error.message);
+      // Silent error handling
     } finally {
       setLoading(false);
     }
@@ -217,13 +263,126 @@ const TrackOrderScreen = ({ route, navigation }) => {
       // Use user phone if available, otherwise use the phone from the order (for guests)
       const phoneToConfirm = user?.phone || order.customer.phone;
       await customerService.confirmPrice(order._id, phoneToConfirm, confirm);
-      console.log(confirm ? '✅ Order confirmed' : '❌ Order cancelled');
       loadOrderData(); // Reload to get new status
     } catch (error) {
       console.error('Confirmation error:', error);
       setLoading(false);
     }
   };
+
+  // Get coordinates from order data
+  const getMapData = () => {
+    const mapData = {
+      customerLocation: null,
+      storeLocation: null,
+      showMap: false,
+    };
+
+    // Customer/Delivery location from order (deliveryLocation field)
+    if (order?.deliveryLocation?.coordinates && 
+        order.deliveryLocation.coordinates[0] !== 0 && 
+        order.deliveryLocation.coordinates[1] !== 0) {
+      mapData.customerLocation = {
+        latitude: order.deliveryLocation.coordinates[1],
+        longitude: order.deliveryLocation.coordinates[0],
+      };
+    }
+
+    // Store location (from populated storeId)
+    if (order?.storeId?.location?.coordinates) {
+      mapData.storeLocation = {
+        latitude: order.storeId.location.coordinates[1],
+        longitude: order.storeId.location.coordinates[0],
+      };
+    }
+
+    // Show map if we have at least customer or store location
+    mapData.showMap = !!(mapData.customerLocation || mapData.storeLocation);
+
+    return mapData;
+  };
+
+  // Calculate initial map region to fit all markers
+  const getInitialRegion = () => {
+    const { customerLocation, storeLocation } = getMapData();
+    const locations = [customerLocation, storeLocation].filter(Boolean);
+    
+    if (locations.length === 0) {
+      // Default to Alexandroupoli
+      return {
+        latitude: 40.8477,
+        longitude: 25.8744,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      };
+    }
+
+    if (locations.length === 1) {
+      return {
+        ...locations[0],
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+    }
+
+    // Calculate bounds
+    const lats = locations.map(l => l.latitude);
+    const lngs = locations.map(l => l.longitude);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    return {
+      latitude: (minLat + maxLat) / 2,
+      longitude: (minLng + maxLng) / 2,
+      latitudeDelta: Math.max(0.02, (maxLat - minLat) * 1.5),
+      longitudeDelta: Math.max(0.02, (maxLng - minLng) * 1.5),
+    };
+  };
+
+  // Fit map to show all markers
+  useEffect(() => {
+    if (mapRef.current && order) {
+      const { customerLocation, storeLocation } = getMapData();
+      const locations = [];
+      
+      if (customerLocation) locations.push(customerLocation);
+      if (storeLocation) locations.push(storeLocation);
+      if (driverLocation) locations.push(driverLocation);
+      
+      if (locations.length > 1) {
+        setTimeout(() => {
+          mapRef.current?.fitToCoordinates(locations, {
+            edgePadding: { top: 80, right: 80, bottom: 80, left: 80 },
+            animated: true,
+          });
+        }, 500);
+      }
+    }
+  }, [order, driverLocation]);
+
+  // Custom map style for a cleaner look (like Uber/Wolt)
+  const mapStyle = [
+    { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+    { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+    { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
+    { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
+    { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
+    { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+    { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#dadada' }] },
+    { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+    { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+    { featureType: 'transit.line', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
+    { featureType: 'transit.station', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
+    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+  ];
 
   if (loading) {
     return (
@@ -242,14 +401,104 @@ const TrackOrderScreen = ({ route, navigation }) => {
     );
   }
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={[styles.statusHeader, { backgroundColor: getStatusColor(order.status) }]}>
-        <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
-        <Text style={styles.orderNumber}>#{order.orderNumber}</Text>
-      </View>
+  // Get map data for rendering
+  const { customerLocation, storeLocation, showMap } = getMapData();
 
-      <View style={styles.content}>
+  return (
+    <View style={styles.container}>
+      {/* Full-width Map at Top - Uber/Wolt Style */}
+      {showMap ? (
+        <View style={styles.mapWrapper}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            customMapStyle={mapStyle}
+            initialRegion={getInitialRegion()}
+            showsUserLocation={false}
+            showsMyLocationButton={false}
+            showsCompass={false}
+            showsScale={false}
+            toolbarEnabled={false}
+          >
+            {/* Store Marker - Orange Pin */}
+            {storeLocation && (
+              <Marker
+                coordinate={storeLocation}
+                title={order.storeName}
+                pinColor="#FF6B35"
+                tracksViewChanges={false}
+              />
+            )}
+
+            {/* Customer Home Marker - Green Pin */}
+            {customerLocation && (
+              <Marker
+                coordinate={customerLocation}
+                title="Διεύθυνση Παράδοσης"
+                pinColor="#00C853"
+                tracksViewChanges={false}
+              />
+            )}
+
+            {/* Driver Marker - Blue Pin (only when in_delivery) */}
+            {driverLocation && order.status === 'in_delivery' && (
+              <Marker
+                coordinate={driverLocation}
+                title={order.driverName || 'Οδηγός'}
+                pinColor="#00c1e8"
+                tracksViewChanges={false}
+              />
+            )}
+          </MapView>
+
+          {/* Floating Status Badge on Map */}
+          <View style={styles.floatingStatusBadge}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor(order.status) }]} />
+            <Text style={styles.floatingStatusText}>{getStatusText(order.status)}</Text>
+          </View>
+
+          {/* Order Number Badge */}
+          <View style={styles.orderBadge}>
+            <Text style={styles.orderBadgeText}>{order.orderNumber}</Text>
+          </View>
+
+          {/* Live Indicator - show when driver is on the way */}
+          {order.status === 'in_delivery' && (
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveIndicatorDot} />
+              <Text style={styles.liveIndicatorText}>LIVE</Text>
+            </View>
+          )}
+
+          {/* Map Legend */}
+          <View style={styles.mapLegendFloating}>
+            <View style={styles.legendItemFloating}>
+              <View style={[styles.legendDotSmall, { backgroundColor: '#FF6B35' }]} />
+              <Text style={styles.legendTextSmall}>Κατάστημα</Text>
+            </View>
+            <View style={styles.legendItemFloating}>
+              <View style={[styles.legendDotSmall, { backgroundColor: '#00C853' }]} />
+              <Text style={styles.legendTextSmall}>Εσείς</Text>
+            </View>
+            {order.status === 'in_delivery' && (
+              <View style={styles.legendItemFloating}>
+                <View style={[styles.legendDotSmall, { backgroundColor: '#00c1e8' }]} />
+                <Text style={styles.legendTextSmall}>Οδηγός</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      ) : (
+        // No map available - show status header instead
+        <View style={styles.statusHeaderNoMap}>
+          <View style={[styles.statusDot, { backgroundColor: getStatusColor(order.status) }]} />
+          <Text style={styles.statusHeaderText}>{getStatusText(order.status)}</Text>
+          <Text style={styles.orderNumberNoMap}>{order.orderNumber}</Text>
+        </View>
+      )}
+
+      <ScrollView style={styles.contentScrollView} showsVerticalScrollIndicator={false}>
         {/* Action Buttons for Customer Confirmation */}
         {order.status === 'pending_customer_confirm' && (
           <View style={styles.actionContainer}>
@@ -373,194 +622,382 @@ const TrackOrderScreen = ({ route, navigation }) => {
             </View>
           </View>
         )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
+    backgroundColor: '#f5f6f8',
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f5f6f8',
   },
   noOrderText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 8,
   },
   noOrderSubText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    color: '#888',
   },
-  statusHeader: {
-    padding: 24,
+  
+  // Map Wrapper - Full width at top like Uber/Wolt
+  mapWrapper: {
+    height: MAP_HEIGHT,
+    width: '100%',
+    position: 'relative',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  
+  // Floating Status Badge on Map
+  floatingStatusBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  floatingStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  
+  // Order Number Badge
+  orderBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  orderBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  
+  // Live Indicator
+  liveIndicator: {
+    position: 'absolute',
+    bottom: 60,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#00C853',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    shadowColor: '#00C853',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  liveIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+    marginRight: 6,
+  },
+  liveIndicatorText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 1,
+  },
+  
+  // Map Legend Floating
+  mapLegendFloating: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
   },
-  statusText: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textAlign: 'center',
+  legendItemFloating: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  orderNumber: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 15,
+  legendDotSmall: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 4,
+  },
+  legendTextSmall: {
+    fontSize: 11,
     fontWeight: '500',
+    color: '#666',
   },
-  content: {
-    padding: 16,
-    gap: 12,
+  
+  // Pin Styles - Compact modern look
+  pinContainer: {
+    alignItems: 'center',
   },
+  pin: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  storePin: {
+    backgroundColor: '#FF6B35',
+  },
+  homePin: {
+    backgroundColor: '#00C853',
+  },
+  pinShadow: {
+    width: 14,
+    height: 4,
+    borderRadius: 2,
+    marginTop: -2,
+    opacity: 0.25,
+  },
+  storePinShadow: {
+    backgroundColor: '#FF6B35',
+  },
+  homePinShadow: {
+    backgroundColor: '#00C853',
+  },
+  
+  // Driver Pin - Animated pulsing effect look
+  driverPinContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  driverPinOuter: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(0,193,232,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  driverPinInner: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#00c1e8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#00c1e8',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  driverPulse: {
+    position: 'absolute',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0,193,232,0.15)',
+  },
+  
+  // Content ScrollView
+  contentScrollView: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  
+  // Cards
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#888',
-    marginBottom: 12,
+    color: '#999',
+    marginBottom: 14,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 10,
+    marginBottom: 10,
+    gap: 12,
   },
   infoText: {
-    fontSize: 14,
-    color: '#444',
+    fontSize: 15,
+    color: '#555',
     flex: 1,
   },
   infoTextBold: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1a1a1a',
     flex: 1,
   },
+  
+  // Playback
   playbackContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 14,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#eee',
   },
   playButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#00c1e8',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
     shadowColor: '#00c1e8',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
   playbackInfo: {
     flex: 1,
   },
   playbackText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#1a1a1a',
   },
   playbackSubText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
+    color: '#888',
+    marginTop: 2,
   },
+  
   orderContent: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 24,
     color: '#333',
-    backgroundColor: '#f9f9f9',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#eee',
   },
+  
+  // Price Section
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   priceLabel: {
-    color: '#666',
-    fontSize: 14,
+    color: '#777',
+    fontSize: 15,
   },
   priceValue: {
-    fontWeight: '500',
-    fontSize: 14,
+    fontWeight: '600',
+    fontSize: 15,
     color: '#333',
   },
   totalRow: {
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 10,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
   totalLabel: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1a1a1a',
   },
   totalValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#00c1e8',
   },
+  
+  // Action Container
   actionContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     marginBottom: 12,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#f0ad4e',
+    borderWidth: 2,
+    borderColor: '#FFB74D',
     alignItems: 'center',
-    shadowColor: '#f0ad4e',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowColor: '#FFB74D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   actionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#f0ad4e',
+    fontWeight: '700',
+    color: '#FF9800',
     marginBottom: 8,
   },
   actionText: {
     fontSize: 15,
     textAlign: 'center',
-    marginBottom: 16,
-    color: '#444',
+    marginBottom: 18,
+    color: '#555',
+    lineHeight: 22,
   },
   buttonGroup: {
     flexDirection: 'row',
@@ -570,15 +1007,15 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   confirmButton: {
     backgroundColor: '#00c1e8',
@@ -586,17 +1023,43 @@ const styles = StyleSheet.create({
   rejectButton: {
     backgroundColor: '#fff',
     borderWidth: 2,
-    borderColor: '#e74c3c',
+    borderColor: '#FF5252',
   },
   rejectButtonText: {
-    color: '#e74c3c',
+    color: '#FF5252',
     fontWeight: '700',
     fontSize: 15,
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 15,
+  },
+  
+  // Fallback when no map location data
+  statusHeaderNoMap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  statusHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  orderNumberNoMap: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#666',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
 });
 

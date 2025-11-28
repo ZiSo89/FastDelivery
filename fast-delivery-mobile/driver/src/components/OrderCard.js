@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const OrderCard = ({ order, onAccept, onReject, onPickup, onComplete, processing }) => {
+const OrderCard = ({ order, onAccept, onReject, onPickup, onComplete, processing, onViewMap }) => {
   
   // Open navigation in Google Maps or Apple Maps
   const openNavigation = (address) => {

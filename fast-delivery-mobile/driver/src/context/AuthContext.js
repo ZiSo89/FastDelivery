@@ -68,7 +68,6 @@ export const AuthProvider = ({ children }) => {
         }
         
         if (finalStatus !== 'granted') {
-          console.log('❌ Push notifications permission denied');
           return null;
         }
         
@@ -76,15 +75,14 @@ export const AuthProvider = ({ children }) => {
         // For full functionality, use a development build
         try {
           token = (await Notifications.getExpoPushTokenAsync()).data;
-          console.log('📱 Expo Push Token:', token);
         } catch (tokenError) {
-          console.log('⚠️ Push token not available in Expo Go - use development build for full notification support');
+          // Push token not available in Expo Go
         }
       } else {
-        console.log('⚠️ Must use physical device for Push Notifications');
+        // Must use physical device for Push Notifications
       }
     } catch (error) {
-      console.log('⚠️ Error setting up notifications:', error.message);
+      // Error setting up notifications
     }
 
     return token;
@@ -107,12 +105,10 @@ export const AuthProvider = ({ children }) => {
         const pushToken = await registerForPushNotificationsAsync();
         if (pushToken) {
           setExpoPushToken(pushToken);
-          // Note: Push token update endpoint not yet implemented in backend
-          console.log('📱 Push token ready (backend endpoint pending)');
         }
       }
     } catch (error) {
-      console.log('Error loading user:', error);
+      // Error loading user
     } finally {
       setLoading(false);
     }
@@ -136,12 +132,10 @@ export const AuthProvider = ({ children }) => {
       const pushToken = await registerForPushNotificationsAsync();
       if (pushToken) {
         setExpoPushToken(pushToken);
-        console.log('📱 Push token ready (backend endpoint pending)');
       }
 
       return { success: true };
     } catch (error) {
-      console.log('Login error:', error.response?.data);
       return { 
         success: false, 
         error: error.response?.data?.message || 'Σφάλμα κατά τη σύνδεση' 
@@ -156,7 +150,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       socketService.disconnect();
     } catch (error) {
-      console.log('Logout error:', error);
+      // Silent fail
     }
   };
 
@@ -173,7 +167,6 @@ export const AuthProvider = ({ children }) => {
       await SecureStore.setItemAsync('user', JSON.stringify({ ...user, ...driverData }));
       return driverData;
     } catch (error) {
-      console.log('Error refreshing user:', error);
       return null;
     }
   };

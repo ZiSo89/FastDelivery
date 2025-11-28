@@ -59,7 +59,6 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
             message,
             { orderId: order._id, orderNumber: order.orderNumber, status: data.newStatus }
           );
-          console.log(`📲 Push notification sent to ${order.customer.phone} for status ${data.newStatus}`);
         }
       }
     } catch (error) {

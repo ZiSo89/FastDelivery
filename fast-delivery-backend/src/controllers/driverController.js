@@ -71,7 +71,7 @@ exports.getDriverOrders = async (req, res) => {
       driverId,
       status: { $in: ['assigned', 'accepted_driver', 'preparing', 'in_delivery'] }
     })
-      .populate('storeId', 'businessName address phone')
+      .populate('storeId', 'businessName address phone location')
       .sort({ createdAt: -1 });
 
     res.json({

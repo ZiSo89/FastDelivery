@@ -5,6 +5,7 @@ const Customer = require('../models/Customer'); // Import Customer model
 const multer = require('multer');
 const { uploadToFirebase } = require('../config/firebase');
 const { broadcastOrderEvent } = require('../utils/socketHelpers');
+const { geocodeAddress, toGeoJSONPoint } = require('../utils/geocoding');
 
 // Multer config για voice files (in-memory storage)
 const storage = multer.memoryStorage();
@@ -25,7 +26,7 @@ const upload = multer({
 // @access  Public
 exports.getStores = async (req, res) => {
   try {
-    const { serviceArea, storeType, latitude, longitude, maxDistance } = req.query;
+    const { serviceArea, storeType } = req.query;
 
     // Only show approved stores to customers
     const filter = { 
@@ -43,19 +44,7 @@ exports.getStores = async (req, res) => {
       filter.storeType = storeType;
     }
 
-    // Geospatial query if coordinates are provided
-    if (latitude && longitude) {
-      filter.location = {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [parseFloat(longitude), parseFloat(latitude)]
-          },
-          $maxDistance: parseInt(maxDistance) || 5000 // Default 5km
-        }
-      };
-    }
-
+    // Get ALL approved stores - no geo filter (worldwide support)
     const stores = await Store.find(filter).select('-password');
 
     res.json({
@@ -139,6 +128,17 @@ exports.createOrder = async (req, res) => {
       orderVoiceUrl = await uploadToFirebase(req.file, 'orders/voice');
     }
 
+    // Geocode customer address for map display
+    let deliveryLocation = { type: 'Point', coordinates: [0, 0] };
+    try {
+      const coords = await geocodeAddress(customer.address);
+      if (coords) {
+        deliveryLocation = toGeoJSONPoint(coords.lat, coords.lng);
+      }
+    } catch (geoError) {
+      console.warn('⚠️ Geocoding failed, order will be created without coordinates:', geoError.message);
+    }
+
     // Create order
     const order = await Order.create({
       customer: {
@@ -147,6 +147,7 @@ exports.createOrder = async (req, res) => {
         email: customer.email, // Save email if provided
         address: customer.address
       },
+      deliveryLocation,
       storeId,
       storeName: store.businessName,
       orderType,
@@ -206,7 +207,7 @@ exports.getOrderStatus = async (req, res) => {
     const { orderNumber } = req.params;
 
     const order = await Order.findOne({ orderNumber })
-      .populate('storeId', 'businessName phone address')
+      .populate('storeId', 'businessName phone address location')
       .populate('driverId', 'name phone');
 
     if (!order) {
@@ -223,7 +224,8 @@ exports.getOrderStatus = async (req, res) => {
         orderNumber: order.orderNumber,
         status: order.status,
         customer: order.customer,
-        storeId: order.storeId, // Include populated store data
+        deliveryLocation: order.deliveryLocation, // Include delivery coordinates for map
+        storeId: order.storeId, // Include populated store data with location
         storeName: order.storeName,
         orderType: order.orderType,
         orderContent: order.orderContent,
@@ -343,8 +345,6 @@ exports.getMyOrders = async (req, res) => {
     // Strict check: Find orders where BOTH customer.phone matches user's phone AND customer.email matches user's email
     // This ensures users only see their own orders and prevents phone number spoofing/collisions
     
-    console.log('🔍 GetMyOrders Request for User:', req.user.phone, req.user.email); // Debug log
-
     if (!req.user.phone || !req.user.email) {
        return res.status(400).json({
         success: false,
@@ -356,13 +356,9 @@ exports.getMyOrders = async (req, res) => {
       'customer.phone': new RegExp(`^${req.user.phone.trim()}$`)
     };
 
-    console.log('🔍 Executing Query:', JSON.stringify(query)); // Debug log
-
     const orders = await Order.find(query)
     .sort({ createdAt: -1 })
     .populate('storeId', 'businessName image');
-
-    console.log(`✅ Found ${orders.length} orders`); // Debug log
 
     res.json({
       success: true,
@@ -424,13 +420,11 @@ exports.getActiveOrderByPhone = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name, phone, address, location, pushToken } = req.body;
-    console.log('📥 Update Profile Request:', { userId: req.user._id, body: req.body });
     
     // Find customer by ID (from auth middleware)
     const customer = await Customer.findById(req.user._id);
 
     if (!customer) {
-      console.log('❌ Customer not found');
       return res.status(404).json({
         success: false,
         message: 'Ο χρήστης δεν βρέθηκε'
@@ -445,7 +439,6 @@ exports.updateProfile = async (req, res) => {
     if (pushToken) customer.pushToken = pushToken;
 
     await customer.save();
-    console.log('✅ Customer updated:', customer);
 
     res.json({
       success: true,

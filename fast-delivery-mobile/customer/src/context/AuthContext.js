@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      // Silent fail
+      // Silent error handling
     } finally {
       setLoading(false);
     }

@@ -15,15 +15,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
+import * as Location from 'expo-location';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { driverService } from '../services/api';
 import socketService from '../services/socket';
+import locationService from '../services/locationService';
 import OrderCard from '../components/OrderCard';
+import DashboardMap from '../components/DashboardMap';
 
 const DashboardScreen = () => {
   const { user, logout, refreshUser } = useAuth();
   const { showAlert } = useAlert();
+  const navigation = useNavigation();
   
   const [isOnline, setIsOnline] = useState(false);
   const [orders, setOrders] = useState([]);
@@ -38,19 +43,78 @@ const DashboardScreen = () => {
   const [showOfflineModal, setShowOfflineModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [isTracking, setIsTracking] = useState(false);
+  const [driverLocation, setDriverLocation] = useState(null);
+
+  // Get driver location on mount and update periodically
+  useEffect(() => {
+    let locationSubscription;
+    
+    (async () => {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+
+        // Get initial location
+        let location = await Location.getCurrentPositionAsync({ 
+          accuracy: Location.Accuracy.Balanced 
+        });
+        setDriverLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+
+        // Watch for location updates
+        locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 10000,
+            distanceInterval: 50,
+          },
+          (location) => {
+            setDriverLocation({
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            });
+          }
+        );
+      } catch (error) {
+        // Silent fail - location is optional for dashboard
+      }
+    })();
+
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+    };
+  }, []);
 
   // Fetch orders
   const fetchOrders = useCallback(async () => {
     try {
       const response = await driverService.getOrders();
-      setOrders(response.data.orders || []);
+      const fetchedOrders = response.data.orders || [];
+      setOrders(fetchedOrders);
+      
+      // Check if any order is in_delivery and start tracking
+      const inDeliveryOrder = fetchedOrders.find(o => o.status === 'in_delivery');
+      if (inDeliveryOrder && user?._id) {
+        if (!locationService.isTracking || locationService.currentOrderId !== inDeliveryOrder._id) {
+          const started = await locationService.startTracking(inDeliveryOrder._id, user._id);
+          setIsTracking(started);
+        }
+      } else if (!inDeliveryOrder && locationService.isTracking) {
+        // No in_delivery orders, stop tracking
+        await locationService.stopTracking();
+        setIsTracking(false);
+      }
     } catch (err) {
-      console.log('Error fetching orders:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
   // Fetch profile to get online status
   const fetchProfile = useCallback(async () => {
@@ -59,7 +123,7 @@ const DashboardScreen = () => {
       const driverData = response.data.driver || response.data;
       setIsOnline(driverData.isOnline || false);
     } catch (err) {
-      console.log('Error fetching profile:', err);
+      // Silent fail
     }
   }, []);
 
@@ -67,20 +131,16 @@ const DashboardScreen = () => {
   useEffect(() => {
     fetchProfile();
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   // Socket listeners
   useEffect(() => {
-    console.log('🔌 Setting up socket listeners for driver:', user?._id);
-    
     // Handler for NEW order assignments - shows notification
     const handleNewAssignment = (data) => {
-      console.log('📦 New order assigned:', data);
       fetchOrders();
       
       // Only vibrate and notify for new assignments to THIS driver
       if (data.driverId && user?._id && data.driverId.toString() === user._id.toString()) {
-        console.log('🔔 New order for me! Vibrating...');
         Vibration.vibrate([0, 500, 200, 500]);
         
         // Show local notification
@@ -91,19 +151,17 @@ const DashboardScreen = () => {
             sound: true,
           },
           trigger: null,
-        }).catch(err => console.log('Notification error:', err));
+        }).catch(() => {});
       }
     };
 
     // Handler for status changes - notify when PREPARING (ready for pickup)
     const handleStatusChange = (data) => {
-      console.log('🔄 Order status changed:', data);
       fetchOrders();
       
       // Notify driver when order is PREPARING (store finished, ready for pickup)
       if (data.newStatus === 'preparing') {
         if (data.driverId && user?._id && data.driverId.toString() === user._id.toString()) {
-          console.log('🔔 Order ready for pickup! Vibrating...');
           Vibration.vibrate([0, 500, 200, 500]);
           
           Notifications.scheduleNotificationAsync({
@@ -113,19 +171,17 @@ const DashboardScreen = () => {
               sound: true,
             },
             trigger: null,
-          }).catch(err => console.log('Notification error:', err));
+          }).catch(() => {});
         }
       }
     };
 
     // Handler for other updates - NO notification, just refresh
     const handleOrderUpdate = (data) => {
-      console.log('🔄 Order update:', data);
       fetchOrders();
     };
 
     const handleDriverStatusChange = (data) => {
-      console.log('🔄 Driver status changed:', data);
       if (data.status === 'approved' && data.isApproved) {
         showAlert('Έγκριση!', 'Η εγγραφή σας εγκρίθηκε!', [], 'success');
         refreshUser();
@@ -227,6 +283,16 @@ const DashboardScreen = () => {
     try {
       setProcessingId(orderId);
       await driverService.updateStatus(orderId, 'in_delivery');
+      
+      // Start location tracking when pickup is confirmed
+      if (user?._id) {
+        const started = await locationService.startTracking(orderId, user._id);
+        setIsTracking(started);
+        if (started) {
+          showAlert('📍 GPS', 'Η τοποθεσία σας κοινοποιείται στον πελάτη', [], 'success');
+        }
+      }
+      
       await fetchOrders();
     } catch (err) {
       showAlert('Σφάλμα', err.response?.data?.message || 'Σφάλμα παραλαβής', [], 'error');
@@ -244,6 +310,11 @@ const DashboardScreen = () => {
     try {
       setProcessingId(selectedOrderId);
       await driverService.updateStatus(selectedOrderId, 'completed');
+      
+      // Stop location tracking when delivery is completed
+      await locationService.stopTracking();
+      setIsTracking(false);
+      
       await fetchOrders();
       setShowCompleteModal(false);
     } catch (err) {
@@ -257,6 +328,11 @@ const DashboardScreen = () => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchOrders();
+  };
+
+  // Navigate to map screen
+  const handleViewMap = (order) => {
+    navigation.navigate('DeliveryMap', { order });
   };
 
   // Get initials for avatar
@@ -304,6 +380,12 @@ const DashboardScreen = () => {
           <Text style={styles.statusText}>
             {isOnline ? 'Είστε Online' : 'Είστε Offline'}
           </Text>
+          {isTracking && (
+            <View style={styles.trackingBadge}>
+              <Ionicons name="navigate" size={12} color="#fff" />
+              <Text style={styles.trackingText}>GPS</Text>
+            </View>
+          )}
         </View>
         <Switch
           value={isOnline}
@@ -321,6 +403,11 @@ const DashboardScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00c2e8']} />
         }
       >
+        {/* Dashboard Map - Always visible */}
+        <DashboardMap 
+          orders={orders} 
+          driverLocation={driverLocation}
+        />
         {loading ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color="#00c2e8" />
@@ -340,6 +427,7 @@ const DashboardScreen = () => {
               onReject={handleReject}
               onPickup={handlePickup}
               onComplete={handleComplete}
+              onViewMap={handleViewMap}
               processing={processingId}
             />
           ))
@@ -542,6 +630,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#37474f',
+  },
+  trackingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 10,
+  },
+  trackingText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginLeft: 4,
   },
   content: {
     flex: 1,

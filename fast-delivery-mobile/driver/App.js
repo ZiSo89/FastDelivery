@@ -10,6 +10,7 @@ import * as Notifications from 'expo-notifications';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
+import DeliveryMapScreen from './src/screens/DeliveryMapScreen';
 
 // Ignore expo-notifications warnings in Expo Go
 LogBox.ignoreLogs([
@@ -36,12 +37,12 @@ const AppNavigator = () => {
   useEffect(() => {
     // Listen for incoming notifications
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('📬 Notification received:', notification);
+      // Notification received
     });
 
     // Listen for notification responses (when user taps)
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('📬 Notification tapped:', response);
+      // Notification tapped
     });
 
     return () => {
@@ -99,11 +100,18 @@ const AppNavigator = () => {
         />
       ) : (
         // Main App
-        <Stack.Screen 
-          name="Dashboard" 
-          component={DashboardScreen} 
-          options={{ headerShown: false }}
-        />
+        <>
+          <Stack.Screen 
+            name="Dashboard" 
+            component={DashboardScreen} 
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="DeliveryMap" 
+            component={DeliveryMapScreen} 
+            options={{ headerShown: false }}
+          />
+        </>
       )}
     </Stack.Navigator>
   );

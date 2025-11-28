@@ -6,7 +6,6 @@ class SocketService {
 
   connect() {
     if (this.socket && this.socket.connected) {
-      console.log('🔌 Socket already connected');
       return;
     }
 
@@ -16,7 +15,7 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('🔌 Socket connected:', this.socket.id);
+      console.log('🔌 Socket connected');
     });
 
     this.socket.on('disconnect', () => {
@@ -24,27 +23,18 @@ class SocketService {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.log('🔌 Socket connection error:', error.message);
+      console.log('🔌 Socket error:', error.message);
     });
   }
 
   joinRoom(data) {
     if (this.socket) {
-      console.log('🔌 Joining room:', data);
       this.socket.emit('join', data);
-      
-      // Confirm join was successful
-      this.socket.once('joined', (room) => {
-        console.log('✅ Successfully joined room:', room);
-      });
-    } else {
-      console.log('❌ Cannot join room - socket not connected');
     }
   }
 
   on(event, callback) {
     if (this.socket) {
-      console.log('👂 Listening for event:', event);
       this.socket.on(event, callback);
     }
   }

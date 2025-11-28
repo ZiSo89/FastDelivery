@@ -1,146 +1,389 @@
 # FAST DELIVERY PROJECT - AI ASSISTANT CONTEXT
 
-**Last Updated:** 2025-11-25
+**Last Updated:** 2025-11-28
 **Repository:** https://github.com/ZiSo89/FastDelivery
-**Status:** ✅ PRODUCTION DEPLOYED | 📱 MOBILE APP IN DEVELOPMENT
+**Status:** ✅ PRODUCTION DEPLOYED | 📱 MOBILE APPS IN ACTIVE DEVELOPMENT
 
 ---
 
-## 🎨 UI/UX DESIGN SYSTEM (CRITICAL FOR FRONTEND & MOBILE)
+## 🎯 IMMEDIATE TASK: Customer App Live Tracking Map
 
-The customer-facing application (`fast-delivery-frontend` & `fast-delivery-mobile`) follows a specific modern design language inspired by Wolt/Uber Eats. **All future UI updates must adhere to this style.**
+**Goal:** Show a real-time map in the Customer Mobile App when their order is "in_delivery" status, displaying:
+1. Driver's live location (moving marker)
+2. Customer's delivery address (destination marker)
+3. Store location (pickup marker)
+4. Route polyline between points
 
-**Core Styles:**
-- **Primary Color:** `#00c2e8` (Cyan/Blue)
-  - Used for: Primary buttons, active states, icons, accents.
-  - **NEVER** use standard Bootstrap primary blue (`#0d6efd`) for customer actions.
-- **Typography:** 'Inter', sans-serif.
-- **Backgrounds:**
-  - App Background: White `#fff` or Light Grey `#f8f9fa`.
-  - Input Fields: Light Grey `#f9f9f9` with border `#e0e0e0`.
-- **Components:**
-  - **Buttons:** Flat design, no gradients, `8px` rounded corners.
-  - **Cards:** White, `16px` rounded corners, soft shadow: `box-shadow: 0 4px 12px rgba(0,0,0,0.05)`.
-  - **Inputs:** Large padding (`16px`), focus border color `#00c2e8`.
+**Current State:**
+- ✅ Driver app sends location updates every 10 seconds via Socket.IO
+- ✅ Customer app receives driver location updates (see logs: `📍 Driver location received`)
+- ❌ Customer app does NOT display a map with driver location
+- ❌ TrackOrderScreen.js needs map integration
 
 ---
 
-## 🎯 PROJECT OVERVIEW
+## 🚨 KNOWN ISSUE: Customer Location Shows California
 
-**Fast Delivery** is a full-stack delivery platform for the Greek market (Alexandroupoli region) that connects:
-- **Customers:** Order via text/voice from local stores
-- **Stores:** Accept orders, set prices, prepare items
-- **Admin:** Add delivery fees, assign drivers, manage platform
-- **Drivers:** Accept assignments, deliver orders
+**Problem:** Customer app shows location `37.42, -122.08` (California) instead of Alexandroupoli, Greece.
 
-**Core Features:**
-- 13-state order lifecycle with real-time updates
-- Role-based authentication (JWT)
-- Greek language UI/data (100% Ελληνικά)
-- Real-time notifications via Socket.IO
-- Voice message support (Firebase Storage)
-- Geolocation-based store discovery
+**Root Cause:** 
+1. Android Emulator default GPS is Google HQ
+2. User's `location.coordinates` in database was `[0,0]` (never geocoded)
+3. SecureStore has cached old user data without valid location
 
-**Tech Stack:**
-- **Backend:** Node.js, Express, MongoDB, Socket.IO
-- **Frontend:** React, Bootstrap, Socket.IO Client
-- **Mobile:** React Native (Expo), React Navigation (Nested Stacks)
-- **Database:** MongoDB Atlas
-- **Storage:** Firebase (voice messages)
-- **Maps:** Google Maps API (@react-google-maps/api), Expo Location
+**Backend Fix Applied:**
+```javascript
+// fast-delivery-backend/src/controllers/authController.js
+// On customer login, if location is [0,0], geocode their address
+const { geocodeAddress } = require('../utils/geocoding');
+// ... geocoding logic added to login() function
+```
+
+**Solution to Apply:**
+1. User must **logout and login again** after backend restart
+2. OR modify AuthContext.js to refresh profile on auto-login
 
 ---
 
-## ✅ WHAT'S COMPLETED
+## 📁 KEY FILES FOR LIVE TRACKING IMPLEMENTATION
 
-### Backend (100% Complete)
-- ✅ All 34 REST API endpoints implemented and tested
-- ✅ JWT authentication with role-based authorization
-- ✅ MongoDB models for Admin, Store, Driver, Order, User
-- ✅ **Updated Customer Model:** Now stores `location` as GeoJSON Point `[lng, lat]`
-- ✅ 13-state order workflow fully implemented
-- ✅ Socket.IO real-time broadcasting to all parties
-- ✅ Firebase Storage integration for voice messages
-- ✅ Geospatial queries for nearby stores
-- ✅ Auto-generated order numbers (ORD-YYYYMMDD-####)
-- ✅ Password hashing fixed for all user types
-- ✅ Test data seeding scripts with Greek data (Alexandroupoli coordinates)
+### Customer App Files
+```
+fast-delivery-mobile/customer/src/
+├── screens/
+│   ├── HomeScreen.js          # Store list + map view (working)
+│   ├── OrderScreen.js         # Place order
+│   ├── OrdersScreen.js        # Order history list
+│   └── TrackOrderScreen.js    # 🎯 NEEDS MAP IMPLEMENTATION
+├── services/
+│   ├── api.js                 # REST API calls
+│   └── socket.js              # Socket.IO client
+└── context/
+    └── AuthContext.js         # Auth + auto-login
+```
 
-### Frontend (Production-Ready Core Features)
-- ✅ **Google Maps Integration (Phase 1 Complete):**
-  - ✅ **Customer Home:** Toggle between List/Map view. Map shows User location (blue) and Store pins (red). Auto-focus on stores.
-  - ✅ **Store Register:** Interactive Map to pick exact store location. Autocomplete for address.
-  - ✅ **Customer Register:** Google Places Autocomplete to capture address AND exact coordinates (Lat/Lng).
-  - ✅ **Driver Navigation:** "Navigate" button opens Google Maps with customer address.
-- ✅ **Voice Order System:**
-  - ✅ Customer can record voice message orders
-  - ✅ Store can play back voice messages
-  - ✅ Stored in Firebase Storage
-- ✅ **Push Notifications:** Browser notifications implemented.
-- ✅ Authentication system with role-based routing (Admin, Store, Driver, Customer)
-- ✅ Admin Dashboard with complete management interface
-- ✅ Store Panel with full order management
-- ✅ Driver Panel with complete delivery workflow
-- ✅ Customer interface for ordering and tracking
-- ✅ Greek UI (100% translated) with modern "Wolt-style" design system
-- ✅ Responsive Bootstrap design for all devices
+### Backend Files
+```
+fast-delivery-backend/src/
+├── controllers/
+│   ├── authController.js      # Login with geocoding (updated)
+│   └── customerController.js  # Customer endpoints
+├── utils/
+│   ├── geocoding.js           # Google Maps geocoding
+│   └── socketHelpers.js       # Socket event emitters
+└── models/
+    └── Customer.js            # User model with location field
+```
 
-### Mobile App (Customer - In Progress)
-- ✅ **Project Structure:** Expo project initialized in `fast-delivery-mobile/customer`.
-- ✅ **Navigation Architecture:** 
-  - Refactored to **Nested Stacks inside Tabs** (`HomeStack`, `SearchStack`, `OrdersStack`).
-  - Ensures Bottom Tab Bar (Footer) remains visible on deeper screens (`OrderScreen`, `TrackOrderScreen`).
-- ✅ **Authentication:** Login and Register screens implemented.
-- ✅ **Store Search:** 
-  - Optimized loading (non-blocking UI).
-  - Uses `react-native-safe-area-context` for proper layout.
-  - Filters stores by name/type.
-- ✅ **Order Tracking:**
-  - Real-time status updates via Socket.IO.
-  - Visual status indicators (colors/text).
-  - Click-to-Call for Store and Driver.
-  - Voice message playback.
-  - Price confirmation flow.
-
-### Database & Test Data
-- ✅ MongoDB Atlas connected and configured
-- ✅ Test data scripts (seed, clear, verify)
-- ✅ Greek data for Alexandroupoli region
-- ✅ All user types can login successfully
+### Driver App Files (Reference - Already Working)
+```
+fast-delivery-mobile/driver/src/
+├── screens/
+│   ├── DashboardScreen.js     # Order management
+│   └── DeliveryMapScreen.js   # Full-screen navigation map
+├── components/
+│   └── DashboardMap.js        # Mini-map with pins + route
+└── services/
+    └── locationService.js     # GPS tracking + socket emit
+```
 
 ---
 
-## 📁 PROJECT STRUCTURE
+## 🔌 SOCKET.IO EVENTS FOR LIVE TRACKING
+
+### Driver → Server → Customer Flow
+```
+Driver App:
+  locationService.js → socket.emit('driver:location', {
+    orderId, driverId, location: { lat, lng }, timestamp
+  })
+
+Server (server.js):
+  socket.on('driver:location') → io.to(`order_${orderId}`).emit('driver:location_update', data)
+
+Customer App:
+  socket.js → socket.on('driver:location_update', callback)
+  TrackOrderScreen.js → receives location, updates map marker
+```
+
+### Socket Rooms
+- Customer joins: `order_${orderId}` when viewing TrackOrderScreen
+- Driver joins: `order_${orderId}` when in_delivery status
+- All parties in same room receive real-time updates
+
+---
+
+## 🗺️ MAP IMPLEMENTATION REFERENCE (Driver App)
+
+### DashboardMap.js - Mini Map Component
+```javascript
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import * as Location from 'expo-location';
+
+// Features:
+// - Driver location marker (blue car icon)
+// - Store location marker (green store icon)  
+// - Customer location marker (red house icon)
+// - Route polyline from Google Directions API
+// - Auto-fit to show all markers
+```
+
+### Key Code Patterns:
+```javascript
+// Get route from Google Directions API
+const getRoute = async (origin, destination) => {
+  const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&key=${GOOGLE_MAPS_API_KEY}`;
+  const response = await fetch(url);
+  const data = await response.json();
+  // Decode polyline from data.routes[0].overview_polyline.points
+};
+
+// Decode Google polyline
+const decodePolyline = (encoded) => {
+  // ... standard Google polyline decoder
+};
+```
+
+---
+
+## 📱 CUSTOMER APP - TrackOrderScreen.js REQUIREMENTS
+
+### Current State (No Map)
+- Shows order status text
+- Shows store/driver contact info
+- Receives driver location via socket but doesn't display it
+
+### Required Changes:
+1. **Add MapView component** when status is `in_delivery`
+2. **Driver marker** - updates in real-time from socket events
+3. **Customer marker** - from order.deliveryLocation or geocoded address
+4. **Store marker** - from order.store.location
+5. **Route polyline** - from store to customer (or driver to customer)
+6. **Auto-fit bounds** - show all markers on screen
+
+### Suggested UI Layout:
+```
+┌─────────────────────────────┐
+│  ← Παρακολούθηση Παραγγελίας│  (Header)
+├─────────────────────────────┤
+│                             │
+│    ┌─────────────────┐      │
+│    │                 │      │
+│    │   MAP VIEW      │      │  (60% height)
+│    │  Driver 🚗      │      │
+│    │  Store 🏪       │      │
+│    │  Customer 🏠    │      │
+│    │  ───route───    │      │
+│    └─────────────────┘      │
+│                             │
+├─────────────────────────────┤
+│  Status: Σε Παράδοση        │
+│  Driver: Μίχαελ Σουμάχερ    │
+│  📞 Call Driver             │
+├─────────────────────────────┤
+│  ETA: ~5 λεπτά              │  (Optional)
+└─────────────────────────────┘
+```
+
+---
+
+## 🔑 GOOGLE MAPS API KEY
+
+**Location:** `fast-delivery-mobile/customer/src/config.js`
+```javascript
+export const GOOGLE_MAPS_API_KEY = 'AIzaSy...'; // Same key as driver app
+```
+
+**Required APIs (already enabled):**
+- Maps SDK for Android
+- Directions API
+- Geocoding API
+
+---
+
+## 📊 ORDER STATUS FLOW
+
+```
+pending → accepted_store → priced → confirmed → 
+assigned → accepted_driver → preparing → in_delivery → completed
+                                            ↑
+                                    SHOW LIVE MAP HERE
+```
+
+**Key Status for Live Tracking:** `in_delivery`
+- Driver has picked up order
+- Driver is en route to customer
+- Driver app is sending location updates
+
+---
+
+## 🧪 TEST SCENARIO
+
+1. **Customer App:** Login, place order, wait for "in_delivery" status
+2. **Store Panel:** Accept → Price → Prepare → Ready
+3. **Admin Panel:** Assign driver
+4. **Driver App:** Accept → Pick up → Start delivery
+5. **Customer App:** Should now see map with driver moving
+
+### Test Credentials:
+- **Customer:** sakis@test.com / password123
+- **Store:** store@test.com / store123
+- **Driver:** driver@test.com / driver123
+- **Admin:** admin@fastdelivery.gr / admin123
+
+---
+
+## 📦 DEPENDENCIES (Already Installed)
+
+Customer App (`fast-delivery-mobile/customer/package.json`):
+```json
+{
+  "expo-location": "~18.1.5",
+  "react-native-maps": "1.20.1",
+  "socket.io-client": "^4.8.1"
+}
+```
+
+---
+
+## 🚀 IMPLEMENTATION STEPS FOR NEXT AI SESSION
+
+### Step 1: Read Current TrackOrderScreen.js
+```
+fast-delivery-mobile/customer/src/screens/TrackOrderScreen.js
+```
+
+### Step 2: Add MapView Component
+- Import MapView, Marker, Polyline from react-native-maps
+- Add map container (60% height) above status info
+- Only show map when status === 'in_delivery'
+
+### Step 3: Handle Driver Location Updates
+```javascript
+const [driverLocation, setDriverLocation] = useState(null);
+
+useEffect(() => {
+  const handleDriverLocation = (data) => {
+    if (data.orderId === order._id) {
+      setDriverLocation(data.location);
+    }
+  };
+  
+  socketService.on('driver:location_update', handleDriverLocation);
+  return () => socketService.off('driver:location_update', handleDriverLocation);
+}, [order._id]);
+```
+
+### Step 4: Add Markers
+```javascript
+{driverLocation && (
+  <Marker
+    coordinate={{ latitude: driverLocation.lat, longitude: driverLocation.lng }}
+    title="Οδηγός"
+  >
+    <View style={styles.driverMarker}>
+      <Text>🚗</Text>
+    </View>
+  </Marker>
+)}
+```
+
+### Step 5: Fetch & Display Route
+- Get route from Google Directions API
+- Decode polyline
+- Display as Polyline component
+
+### Step 6: Auto-Fit Map Bounds
+```javascript
+mapRef.current.fitToCoordinates([driverCoord, storeCoord, customerCoord], {
+  edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }
+});
+```
+
+---
+
+## 🎨 UI/UX DESIGN SYSTEM
+
+**Primary Color:** `#00c2e8` (Cyan/Blue)
+**Map Marker Colors:**
+- Driver: `#00c2e8` (Blue) with 🚗 or car icon
+- Store: `#28a745` (Green) with 🏪 icon
+- Customer: `#dc3545` (Red) with 🏠 icon
+**Route Polyline:** `#00c2e8` with width 4
+
+---
+
+## 📝 NOTES FOR AI
+
+1. **Socket connection:** Already working - customer app receives `driver:location_update` events
+2. **Location format:** `{ lat: number, lng: number }`
+3. **GeoJSON format in DB:** `{ type: 'Point', coordinates: [lng, lat] }` (reversed!)
+4. **Map region:** Center on Alexandroupoli (40.8457, 25.8733) as default
+5. **Driver app reference:** Look at `DashboardMap.js` for working implementation
+
+---
+
+## ✅ COMPLETION CHECKLIST
+
+- [ ] MapView displays when status is 'in_delivery'
+- [ ] Driver marker shows and updates in real-time
+- [ ] Store marker shows pickup location
+- [ ] Customer marker shows delivery address
+- [ ] Route polyline displays between points
+- [ ] Map auto-fits to show all markers
+- [ ] Smooth marker animation (optional)
+- [ ] ETA display (optional)
+- [ ] Remove debug logs when done
+
+---
+
+## 🔗 RELATED DOCUMENTATION
+
+- [React Native Maps](https://github.com/react-native-maps/react-native-maps)
+- [Expo Location](https://docs.expo.dev/versions/latest/sdk/location/)
+- [Socket.IO Client](https://socket.io/docs/v4/client-api/)
+- [Google Directions API](https://developers.google.com/maps/documentation/directions/)
+
+---
+
+## 🏗️ PROJECT STRUCTURE
 
 ```
 FastDelivery/
-├── fast-delivery-backend/         # Express.js API
+├── fast-delivery-backend/         # Express.js API (Node.js)
 │   ├── server.js                 # Main server with Socket.IO
 │   ├── src/
 │   │   ├── config/              # Database & Firebase config
-│   │   ├── models/              # Mongoose schemas (5 models)
-│   │   ├── controllers/         # Business logic (5 controllers)
-│   │   ├── routes/              # API routes (5 route files)
+│   │   ├── models/              # Mongoose schemas
+│   │   ├── controllers/         # Business logic
+│   │   ├── routes/              # API routes
 │   │   ├── middleware/          # Auth middleware
-│   │   └── utils/               # JWT & Socket helpers
-│   └── tests/                   # PowerShell test scripts
+│   │   └── utils/               # JWT, Socket, Geocoding helpers
+│   └── tests/                   # Test scripts
 │
-├── fast-delivery-frontend/       # React application
+├── fast-delivery-frontend/       # React Web Application
 │   └── src/
 │       ├── services/            # API & Socket.IO client
 │       ├── context/             # Auth context
-│       ├── components/          # Reusable components
+│       ├── components/          # Admin, Store, Driver, Customer
 │       ├── pages/              # Main page components
 │       └── styles/             # CSS files
 │
-└── fast-delivery-mobile/         # React Native Apps
-    ├── customer/                # Customer App
-    │   ├── App.js              # Main Navigation (Tabs > Stacks)
+└── fast-delivery-mobile/         # React Native Apps (Expo)
+    ├── customer/                # Customer Mobile App
+    │   ├── App.js              # Navigation (Tabs > Stacks)
     │   └── src/
-    │       ├── screens/        # Mobile Screens
-    │       ├── services/       # API & Socket
-    │       └── context/        # Auth Context
-    └── driver/                  # Driver App (Placeholder)
+    │       ├── screens/        # HomeScreen, OrderScreen, etc.
+    │       ├── services/       # api.js, socket.js
+    │       └── context/        # AuthContext.js
+    │
+    └── driver/                  # Driver Mobile App ✅ COMPLETE
+        ├── App.js              # Navigation
+        └── src/
+            ├── screens/        # Dashboard, DeliveryMap
+            ├── components/     # DashboardMap (mini-map)
+            ├── services/       # api, socket, locationService
+            └── context/        # AuthContext.js
 ```
 
 ---
@@ -148,58 +391,57 @@ FastDelivery/
 ## 🚀 HOW TO RUN LOCALLY
 
 ```powershell
-# 1. Setup database with test data
-cd fast-delivery-backend/tests
-node clearAllData.js
-node seedTestData.js
-
-# 2. Start backend (Terminal 1)
+# 1. Start backend (Terminal 1)
 cd fast-delivery-backend
 node server.js
+# Server runs on http://localhost:5001
 
-# 3. Start frontend (Terminal 2)
+# 2. Start frontend (Terminal 2)
 cd fast-delivery-frontend
 npm start
+# Web app runs on http://localhost:3000
 
-# 4. Start Mobile App (Terminal 3)
+# 3. Start Customer Mobile App (Terminal 3)
 cd fast-delivery-mobile/customer
 npx expo start
+# Scan QR with Expo Go app
+
+# 4. Start Driver Mobile App (Terminal 4)
+cd fast-delivery-mobile/driver
+npx expo start --port 8082
+# Scan QR with Expo Go app
 ```
 
 ---
 
-## 🎯 IMMEDIATE NEXT STEPS (FOR NEXT SESSION)
+## 📱 MOBILE APP BUILD (APK)
 
-**Priority 1: Mobile App Refinement**
-- [ ] **Verify Navigation:** Ensure smooth transitions between Tabs and Stacks.
-- [ ] **Driver App:** Initialize and implement basic order acceptance and tracking.
-- [ ] **Push Notifications:** Implement Expo Push Notifications for mobile.
-
-**Priority 2: Driver App Enhancements (Web)**
-- [ ] **Accept Screen:** Show Map with Route (Store -> Customer) before accepting.
-- [ ] **Live Tracking:** Update `OrderStatus.js` to show Driver's live location moving on the map when status is "On the way".
-
-**Priority 3: Admin Features**
-- [ ] **Statistics Filter:** Add date/period filter in Admin stats tab (today/week/month).
-
----
-
-## 📝 QUICK REFERENCE FOR AI ASSISTANTS
-
-### Current Context
-- **Production:** Web Deployed.
-- **Mobile:** Customer App active development. Navigation refactored to support persistent footer.
-- **Features:** Voice Orders, Navigation, Push Notifications (Web) are COMPLETE.
-- **Pending:** Live Tracking, Accept Screen Map, Chat, Mobile Push.
-
-### Key Files to Know:
-- **Mobile Navigation:** `fast-delivery-mobile/customer/App.js`
-- **Mobile Search:** `fast-delivery-mobile/customer/src/screens/SearchScreen.js`
-- **Mobile Tracking:** `fast-delivery-mobile/customer/src/screens/TrackOrderScreen.js`
-
-### Git Commands:
 ```powershell
-git add .
-git commit -m "Your message"
-git push origin master
+# Customer App
+cd fast-delivery-mobile/customer
+eas build --platform android --profile preview
+
+# Driver App
+cd fast-delivery-mobile/driver
+eas build --platform android --profile preview
 ```
+
+---
+
+## 🔧 RECENT CHANGES (2025-11-28)
+
+1. **Backend:** Added geocoding on customer login (authController.js)
+2. **Customer App:** Added debug logs to AuthContext.js and HomeScreen.js
+3. **Driver App:** Live location tracking working
+4. **Socket.IO:** driver:location_update events flowing correctly
+5. **Issue:** Customer map shows California coords (needs logout/login)
+
+---
+
+## 💡 TIPS FOR NEXT SESSION
+
+1. Start by reading `TrackOrderScreen.js` to understand current structure
+2. Copy patterns from driver's `DashboardMap.js` for map implementation
+3. Test with real order flow (create order → track it)
+4. Check socket logs to verify events are being received
+5. Remember: GeoJSON is `[lng, lat]` but MapView needs `{ latitude, longitude }`

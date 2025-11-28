@@ -34,7 +34,6 @@ const sendPushNotification = async (pushToken, title, body, data = {}) => {
     for (let chunk of chunks) {
       try {
         let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-        console.log('📣 Push Notification Ticket:', ticketChunk);
         tickets.push(...ticketChunk);
         // NOTE: If a ticket contains an error code in ticket.details.error, you
         // must handle it. For example, invalid credentials or too many notifications.

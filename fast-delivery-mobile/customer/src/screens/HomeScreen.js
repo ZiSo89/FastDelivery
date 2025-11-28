@@ -90,8 +90,11 @@ const HomeScreen = ({ navigation }) => {
       // 1. Check if user has a saved location in their profile
       if (user?.location?.coordinates) {
         const [lng, lat] = user.location.coordinates;
-        setLocation({ latitude: lat, longitude: lng });
-        return;
+        // Only use if not default [0,0]
+        if (lng !== 0 || lat !== 0) {
+          setLocation({ latitude: lat, longitude: lng });
+          return;
+        }
       }
 
       // 2. Fallback to GPS if no user location
@@ -138,15 +141,12 @@ const HomeScreen = ({ navigation }) => {
       
       const lat = location ? location.latitude : 40.8457;
       const lng = location ? location.longitude : 25.8733;
-      console.log('📍 Loading stores for location:', lat, lng);
       
       const response = await customerService.getStores(lat, lng);
-      console.log('🏪 Stores loaded:', response.data.stores?.length);
       
       setStores(response.data.stores || []);
     } catch (error) {
-      console.error('❌ Error loading stores:', error);
-      // Silent fail - just log error
+      // Silent fail
     } finally {
       setLoading(false);
     }
