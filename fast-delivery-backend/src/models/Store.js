@@ -45,8 +45,8 @@ const storeSchema = new mongoose.Schema({
   },
   storeType: {
     type: String,
-    required: true,
-    enum: ['Mini Market', 'Φαρμακείο', 'Ταβέρνα', 'Καφετέρια', 'Γλυκά', 'Άλλο']
+    required: [true, 'Ο τύπος καταστήματος είναι υποχρεωτικός']
+    // No enum restriction - store types are managed dynamically via Settings
   },
   workingHours: {
     type: String,

@@ -39,12 +39,22 @@ const DashboardMap = ({ orders, driverLocation }) => {
     }
   }, [orders, activeOrder?.status]);
 
+  // Default location (Alexandroupoli city center)
+  const DEFAULT_LOCATION = {
+    latitude: 40.8476,
+    longitude: 25.8743,
+  };
+
   // Get location on mount
   useEffect(() => {
     (async () => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        if (status !== 'granted') {
+          // Use default location if permission denied
+          setCurrentLocation(DEFAULT_LOCATION);
+          return;
+        }
 
         let location = await Location.getCurrentPositionAsync({ 
           accuracy: Location.Accuracy.Balanced 
@@ -54,7 +64,9 @@ const DashboardMap = ({ orders, driverLocation }) => {
           longitude: location.coords.longitude,
         });
       } catch (error) {
-        console.log('Error getting location:', error);
+        console.log('Error getting location, using default:', error.message);
+        // Use default location on error (emulator without location set)
+        setCurrentLocation(DEFAULT_LOCATION);
       }
     })();
   }, []);

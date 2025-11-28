@@ -287,3 +287,25 @@ exports.registerCustomer = async (req, res, next) => {
     res.status(400).json({ success: false, message: 'Κάτι πήγε στραβά. ' + error.message });
   }
 };
+
+// @desc    Get store types (public - for registration)
+// @route   GET /api/v1/auth/store-types
+// @access  Public
+exports.getStoreTypes = async (req, res) => {
+  try {
+    const Settings = require('../models/Settings');
+    const settings = await Settings.getSettings();
+    
+    res.json({
+      success: true,
+      storeTypes: settings.storeTypes || ['Mini Market', 'Φαρμακείο', 'Ταβέρνα', 'Καφετέρια', 'Γλυκά', 'Άλλο']
+    });
+  } catch (error) {
+    console.error('Get store types error:', error);
+    // Return default types on error
+    res.json({
+      success: true,
+      storeTypes: ['Mini Market', 'Φαρμακείο', 'Ταβέρνα', 'Καφετέρια', 'Γλυκά', 'Άλλο']
+    });
+  }
+};

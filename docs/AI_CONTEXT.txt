@@ -6,7 +6,171 @@
 
 ---
 
-## 🎯 IMMEDIATE TASK: Customer App Live Tracking Map
+## 🎯 COMPLETED: Admin Dashboard Statistics & Settings Tabs
+
+### ✅ IMPLEMENTED (2025-11-28)
+
+Δημιουργήθηκαν 2 νέα tabs στο Admin Dashboard:
+
+---
+
+## 📊 Tab: Στατιστικά (Statistics) - ✅ COMPLETE
+
+### Αρχεία που δημιουργήθηκαν:
+- `fast-delivery-frontend/src/components/admin/StatisticsTab.js`
+- `fast-delivery-backend/src/models/Settings.js`
+- `fast-delivery-backend/src/models/MonthlyExpense.js`
+
+### Features:
+
+**1. Οικονομική Σύνοψη (Financial Summary)**
+- 💰 Έσοδα μήνα (από delivery fees)
+- 💰 Μισθοί διανομέων (drivers × monthly salary)
+- 💰 Έκτακτα έξοδα (καταχώρηση ανά μήνα)
+- 💰 **Καθαρό Αποτέλεσμα** = Έσοδα - Μισθοί - Έξοδα
+
+**2. Γραφήματα (Charts με Recharts)**
+- 📊 Bar Chart: Παραγγελίες ανά ημέρα του μήνα
+- 📈 Line Chart: Έσοδα ανά μήνα του έτους
+
+**3. Top Performers**
+- 🏪 Top 5 καταστήματα (με περισσότερες παραγγελίες)
+- 🚗 Top 5 διανομείς (με περισσότερες παραδόσεις)
+- 👤 Top 5 πελάτες (με περισσότερες παραγγελίες)
+
+**4. Μέσοι Όροι**
+- 💵 Μέση αξία παραγγελίας
+- 💵 Μέσο delivery fee
+
+**5. Φόρμα Έκτακτων Εξόδων**
+- Ποσό εξόδων για τον επιλεγμένο μήνα
+- Σημειώσεις (π.χ. "Συντήρηση, Διαφήμιση")
+- Αποθήκευση ανά μήνα/έτος
+
+**6. Επιλογή Περιόδου**
+- Dropdown για μήνα (Ιανουάριος-Δεκέμβριος)
+- Dropdown για έτος
+
+---
+
+## ⚙️ Tab: Ρυθμίσεις (Settings) - ✅ COMPLETE
+
+### Αρχεία που δημιουργήθηκαν:
+- `fast-delivery-frontend/src/components/admin/SettingsTab.js`
+
+### Features:
+
+**1. Γενικές Ρυθμίσεις**
+- 💵 Μισθός Διανομέα (μηνιαίος, ίδιος για όλους)
+- 💵 Προεπιλεγμένο κόστος παράδοσης
+
+**2. Τύποι Καταστημάτων**
+- ➕ Προσθήκη νέου τύπου (π.χ. "Πιτσαρία", "Φαρμακείο")
+- ❌ Διαγραφή τύπου (μόνο αν δεν χρησιμοποιείται)
+- 📋 Λίστα υπαρχόντων τύπων
+
+---
+
+## 🗄️ Backend API Endpoints - ✅ COMPLETE
+
+### Routes (fast-delivery-backend/src/routes/admin.js):
+```
+GET  /api/v1/admin/settings              - Λήψη ρυθμίσεων
+PUT  /api/v1/admin/settings              - Ενημέρωση ρυθμίσεων
+POST /api/v1/admin/settings/store-types  - Προσθήκη τύπου καταστήματος
+DELETE /api/v1/admin/settings/store-types/:type - Διαγραφή τύπου
+
+GET  /api/v1/admin/expenses/:year/:month - Λήψη εξόδων μήνα
+PUT  /api/v1/admin/expenses/:year/:month - Ενημέρωση εξόδων μήνα
+
+GET  /api/v1/admin/stats/extended        - Εκτεταμένα στατιστικά
+```
+
+### Models:
+
+**Settings.js** (Singleton Pattern):
+```javascript
+{
+  driverSalary: Number,        // Default: 800€
+  storeTypes: [String],        // ["Εστιατόριο", "Καφετέρια", ...]
+  defaultDeliveryFee: Number,  // Default: 2.5€
+  serviceArea: String,         // "Αλεξανδρούπολη"
+}
+```
+
+**MonthlyExpense.js**:
+```javascript
+{
+  year: Number,                // 2025
+  month: Number,               // 1-12
+  amount: Number,              // Ποσό εξόδων
+  notes: String,               // Σημειώσεις
+  updatedBy: ObjectId,         // Admin που ενημέρωσε
+}
+```
+
+---
+
+## 📦 Dependencies Installed
+
+**Frontend (fast-delivery-frontend):**
+```bash
+npm install recharts react-icons
+```
+
+---
+
+## 🎨 UI Components Used
+
+- **Recharts:** LineChart, BarChart, PieChart
+- **React Bootstrap:** Cards, Forms, Tables, Badges, Modals
+- **React Icons:** FaChartLine, FaEuroSign, FaCog, etc.
+
+---
+
+## 📐 Τύπος Υπολογισμού Καθαρού Αποτελέσματος
+
+```
+Καθαρό Αποτέλεσμα = Έσοδα Delivery - (Αρ. Διανομέων × Μισθός) - Έκτακτα Έξοδα
+```
+
+Παράδειγμα:
+- Έσοδα: 3,500€
+- Διανομείς: 3 × 800€ = 2,400€
+- Έξοδα: 200€
+- **Καθαρό: 3,500 - 2,400 - 200 = 900€**
+
+---
+
+## ❌ ΤΙ ΜΕΝΕΙ ΝΑ ΓΙΝΕΙ (TODO)
+
+### 1. Statistics Tab - Επιπλέον Features
+- [ ] Pie chart με κατανομή παραγγελιών ανά status
+- [ ] ⏱️ Μέσος χρόνος ολοκλήρωσης παραγγελίας
+- [ ] Date range picker για custom περίοδο
+- [ ] Export στατιστικών σε CSV/PDF
+
+### 2. Settings Tab - Επιπλέον Features
+- [ ] Προφίλ Admin (αλλαγή ονόματος, email, password)
+- [ ] Ώρες λειτουργίας υπηρεσίας
+- [ ] Toggle ηχητικές ειδοποιήσεις (on/off)
+- [ ] Toggle push notifications (on/off)
+- [ ] Email notifications για νέες εγγραφές
+- [ ] Export παραγγελιών σε CSV/Excel
+- [ ] Πληροφορίες συστήματος (version, DB status)
+- [ ] Καθαρισμός παλιών ειδοποιήσεων
+
+### 3. Mobile Apps
+- [ ] Customer App: Live tracking map (TrackOrderScreen.js)
+- [ ] Βελτίωση VirtualizedList warning
+
+### 4. General
+- [ ] Testing νέων endpoints
+- [ ] Documentation update
+
+---
+
+## 🚀 NEXT IMMEDIATE TASK: Customer App Live Tracking Map
 
 **Goal:** Show a real-time map in the Customer Mobile App when their order is "in_delivery" status, displaying:
 1. Driver's live location (moving marker)

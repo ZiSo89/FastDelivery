@@ -11,7 +11,17 @@ const {
   cancelOrder,
   getCustomers,
   deactivateCustomer,
-  getStats
+  getStats,
+  getSettings,
+  updateSettings,
+  addStoreType,
+  deleteStoreType,
+  getMonthlyExpense,
+  updateMonthlyExpense,
+  getExtendedStats,
+  getAdminProfile,
+  updateAdminProfile,
+  updateAdminPassword
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -40,4 +50,23 @@ router.put('/customers/:customerId/deactivate', deactivateCustomer);
 // Dashboard stats
 router.get('/stats', getStats);
 
+// Extended statistics
+router.get('/stats/extended', getExtendedStats);
+
+// Settings
+router.get('/settings', getSettings);
+router.put('/settings', updateSettings);
+router.post('/settings/store-types', addStoreType);
+router.delete('/settings/store-types/:storeType', deleteStoreType);
+
+// Monthly expenses
+router.get('/expenses/:year/:month', getMonthlyExpense);
+router.put('/expenses/:year/:month', updateMonthlyExpense);
+
+// Admin profile management
+router.get('/profile', getAdminProfile);
+router.put('/profile', updateAdminProfile);
+router.put('/profile/password', updateAdminPassword);
+
 module.exports = router;
+

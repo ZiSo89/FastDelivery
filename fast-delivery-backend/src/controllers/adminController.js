@@ -3,6 +3,10 @@ const Driver = require('../models/Driver');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Customer = require('../models/Customer');
+const Settings = require('../models/Settings');
+const MonthlyExpense = require('../models/MonthlyExpense');
+const Admin = require('../models/Admin');
+const bcrypt = require('bcryptjs');
 const { broadcastOrderEvent } = require('../utils/socketHelpers');
 
 // @desc    Get all stores
@@ -628,6 +632,543 @@ exports.getStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Σφάλμα ανάκτησης στατιστικών'
+    });
+  }
+};
+
+// ==================== SETTINGS ====================
+
+// @desc    Get settings
+// @route   GET /api/v1/admin/settings
+// @access  Private (Admin)
+exports.getSettings = async (req, res) => {
+  try {
+    const settings = await Settings.getSettings();
+    res.json({
+      success: true,
+      settings
+    });
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ανάκτησης ρυθμίσεων'
+    });
+  }
+};
+
+// @desc    Update settings
+// @route   PUT /api/v1/admin/settings
+// @access  Private (Admin)
+exports.updateSettings = async (req, res) => {
+  try {
+    const { driverSalary, defaultDeliveryFee, serviceArea, serviceHours } = req.body;
+    
+    const updates = {};
+    if (driverSalary !== undefined) updates.driverSalary = driverSalary;
+    if (defaultDeliveryFee !== undefined) updates.defaultDeliveryFee = defaultDeliveryFee;
+    if (serviceArea) updates.serviceArea = serviceArea;
+    if (serviceHours) updates.serviceHours = serviceHours;
+    
+    const settings = await Settings.updateSettings(updates);
+    
+    res.json({
+      success: true,
+      message: 'Οι ρυθμίσεις ενημερώθηκαν',
+      settings
+    });
+  } catch (error) {
+    console.error('Update settings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ενημέρωσης ρυθμίσεων'
+    });
+  }
+};
+
+// @desc    Add store type
+// @route   POST /api/v1/admin/settings/store-types
+// @access  Private (Admin)
+exports.addStoreType = async (req, res) => {
+  try {
+    const { storeType } = req.body;
+    
+    if (!storeType || storeType.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ο τύπος καταστήματος είναι υποχρεωτικός'
+      });
+    }
+    
+    const settings = await Settings.getSettings();
+    
+    // Check if already exists
+    if (settings.storeTypes.includes(storeType.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Αυτός ο τύπος καταστήματος υπάρχει ήδη'
+      });
+    }
+    
+    settings.storeTypes.push(storeType.trim());
+    await settings.save();
+    
+    res.json({
+      success: true,
+      message: 'Ο τύπος καταστήματος προστέθηκε',
+      storeTypes: settings.storeTypes
+    });
+  } catch (error) {
+    console.error('Add store type error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα προσθήκης τύπου καταστήματος'
+    });
+  }
+};
+
+// @desc    Delete store type
+// @route   DELETE /api/v1/admin/settings/store-types/:storeType
+// @access  Private (Admin)
+exports.deleteStoreType = async (req, res) => {
+  try {
+    const { storeType } = req.params;
+    
+    // Check if any store uses this type
+    const storesWithType = await Store.countDocuments({ storeType });
+    
+    if (storesWithType > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Δεν μπορεί να διαγραφεί - ${storesWithType} καταστήματα χρησιμοποιούν αυτόν τον τύπο`
+      });
+    }
+    
+    const settings = await Settings.getSettings();
+    settings.storeTypes = settings.storeTypes.filter(t => t !== storeType);
+    await settings.save();
+    
+    res.json({
+      success: true,
+      message: 'Ο τύπος καταστήματος διαγράφηκε',
+      storeTypes: settings.storeTypes
+    });
+  } catch (error) {
+    console.error('Delete store type error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα διαγραφής τύπου καταστήματος'
+    });
+  }
+};
+
+// ==================== MONTHLY EXPENSES ====================
+
+// @desc    Get monthly expense
+// @route   GET /api/v1/admin/expenses/:year/:month
+// @access  Private (Admin)
+exports.getMonthlyExpense = async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    const expense = await MonthlyExpense.getOrCreateForMonth(parseInt(year), parseInt(month));
+    
+    res.json({
+      success: true,
+      expense
+    });
+  } catch (error) {
+    console.error('Get monthly expense error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ανάκτησης εξόδων μήνα'
+    });
+  }
+};
+
+// @desc    Update monthly expense
+// @route   PUT /api/v1/admin/expenses/:year/:month
+// @access  Private (Admin)
+exports.updateMonthlyExpense = async (req, res) => {
+  try {
+    const { year, month } = req.params;
+    const { amount, notes } = req.body;
+    
+    const expense = await MonthlyExpense.updateForMonth(
+      parseInt(year), 
+      parseInt(month), 
+      amount || 0, 
+      notes || '',
+      req.user._id
+    );
+    
+    res.json({
+      success: true,
+      message: 'Τα έξοδα ενημερώθηκαν',
+      expense
+    });
+  } catch (error) {
+    console.error('Update monthly expense error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ενημέρωσης εξόδων μήνα'
+    });
+  }
+};
+
+// ==================== EXTENDED STATISTICS ====================
+
+// @desc    Get extended statistics with financial data
+// @route   GET /api/v1/admin/stats/extended
+// @access  Private (Admin)
+exports.getExtendedStats = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    const targetYear = parseInt(year) || new Date().getFullYear();
+    const targetMonth = parseInt(month) || new Date().getMonth() + 1;
+    
+    // Get settings for driver salary
+    const settings = await Settings.getSettings();
+    const driverSalary = settings.driverSalary;
+    
+    // Get monthly expense
+    const monthlyExpense = await MonthlyExpense.getOrCreateForMonth(targetYear, targetMonth);
+    
+    // Count approved drivers
+    const approvedDrivers = await Driver.countDocuments({ status: 'approved', isApproved: true });
+    
+    // Calculate total salaries
+    const totalSalaries = approvedDrivers * driverSalary;
+    
+    // Get revenue for the month
+    const monthStart = new Date(targetYear, targetMonth - 1, 1);
+    const monthEnd = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+    
+    const monthlyRevenue = await Order.aggregate([
+      { 
+        $match: { 
+          status: 'completed',
+          completedAt: { $gte: monthStart, $lte: monthEnd }
+        } 
+      },
+      { $group: { _id: null, total: { $sum: '$deliveryFee' } } }
+    ]);
+    
+    const revenue = monthlyRevenue[0]?.total || 0;
+    
+    // Calculate net result
+    const netResult = revenue - totalSalaries - monthlyExpense.amount;
+    
+    // Get TODAY's revenue
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    const todayRevenue = await Order.aggregate([
+      { 
+        $match: { 
+          status: 'completed',
+          completedAt: { $gte: todayStart, $lte: todayEnd }
+        } 
+      },
+      { $group: { _id: null, total: { $sum: '$deliveryFee' }, orders: { $sum: 1 } } }
+    ]);
+    
+    const dailyRevenue = todayRevenue[0]?.total || 0;
+    const dailyOrders = todayRevenue[0]?.orders || 0;
+    
+    // Get orders per day for the month (for chart)
+    const ordersPerDay = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: monthStart, $lte: monthEnd }
+        }
+      },
+      {
+        $group: {
+          _id: { $dayOfMonth: '$createdAt' },
+          count: { $sum: 1 },
+          revenue: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, '$deliveryFee', 0] } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    // Get revenue per month for the year (for chart)
+    const yearStart = new Date(targetYear, 0, 1);
+    const yearEnd = new Date(targetYear, 11, 31, 23, 59, 59);
+    
+    const revenuePerMonth = await Order.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $gte: yearStart, $lte: yearEnd }
+        }
+      },
+      {
+        $group: {
+          _id: { $month: '$completedAt' },
+          revenue: { $sum: '$deliveryFee' },
+          orders: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    // Top stores
+    const topStores = await Order.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: '$storeId', orderCount: { $sum: 1 }, totalRevenue: { $sum: '$deliveryFee' } } },
+      { $sort: { orderCount: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'stores',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'store'
+        }
+      },
+      { $unwind: '$store' },
+      {
+        $project: {
+          storeName: '$store.businessName',
+          orderCount: 1,
+          totalRevenue: 1
+        }
+      }
+    ]);
+    
+    // Top drivers
+    const topDrivers = await Order.aggregate([
+      { $match: { status: 'completed', driverId: { $ne: null } } },
+      { $group: { _id: '$driverId', deliveries: { $sum: 1 }, totalEarned: { $sum: '$deliveryFee' } } },
+      { $sort: { deliveries: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'drivers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'driver'
+        }
+      },
+      { $unwind: '$driver' },
+      {
+        $project: {
+          driverName: '$driver.name',
+          deliveries: 1,
+          totalEarned: 1
+        }
+      }
+    ]);
+    
+    // Top customers
+    const topCustomers = await Order.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: '$customer.phone', name: { $first: '$customer.name' }, orderCount: { $sum: 1 }, totalSpent: { $sum: '$totalPrice' } } },
+      { $sort: { orderCount: -1 } },
+      { $limit: 5 }
+    ]);
+    
+    // Average values
+    const averages = await Order.aggregate([
+      { $match: { status: 'completed' } },
+      {
+        $group: {
+          _id: null,
+          avgOrderValue: { $avg: '$totalPrice' },
+          avgDeliveryFee: { $avg: '$deliveryFee' }
+        }
+      }
+    ]);
+    
+    const avgOrderValue = averages[0]?.avgOrderValue || 0;
+    const avgDeliveryFee = averages[0]?.avgDeliveryFee || 0;
+    
+    res.json({
+      success: true,
+      stats: {
+        // Today's stats
+        today: {
+          revenue: parseFloat(dailyRevenue.toFixed(2)),
+          orders: dailyOrders
+        },
+        // Financial summary for selected month
+        financial: {
+          year: targetYear,
+          month: targetMonth,
+          revenue: parseFloat(revenue.toFixed(2)),
+          driverSalary,
+          approvedDrivers,
+          totalSalaries,
+          extraExpenses: monthlyExpense.amount,
+          expenseNotes: monthlyExpense.notes,
+          netResult: parseFloat(netResult.toFixed(2))
+        },
+        // Charts data
+        charts: {
+          ordersPerDay,
+          revenuePerMonth
+        },
+        // Top performers
+        topPerformers: {
+          stores: topStores,
+          drivers: topDrivers,
+          customers: topCustomers
+        },
+        // Averages
+        averages: {
+          orderValue: parseFloat(avgOrderValue.toFixed(2)),
+          deliveryFee: parseFloat(avgDeliveryFee.toFixed(2))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get extended stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ανάκτησης εκτεταμένων στατιστικών'
+    });
+  }
+};
+
+// ==================== ADMIN PROFILE ====================
+
+// @desc    Get admin profile
+// @route   GET /api/v1/admin/profile
+// @access  Private (Admin)
+exports.getAdminProfile = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.user._id).select('-password');
+    
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ο διαχειριστής δεν βρέθηκε'
+      });
+    }
+    
+    res.json({
+      success: true,
+      admin: {
+        _id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        createdAt: admin.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Get admin profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ανάκτησης προφίλ'
+    });
+  }
+};
+
+// @desc    Update admin profile (name, email)
+// @route   PUT /api/v1/admin/profile
+// @access  Private (Admin)
+exports.updateAdminProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το όνομα και το email είναι υποχρεωτικά'
+      });
+    }
+    
+    // Check if email already exists (for different admin)
+    const existingAdmin = await Admin.findOne({ email, _id: { $ne: req.user._id } });
+    if (existingAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το email χρησιμοποιείται ήδη'
+      });
+    }
+    
+    const admin = await Admin.findByIdAndUpdate(
+      req.user._id,
+      { name, email },
+      { new: true, runValidators: true }
+    ).select('-password');
+    
+    res.json({
+      success: true,
+      message: 'Το προφίλ ενημερώθηκε επιτυχώς',
+      admin: {
+        _id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role
+      }
+    });
+  } catch (error) {
+    console.error('Update admin profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ενημέρωσης προφίλ'
+    });
+  }
+};
+
+// @desc    Update admin password
+// @route   PUT /api/v1/admin/profile/password
+// @access  Private (Admin)
+exports.updateAdminPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ο τρέχων και ο νέος κωδικός είναι υποχρεωτικοί'
+      });
+    }
+    
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες'
+      });
+    }
+    
+    // Get admin with password
+    const admin = await Admin.findById(req.user._id).select('+password');
+    
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ο διαχειριστής δεν βρέθηκε'
+      });
+    }
+    
+    // Check current password
+    const isMatch = await admin.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ο τρέχων κωδικός είναι λάθος'
+      });
+    }
+    
+    // Update password (will be hashed by pre-save hook)
+    admin.password = newPassword;
+    await admin.save();
+    
+    res.json({
+      success: true,
+      message: 'Ο κωδικός ενημερώθηκε επιτυχώς'
+    });
+  } catch (error) {
+    console.error('Update admin password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα αλλαγής κωδικού'
     });
   }
 };

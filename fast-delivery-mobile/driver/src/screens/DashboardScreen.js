@@ -46,6 +46,12 @@ const DashboardScreen = () => {
   const [isTracking, setIsTracking] = useState(false);
   const [driverLocation, setDriverLocation] = useState(null);
 
+  // Default location (Alexandroupoli city center)
+  const DEFAULT_LOCATION = {
+    latitude: 40.8476,
+    longitude: 25.8743,
+  };
+
   // Get driver location on mount and update periodically
   useEffect(() => {
     let locationSubscription;
@@ -53,7 +59,11 @@ const DashboardScreen = () => {
     (async () => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
+        if (status !== 'granted') {
+          // Use default location if permission denied
+          setDriverLocation(DEFAULT_LOCATION);
+          return;
+        }
 
         // Get initial location
         let location = await Location.getCurrentPositionAsync({ 
@@ -79,7 +89,9 @@ const DashboardScreen = () => {
           }
         );
       } catch (error) {
-        // Silent fail - location is optional for dashboard
+        // Use default location on error (emulator without location set)
+        console.log('Location error, using default:', error.message);
+        setDriverLocation(DEFAULT_LOCATION);
       }
     })();
 

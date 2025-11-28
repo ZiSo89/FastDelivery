@@ -4,7 +4,8 @@ const {
   registerStore,
   registerDriver,
   registerCustomer,
-  login
+  login,
+  getStoreTypes
 } = require('../controllers/authController');
 
 // @route   POST /api/v1/auth/store/register
@@ -18,5 +19,8 @@ router.post('/customer/register', registerCustomer);
 
 // @route   POST /api/v1/auth/login
 router.post('/login', login);
+
+// @route   GET /api/v1/auth/store-types (public - for registration form)
+router.get('/store-types', getStoreTypes);
 
 module.exports = router;

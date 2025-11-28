@@ -21,16 +21,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import GuestDetailsModal from '../components/GuestDetailsModal';
+import api from '../services/api';
 
-const CATEGORIES = [
-  { id: 'all', label: 'Όλα', icon: '🍽️' },
-  { id: 'coffee', label: 'Καφές', icon: '☕' },
-  { id: 'food', label: 'Φαγητό', icon: '🍔' },
-  { id: 'market', label: 'Market', icon: '🛒' },
-  { id: 'sweets', label: 'Γλυκά', icon: '🍰' },
-  { id: 'pharmacy', label: 'Φαρμακείο', icon: '💊' },
-  { id: 'other', label: 'Άλλο', icon: '🏪' },
-];
+// Icon mapping for store types - add new types here with their icons
+const STORE_TYPE_ICONS = {
+  'Όλα': '🍽️',
+  'Καφετέρια': '☕',
+  'Ταβέρνα': '🍔',
+  'Mini Market': '🛒',
+  'Γλυκά': '🍰',
+  'Φαρμακείο': '💊',
+  'Σουβλατζίδικο': '🥙',
+  'Πιτσαρία': '🍕',
+  'Ψητοπωλείο': '🍖',
+  'Αρτοποιείο': '🥖',
+  'Ζαχαροπλαστείο': '🎂',
+  'Κρεοπωλείο': '🥩',
+  'Ιχθυοπωλείο': '🐟',
+  'Οπωροπωλείο': '🍎',
+  'Κάβα': '🍷',
+  'Ανθοπωλείο': '💐',
+  'Pet Shop': '🐕',
+  'Άλλο': '🏪',
+};
+
+// Default icon for unknown types
+const DEFAULT_ICON = '🏪';
 
 const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -44,6 +60,7 @@ const HomeScreen = ({ navigation }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([{ id: 'all', label: 'Όλα', icon: '🍽️' }]);
   const mapRef = useRef(null);
   
   // Modal states
@@ -51,6 +68,39 @@ const HomeScreen = ({ navigation }) => {
   const [selectedStore, setSelectedStore] = useState(null);
   const [guestDetails, setGuestDetails] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  // Fetch store types for categories
+  useEffect(() => {
+    const fetchStoreTypes = async () => {
+      try {
+        const response = await api.get('/auth/store-types');
+        if (response.data.success && response.data.storeTypes?.length > 0) {
+          const dynamicCategories = [
+            { id: 'all', label: 'Όλα', icon: '🍽️' },
+            ...response.data.storeTypes.map(type => ({
+              id: type,
+              label: type,
+              icon: STORE_TYPE_ICONS[type] || DEFAULT_ICON
+            }))
+          ];
+          setCategories(dynamicCategories);
+        }
+      } catch (error) {
+        console.log('Using default categories');
+        // Fallback to some defaults
+        setCategories([
+          { id: 'all', label: 'Όλα', icon: '🍽️' },
+          { id: 'Καφετέρια', label: 'Καφετέρια', icon: '☕' },
+          { id: 'Ταβέρνα', label: 'Ταβέρνα', icon: '🍔' },
+          { id: 'Mini Market', label: 'Market', icon: '🛒' },
+          { id: 'Γλυκά', label: 'Γλυκά', icon: '🍰' },
+          { id: 'Φαρμακείο', label: 'Φαρμακείο', icon: '💊' },
+          { id: 'Άλλο', label: 'Άλλο', icon: '🏪' },
+        ]);
+      }
+    };
+    fetchStoreTypes();
+  }, []);
 
   const fitMapToMarkers = () => {
     if (filteredStores.length > 0 && mapRef.current) {
@@ -163,18 +213,13 @@ const HomeScreen = ({ navigation }) => {
   const filterStores = () => {
     let result = stores;
 
-    // Filter by Category
+    // Filter by Category - find the selected category and use its type
     if (activeCategory !== 'all') {
-      const typeMap = {
-        'coffee': 'Καφετέρια',
-        'food': 'Ταβέρνα',
-        'market': 'Mini Market',
-        'sweets': 'Γλυκά',
-        'pharmacy': 'Φαρμακείο',
-        'other': 'Άλλο'
-      };
-      const targetType = typeMap[activeCategory];
-      result = result.filter(store => store.storeType === targetType);
+      const selectedCat = categories.find(cat => cat.id === activeCategory);
+      if (selectedCat) {
+        // For dynamic categories, the id IS the store type (except 'all')
+        result = result.filter(store => store.storeType === activeCategory);
+      }
     }
 
     // Filter by Search
@@ -239,14 +284,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const getStoreIcon = (type) => {
-    switch(type) {
-      case 'Καφετέρια': return '☕';
-      case 'Mini Market': return '🛒';
-      case 'Ταβέρνα': return '🍔';
-      case 'Γλυκά': return '🍰';
-      case 'Φαρμακείο': return '💊';
-      default: return '🏪';
-    }
+    return STORE_TYPE_ICONS[type] || '🏪';
   };
 
   const renderStoreItem = ({ item }) => (
@@ -330,7 +368,7 @@ const HomeScreen = ({ navigation }) => {
         {/* Categories */}
         <View style={styles.categoriesContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesScroll}>
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <TouchableOpacity 
                 key={cat.id} 
                 style={[styles.categoryChip, activeCategory === cat.id && styles.activeCategoryChip]}

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "FastDelivery Driver",
+    "name": "Fast Delivery Driver",
     "slug": "fast-delivery-driver",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#00c2e8"
+      "backgroundColor": "#ffffffff"
     },
     "ios": {
       "supportsTablet": true,
@@ -24,7 +24,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#00000000"
+        "backgroundColor": "#ffffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.fastdelivery.driver",
@@ -34,7 +34,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.ico"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-notifications",

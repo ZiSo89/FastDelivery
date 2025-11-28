@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Badge, Spinner, Alert, Form, Button, Modal, Card, Row, Col } from 'react-bootstrap';
+import { Table, Badge, Spinner, Alert, Form, Button, Modal, Card, Row, Col, Pagination } from 'react-bootstrap';
 import { adminService } from '../../services/api';
+import api from '../../services/api';
 import socketService from '../../services/socket';
 import AlertModal from '../AlertModal';
 import { useNotification } from '../../context/NotificationContext';
@@ -11,6 +12,7 @@ const OrdersTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('in_progress');
+  const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(2.5);
   
   // Modals state
   const [showDeliveryFeeModal, setShowDeliveryFeeModal] = useState(false);
@@ -24,6 +26,12 @@ const OrdersTab = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const ordersPerPage = 50;
 
   // Detect screen size changes
   useEffect(() => {
@@ -34,35 +42,64 @@ const OrdersTab = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchOrders = useCallback(async () => {
+  // Fetch default delivery fee from settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await api.get('/admin/settings');
+        if (res.data.success && res.data.settings.defaultDeliveryFee) {
+          setDefaultDeliveryFee(res.data.settings.defaultDeliveryFee);
+        }
+      } catch (err) {
+        console.log('Could not fetch default delivery fee');
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const fetchOrders = useCallback(async (page = currentPage) => {
     try {
       setLoading(true);
-      // For in_progress, fetch all and filter client-side
+      // For in_progress, fetch all and filter client-side (no pagination)
       const statusFilter = filter === 'in_progress' || filter === 'all' ? null : filter;
-      const response = await adminService.getOrders(statusFilter);
-      let allOrders = response.orders || response.data?.orders || [];
       
-      // Filter for "Σε Εξέλιξη": all orders from last 3 hours except completed
+      // For in_progress, fetch without pagination to apply client-side filter
       if (filter === 'in_progress') {
+        const response = await adminService.getOrders(statusFilter, 1, 500);
+        let allOrders = response.orders || response.data?.orders || [];
         const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
         allOrders = allOrders.filter(order => {
           const isNotCompleted = order.status !== 'completed';
           const isRecent = new Date(order.createdAt) >= threeHoursAgo;
           return isNotCompleted && isRecent;
         });
+        setOrders(allOrders);
+        setTotalOrders(allOrders.length);
+        setTotalPages(1);
+      } else {
+        // For other filters, use server-side pagination
+        const response = await adminService.getOrders(statusFilter, page, ordersPerPage);
+        const allOrders = response.orders || response.data?.orders || [];
+        setOrders(allOrders);
+        setTotalOrders(response.total || allOrders.length);
+        setTotalPages(response.pages || Math.ceil((response.total || allOrders.length) / ordersPerPage));
       }
       
-      setOrders(allOrders);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης παραγγελιών');
     } finally {
       setLoading(false);
     }
+  }, [filter, currentPage]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
   }, [filter]);
 
   useEffect(() => {
-    fetchOrders();
+    fetchOrders(currentPage);
     
     // Socket.IO real-time listeners
     const handleNewOrder = (data) => {
@@ -157,7 +194,8 @@ const OrdersTab = () => {
 
   const handleOpenDeliveryFeeModal = (order) => {
     setSelectedOrder(order);
-    setDeliveryFee('');
+    // Auto-fill with default delivery fee from settings
+    setDeliveryFee(defaultDeliveryFee.toString());
     setShowDeliveryFeeModal(true);
   };
 
@@ -293,6 +331,14 @@ const OrdersTab = () => {
           <option value="rejected_driver">❌ Απόρριψη Οδηγού</option>
         </Form.Select>
       </div>
+      
+      {/* Orders count info */}
+      {!loading && orders.length > 0 && (
+        <div className="mb-2 text-muted small">
+          Εμφάνιση {orders.length} από {totalOrders} παραγγελίες
+          {totalPages > 1 && ` (Σελίδα ${currentPage} από ${totalPages})`}
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-5">
@@ -528,6 +574,55 @@ const OrdersTab = () => {
               ))}
             </tbody>
           </Table>
+        </div>
+      )}
+      
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="d-flex justify-content-center mt-3">
+          <Pagination>
+            <Pagination.First 
+              onClick={() => { setCurrentPage(1); fetchOrders(1); }} 
+              disabled={currentPage === 1} 
+            />
+            <Pagination.Prev 
+              onClick={() => { setCurrentPage(currentPage - 1); fetchOrders(currentPage - 1); }} 
+              disabled={currentPage === 1} 
+            />
+            
+            {/* Show page numbers */}
+            {[...Array(totalPages)].map((_, index) => {
+              const pageNum = index + 1;
+              // Show first, last, current, and 2 pages around current
+              if (
+                pageNum === 1 || 
+                pageNum === totalPages || 
+                (pageNum >= currentPage - 2 && pageNum <= currentPage + 2)
+              ) {
+                return (
+                  <Pagination.Item
+                    key={pageNum}
+                    active={pageNum === currentPage}
+                    onClick={() => { setCurrentPage(pageNum); fetchOrders(pageNum); }}
+                  >
+                    {pageNum}
+                  </Pagination.Item>
+                );
+              } else if (pageNum === currentPage - 3 || pageNum === currentPage + 3) {
+                return <Pagination.Ellipsis key={pageNum} disabled />;
+              }
+              return null;
+            })}
+            
+            <Pagination.Next 
+              onClick={() => { setCurrentPage(currentPage + 1); fetchOrders(currentPage + 1); }} 
+              disabled={currentPage === totalPages} 
+            />
+            <Pagination.Last 
+              onClick={() => { setCurrentPage(totalPages); fetchOrders(totalPages); }} 
+              disabled={currentPage === totalPages} 
+            />
+          </Pagination>
         </div>
       )}
 

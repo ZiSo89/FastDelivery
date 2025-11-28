@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
+import api from '../../services/api';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import '../../styles/CustomerPortal.css';
 
@@ -19,6 +20,31 @@ const defaultCenter = {
   lng: 25.8733
 };
 
+// Icon mapping for store types - add new types here with their icons
+const STORE_TYPE_ICONS = {
+  'Όλα': '🍽️',
+  'Καφετέρια': '☕',
+  'Ταβέρνα': '🍔',
+  'Mini Market': '🛒',
+  'Γλυκά': '🍰',
+  'Φαρμακείο': '💊',
+  'Σουβλατζίδικο': '🥙',
+  'Πιτσαρία': '🍕',
+  'Ψητοπωλείο': '🍖',
+  'Αρτοποιείο': '🥖',
+  'Ζαχαροπλαστείο': '🎂',
+  'Κρεοπωλείο': '🥩',
+  'Ιχθυοπωλείο': '🐟',
+  'Οπωροπωλείο': '🍎',
+  'Κάβα': '🍷',
+  'Ανθοπωλείο': '💐',
+  'Pet Shop': '🐕',
+  'Άλλο': '🏪',
+};
+
+// Default icon for unknown types
+const DEFAULT_ICON = '🏪';
+
 const CustomerHome = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -31,6 +57,7 @@ const CustomerHome = () => {
   const [selectedStore, setSelectedStore] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [map, setMap] = useState(null);
+  const [categories, setCategories] = useState([{ id: 'all', label: 'Όλα', icon: '🍽️' }]);
   const categoriesRef = React.useRef(null);
   
   // Get guest info from localStorage
@@ -48,6 +75,39 @@ const CustomerHome = () => {
   const filteredStores = stores.filter(store => 
     store.businessName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Fetch store types for categories from backend
+  useEffect(() => {
+    const fetchStoreTypes = async () => {
+      try {
+        const response = await api.get('/auth/store-types');
+        if (response.data.success && response.data.storeTypes?.length > 0) {
+          const dynamicCategories = [
+            { id: 'all', label: 'Όλα', icon: '🍽️' },
+            ...response.data.storeTypes.map(type => ({
+              id: type,
+              label: type,
+              icon: STORE_TYPE_ICONS[type] || DEFAULT_ICON
+            }))
+          ];
+          setCategories(dynamicCategories);
+        }
+      } catch (error) {
+        console.log('Using default categories');
+        // Fallback to some defaults
+        setCategories([
+          { id: 'all', label: 'Όλα', icon: '🍽️' },
+          { id: 'Καφετέρια', label: 'Καφετέρια', icon: '☕' },
+          { id: 'Ταβέρνα', label: 'Ταβέρνα', icon: '🍔' },
+          { id: 'Mini Market', label: 'Market', icon: '🛒' },
+          { id: 'Γλυκά', label: 'Γλυκά', icon: '🍰' },
+          { id: 'Φαρμακείο', label: 'Φαρμακείο', icon: '💊' },
+          { id: 'Άλλο', label: 'Άλλο', icon: '🏪' },
+        ]);
+      }
+    };
+    fetchStoreTypes();
+  }, []);
 
   useEffect(() => {
     if (map && viewMode === 'map' && filteredStores.length > 0 && isLoaded) {
@@ -101,32 +161,14 @@ const CustomerHome = () => {
     }
   }, []);
 
-  const categories = [
-    { id: 'all', label: 'Όλα', icon: '🍽️' },
-    { id: 'coffee', label: 'Καφές', icon: '☕' },
-    { id: 'food', label: 'Φαγητό', icon: '🍔' },
-    { id: 'market', label: 'Market', icon: '🛒' },
-    { id: 'sweets', label: 'Γλυκά', icon: '🍰' },
-    { id: 'pharmacy', label: 'Φαρμακείο', icon: '💊' },
-    { id: 'other', label: 'Άλλο', icon: '🏪' },
-  ];
-
   useEffect(() => {
     const fetchStores = async () => {
       setLoading(true);
       try {
         const params = {};
         if (activeCategory !== 'all') {
-           // Map category to storeType
-           const typeMap = {
-             'coffee': 'Καφετέρια',
-             'food': 'Ταβέρνα',
-             'market': 'Mini Market',
-             'sweets': 'Γλυκά', // Changed from 'Άλλο' to 'Γλυκά'
-             'pharmacy': 'Φαρμακείο',
-             'other': 'Άλλο'
-           };
-           params.storeType = typeMap[activeCategory];
+           // Now we use the category id directly as storeType
+           params.storeType = activeCategory;
         }
         
         // Use user's address as service area filter if available
@@ -306,11 +348,7 @@ const CustomerHome = () => {
                     filteredStores.map(store => (
                       <div key={store._id} className="store-card" onClick={() => handleStoreClick(store)}>
                         <div className="store-image-placeholder">
-                          {store.storeType === 'Καφετέρια' ? '☕' : 
-                           store.storeType === 'Mini Market' ? '🛒' : 
-                           store.storeType === 'Ταβέρνα' ? '🍔' : 
-                           store.storeType === 'Γλυκά' ? '🍰' :
-                           store.storeType === 'Φαρμακείο' ? '💊' : '🏪'}
+                          {STORE_TYPE_ICONS[store.storeType] || DEFAULT_ICON}
                         </div>
                         <div className="store-info">
                           <div className="store-header">

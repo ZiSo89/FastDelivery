@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import axios from 'axios';
@@ -14,6 +14,9 @@ const defaultCenter = {
 
 const libraries = ['places'];
 
+// Default store types (fallback)
+const defaultStoreTypes = ['Mini Market', 'Φαρμακείο', 'Ταβέρνα', 'Καφετέρια', 'Γλυκά', 'Άλλο'];
+
 const StoreRegister = () => {
   const navigate = useNavigate();
   const autocompleteRef = useRef(null);
@@ -27,7 +30,7 @@ const StoreRegister = () => {
     confirmPassword: '',
     phone: '',
     address: '',
-    storeType: 'Mini Market',
+    storeType: '',
     workingHours: '',
     description: '',
     serviceAreas: ''
@@ -37,6 +40,24 @@ const StoreRegister = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [storeTypes, setStoreTypes] = useState(defaultStoreTypes);
+
+  // Fetch store types from settings
+  useEffect(() => {
+    const fetchStoreTypes = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/auth/store-types`);
+        if (response.data.success && response.data.storeTypes?.length > 0) {
+          setStoreTypes(response.data.storeTypes);
+          setFormData(prev => ({ ...prev, storeType: response.data.storeTypes[0] }));
+        }
+      } catch (err) {
+        console.log('Using default store types');
+        setFormData(prev => ({ ...prev, storeType: defaultStoreTypes[0] }));
+      }
+    };
+    fetchStoreTypes();
+  }, []);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -353,12 +374,9 @@ const StoreRegister = () => {
                 disabled={loading}
                 className="form-input-custom"
               >
-                <option value="Mini Market">Mini Market</option>
-                <option value="Φαρμακείο">Φαρμακείο</option>
-                <option value="Ταβέρνα">Ταβέρνα</option>
-                <option value="Καφετέρια">Καφετέρια</option>
-                <option value="Γλυκά">Γλυκά</option>
-                <option value="Άλλο">Άλλο</option>
+                {storeTypes.map((type, index) => (
+                  <option key={index} value={type}>{type}</option>
+                ))}
               </Form.Select>
             </Form.Group>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,6 +11,7 @@ import {
   ScrollView,
   Image
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,8 +21,46 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const { login } = useAuth();
   const { showAlert } = useAlert();
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    loadSavedCredentials();
+  }, []);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const savedEmail = await SecureStore.getItemAsync('driver_saved_email');
+      const savedPassword = await SecureStore.getItemAsync('driver_saved_password');
+      const savedRemember = await SecureStore.getItemAsync('driver_remember_me');
+      
+      if (savedRemember === 'true' && savedEmail && savedPassword) {
+        setEmail(savedEmail);
+        setPassword(savedPassword);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      console.log('Error loading saved credentials:', error);
+    }
+  };
+
+  const saveCredentials = async () => {
+    try {
+      if (rememberMe) {
+        await SecureStore.setItemAsync('driver_saved_email', email);
+        await SecureStore.setItemAsync('driver_saved_password', password);
+        await SecureStore.setItemAsync('driver_remember_me', 'true');
+      } else {
+        await SecureStore.deleteItemAsync('driver_saved_email');
+        await SecureStore.deleteItemAsync('driver_saved_password');
+        await SecureStore.setItemAsync('driver_remember_me', 'false');
+      }
+    } catch (error) {
+      console.log('Error saving credentials:', error);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -33,7 +72,10 @@ const LoginScreen = () => {
     const result = await login(email, password);
     setLoading(false);
 
-    if (!result.success) {
+    if (result.success) {
+      // Save credentials on successful login
+      await saveCredentials();
+    } else {
       showAlert('Σφάλμα Σύνδεσης', result.error, [], 'error');
     }
   };
@@ -84,6 +126,19 @@ const LoginScreen = () => {
                 size={20} 
                 color="#666" 
               />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.rememberContainer}>
+            <TouchableOpacity 
+              style={styles.rememberTouchable}
+              onPress={() => setRememberMe(!rememberMe)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
+              <Text style={styles.rememberText}>Να με θυμάσαι</Text>
             </TouchableOpacity>
           </View>
 
@@ -166,6 +221,33 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 16,
     color: '#333',
+  },
+  rememberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  rememberTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  checkboxChecked: {
+    backgroundColor: '#00c2e8',
+    borderColor: '#00c2e8',
+  },
+  rememberText: {
+    fontSize: 14,
+    color: '#666',
   },
   loginButton: {
     backgroundColor: '#00c2e8',

@@ -8,6 +8,8 @@ import StoresTab from '../../components/admin/StoresTab';
 import DriversTab from '../../components/admin/DriversTab';
 import OrdersTab from '../../components/admin/OrdersTab';
 import CustomersTab from '../../components/admin/CustomersTab';
+import StatisticsTab from '../../components/admin/StatisticsTab';
+import SettingsTab from '../../components/admin/SettingsTab';
 import '../../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -174,6 +176,16 @@ const AdminDashboard = () => {
                     👥 Πελάτες
                   </Nav.Link>
                 </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="statistics">
+                    📊 Στατιστικά
+                  </Nav.Link>
+                </Nav.Item>
+                <Nav.Item>
+                  <Nav.Link eventKey="settings">
+                    ⚙️ Ρυθμίσεις
+                  </Nav.Link>
+                </Nav.Item>
               </Nav>
 
               <Tab.Content>
@@ -188,6 +200,12 @@ const AdminDashboard = () => {
                 </Tab.Pane>
                 <Tab.Pane eventKey="customers">
                   <CustomersTab />
+                </Tab.Pane>
+                <Tab.Pane eventKey="statistics">
+                  <StatisticsTab />
+                </Tab.Pane>
+                <Tab.Pane eventKey="settings">
+                  <SettingsTab />
                 </Tab.Pane>
               </Tab.Content>
             </Tab.Container>
