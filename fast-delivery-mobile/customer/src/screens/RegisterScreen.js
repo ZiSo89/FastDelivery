@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -9,12 +9,26 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Keyboard,
+  Dimensions
 } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { GOOGLE_MAPS_API_KEY } from '../config';
+
+const { width } = Dimensions.get('window');
+
+// Alexandroupoli default center
+const DEFAULT_REGION = {
+  latitude: 40.8457,
+  longitude: 25.8733,
+  latitudeDelta: 0.01,
+  longitudeDelta: 0.01,
+};
 
 const RegisterScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -27,11 +41,109 @@ const RegisterScreen = ({ navigation }) => {
   });
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  
+  // Location state
+  const [markerPosition, setMarkerPosition] = useState(null);
+  
+  // Autocomplete state
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [searchingAddress, setSearchingAddress] = useState(false);
+  
+  // Refs
+  const scrollViewRef = useRef(null);
+  const mapRef = useRef(null);
+  const debounceTimer = useRef(null);
+  
   const { register } = useAuth();
   const { showAlert } = useAlert();
 
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Debounced address search for autocomplete
+  const searchAddresses = async (text) => {
+    if (!text || text.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setSearchingAddress(true);
+    try {
+      const searchQuery = `${text}, Αλεξανδρούπολη, Ελλάδα`;
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(searchQuery)}&language=el&components=country:gr&location=40.8457,25.8733&radius=10000&key=${GOOGLE_MAPS_API_KEY}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.predictions) {
+        setSuggestions(data.predictions);
+        setShowSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+      setSuggestions([]);
+    } finally {
+      setSearchingAddress(false);
+    }
+  };
+
+  const handleAddressChange = (text) => {
+    setFormData(prev => ({ ...prev, address: text }));
+    
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      searchAddresses(text);
+    }, 500);
+  };
+
+  const selectSuggestion = async (suggestion) => {
+    setShowSuggestions(false);
+    Keyboard.dismiss();
+    
+    try {
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${suggestion.place_id}&fields=geometry,formatted_address&key=${GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.result?.geometry?.location) {
+        const { lat, lng } = data.result.geometry.location;
+        const formattedAddress = data.result.formatted_address || suggestion.description;
+        
+        setFormData(prev => ({ 
+          ...prev, 
+          address: formattedAddress,
+          location: {
+            type: 'Point',
+            coordinates: [lng, lat]
+          }
+        }));
+        setMarkerPosition({ latitude: lat, longitude: lng });
+        
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+        
+        setTimeout(() => {
+          mapRef.current?.animateToRegion({
+            latitude: lat,
+            longitude: lng,
+            latitudeDelta: 0.002,
+            longitudeDelta: 0.002,
+          }, 500);
+        }, 400);
+      }
+    } catch (error) {
+      console.error('Place details error:', error);
+      setFormData(prev => ({ ...prev, address: suggestion.description }));
+    }
   };
 
   const handleGetLocation = async () => {
@@ -44,40 +156,105 @@ const RegisterScreen = ({ navigation }) => {
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
       const { latitude, longitude } = location.coords;
 
-      // Reverse geocoding to get address
-      let addressResponse = await Location.reverseGeocodeAsync({ latitude, longitude });
+      setMarkerPosition({ latitude, longitude });
+      setFormData(prev => ({
+        ...prev,
+        location: {
+          type: 'Point',
+          coordinates: [longitude, latitude]
+        }
+      }));
       
-      if (addressResponse.length > 0) {
-        const addr = addressResponse[0];
-        // Keep only street and number as requested
-        const formattedAddress = `${addr.street || ''} ${addr.streetNumber || ''}`;
-        const finalAddress = formattedAddress.trim() || 'Άγνωστη διεύθυνση';
+      mapRef.current?.animateToRegion({
+        latitude,
+        longitude,
+        latitudeDelta: 0.002,
+        longitudeDelta: 0.002,
+      }, 500);
+
+      // Reverse geocoding with Google
+      try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=el&key=${GOOGLE_MAPS_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
         
-        setFormData(prev => ({
-          ...prev,
-          address: finalAddress,
-          location: {
-            type: 'Point',
-            coordinates: [longitude, latitude]
-          }
-        }));
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          location: {
-            type: 'Point',
-            coordinates: [longitude, latitude]
-          }
-        }));
+        if (data.status === 'OK' && data.results?.[0]) {
+          setFormData(prev => ({
+            ...prev,
+            address: data.results[0].formatted_address
+          }));
+        }
+      } catch (geoError) {
+        console.error('Reverse geocode error:', geoError);
       }
+      
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (error) {
       console.log('Location error:', error);
       showAlert('Σφάλμα', 'Δεν ήταν δυνατή η εύρεση της τοποθεσίας.', [], 'error');
     } finally {
       setGettingLocation(false);
+    }
+  };
+
+  const handleMapPress = async (event) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    setMarkerPosition({ latitude, longitude });
+    setFormData(prev => ({
+      ...prev,
+      location: {
+        type: 'Point',
+        coordinates: [longitude, latitude]
+      }
+    }));
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=el&key=${GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.results?.[0]) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.results[0].formatted_address
+        }));
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+    }
+  };
+
+  const handleMarkerDrag = async (event) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    setMarkerPosition({ latitude, longitude });
+    setFormData(prev => ({
+      ...prev,
+      location: {
+        type: 'Point',
+        coordinates: [longitude, latitude]
+      }
+    }));
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=el&key=${GOOGLE_MAPS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.results?.[0]) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.results[0].formatted_address
+        }));
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
     }
   };
 
@@ -97,40 +274,17 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
 
-    setLoading(true);
-
-    // Append city and country for accurate geocoding and saving
-    const fullAddress = `${formData.address.trim()}, Αλεξανδρούπολη, Ελλάδα`;
-
-    // Geocode address if location is missing or to ensure accuracy
-    let finalLocation = formData.location;
-    
-    try {
-      // Always try to geocode the address text to ensure it matches what the user typed
-      const geocodedLocation = await Location.geocodeAsync(fullAddress);
-      
-      if (geocodedLocation.length > 0) {
-        const { latitude, longitude } = geocodedLocation[0];
-        finalLocation = {
-          type: 'Point',
-          coordinates: [longitude, latitude]
-        };
-      }
-    } catch (error) {
-      console.log('Geocoding error:', error);
-      // If geocoding fails, we'll fall back to the existing location (from GPS) if available
-    }
-
-    if (!finalLocation) {
-      setLoading(false);
-      showAlert('Σφάλμα', 'Δεν βρέθηκε η τοποθεσία της διεύθυνσης. Παρακαλώ ελέγξτε τη διεύθυνση ή χρησιμοποιήστε το κουμπί εντοπισμού.', [], 'error');
+    if (!formData.location) {
+      showAlert('Σφάλμα', 'Παρακαλώ επιλέξτε τοποθεσία στο χάρτη ή χρησιμοποιήστε το κουμπί εντοπισμού', [], 'error');
       return;
     }
 
+    setLoading(true);
+
     const dataToSubmit = {
       ...formData,
-      address: fullAddress, // Send the full address to backend
-      location: finalLocation
+      address: formData.address,
+      location: formData.location
     };
 
     console.log('📤 Registering with data:', JSON.stringify(dataToSubmit, null, 2));
@@ -149,6 +303,7 @@ const RegisterScreen = ({ navigation }) => {
       style={styles.container}
     >
       <ScrollView 
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
@@ -205,28 +360,91 @@ const RegisterScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.addressContainer}>
-            <View style={[styles.inputContainer, { flex: 1, marginBottom: 0 }]}>
-              <Ionicons name="location-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Διεύθυνση (Οδός, Αριθμός)"
-                value={formData.address}
-                onChangeText={(text) => handleChange('address', text)}
-              />
+          {/* Address with Autocomplete */}
+          <View style={styles.addressWrapper}>
+            {/* Suggestions Dropdown - Above input */}
+            {showSuggestions && suggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                <ScrollView 
+                  style={{ maxHeight: 150 }} 
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                >
+                  {suggestions.slice(0, 5).map((item) => (
+                    <TouchableOpacity
+                      key={item.place_id}
+                      style={styles.suggestionItem}
+                      onPress={() => selectSuggestion(item)}
+                    >
+                      <Ionicons name="location-outline" size={16} color="#666" style={{ marginRight: 8 }} />
+                      <Text style={styles.suggestionText} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            
+            <View style={styles.addressContainer}>
+              <View style={[styles.inputContainer, { flex: 1, marginBottom: 0 }]}>
+                <Ionicons name="location-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Διεύθυνση (Οδός, Αριθμός)"
+                  value={formData.address}
+                  onChangeText={handleAddressChange}
+                  onFocus={() => {
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollTo({ y: 200, animated: true });
+                    }, 300);
+                  }}
+                />
+                {searchingAddress && (
+                  <ActivityIndicator style={{ marginRight: 10 }} size="small" color="#00c2e8" />
+                )}
+              </View>
+              <TouchableOpacity 
+                style={styles.locationButton} 
+                onPress={handleGetLocation}
+                disabled={gettingLocation}
+              >
+                {gettingLocation ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="locate" size={24} color="#fff" />
+                )}
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={styles.locationButton} 
-              onPress={handleGetLocation}
-              disabled={gettingLocation}
-            >
-              {gettingLocation ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="locate" size={24} color="#fff" />
-              )}
-            </TouchableOpacity>
           </View>
+
+          {/* Map */}
+          <Text style={styles.mapLabel}>Τοποθεσία στο Χάρτη</Text>
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              initialRegion={DEFAULT_REGION}
+              onPress={handleMapPress}
+            >
+              {markerPosition && (
+                <Marker
+                  coordinate={markerPosition}
+                  draggable
+                  onDragEnd={handleMarkerDrag}
+                  anchor={{ x: 0.5, y: 1 }}
+                  centerOffset={{ x: 0, y: 0 }}
+                >
+                  <View style={styles.markerContainer}>
+                    <Ionicons name="home" size={16} color="#fff" />
+                  </View>
+                </Marker>
+              )}
+            </MapView>
+          </View>
+          <Text style={styles.mapHint}>
+            Κλικ στο χάρτη ή σύρετε το pin για ακριβή τοποθεσία
+          </Text>
 
           <TouchableOpacity 
             style={styles.registerButton} 
@@ -258,6 +476,7 @@ const RegisterScreen = ({ navigation }) => {
   scrollContent: {
     flexGrow: 1,
     padding: 20,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
@@ -295,9 +514,13 @@ const RegisterScreen = ({ navigation }) => {
     height: '100%',
     fontSize: 16,
   },
+  addressWrapper: {
+    position: 'relative',
+    zIndex: 1000,
+    marginBottom: 15,
+  },
   addressContainer: {
     flexDirection: 'row',
-    marginBottom: 20,
   },
   locationButton: {
     width: 50,
@@ -307,6 +530,68 @@ const RegisterScreen = ({ navigation }) => {
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 10,
+  },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    marginBottom: 8,
+    maxHeight: 180,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    zIndex: 1001,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#333',
+  },
+  mapLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    marginLeft: 2,
+  },
+  mapContainer: {
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  map: {
+    flex: 1,
+  },
+  markerContainer: {
+    backgroundColor: '#00c2e8',
+    padding: 8,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  mapHint: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 6,
+    marginBottom: 20,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   registerButton: {
     backgroundColor: '#00c2e8',

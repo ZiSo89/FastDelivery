@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, ScrollView, Keyboard } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, ScrollView, Keyboard, KeyboardAvoidingView, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,16 @@ const CustomerOrders = ({ navigation }) => {
   });
   const phoneInputRef = useRef(null);
   const scrollViewRef = useRef(null);
+  const phoneContainerRef = useRef(null);
+
+  // Auto scroll to phone input when guest view is shown
+  useEffect(() => {
+    if (user?.isGuest && !loading) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 280, animated: true });
+      }, 300);
+    }
+  }, [user?.isGuest, loading]);
 
   const loadOrders = async () => {
     if (user?.isGuest) {
@@ -173,7 +183,11 @@ const CustomerOrders = ({ navigation }) => {
 
   if (user?.isGuest) {
     return (
-      <View style={styles.container}>
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
         <ScrollView 
           ref={scrollViewRef}
           contentContainerStyle={styles.guestScrollContent}
@@ -206,6 +220,11 @@ const CustomerOrders = ({ navigation }) => {
                 keyboardType="phone-pad"
                 maxLength={10}
                 placeholderTextColor="#999"
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }, 300);
+                }}
               />
             </View>
             {phoneError ? <Text style={styles.errorText}>{phoneError}</Text> : null}
@@ -221,6 +240,9 @@ const CustomerOrders = ({ navigation }) => {
                 <Text style={styles.trackButtonText}>Αναζήτηση</Text>
               )}
             </TouchableOpacity>
+            
+            {/* Extra space for keyboard */}
+            <View style={{ height: 150 }} />
           </View>
         </ScrollView>
         
@@ -231,7 +253,7 @@ const CustomerOrders = ({ navigation }) => {
           type={alertConfig.type}
           onClose={hideAlert}
         />
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -332,12 +354,11 @@ const styles = StyleSheet.create({
   },
   guestScrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
   },
   guestContainer: {
     alignItems: 'center',
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 40,
     paddingBottom: 40,
     backgroundColor: '#fff',
     minHeight: '100%',

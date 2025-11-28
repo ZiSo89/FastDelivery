@@ -190,6 +190,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      // Get updated user data from server
+      const response = await customerService.updateProfile({});
+      if (response.data?.user) {
+        const updatedUser = response.data.user;
+        await SecureStore.setItemAsync('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
+    } catch (error) {
+      console.log('Failed to refresh user:', error);
+    }
+  };
+
   const loginAsGuest = () => {
     setUser({ isGuest: true, name: 'Επισκέπτης' });
   };
@@ -203,7 +217,8 @@ export const AuthProvider = ({ children }) => {
       login, 
       register, 
       logout, 
-      loginAsGuest 
+      loginAsGuest,
+      refreshUser
     }}>
       {children}
     </AuthContext.Provider>
