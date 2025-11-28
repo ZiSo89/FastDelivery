@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "customer",
+    "name": "FastDelivery",
     "slug": "customer",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,22 +8,28 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#00c2e8"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fastdelivery.customer"
     },
     "android": {
+      "package": "com.fastdelivery.customer",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#00c2e8"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.ico"
     },
     "plugins": [
       "expo-secure-store",
@@ -33,6 +39,11 @@
           "microphonePermission": "Επιτρέψτε στην εφαρμογή να χρησιμοποιήσει το μικρόφωνο για την ηχογράφηση της παραγγελίας σας."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7eec880b-7918-467c-96c8-7dad2d531d01"
+      }
+    }
   }
 }

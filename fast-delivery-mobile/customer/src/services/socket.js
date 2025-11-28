@@ -6,7 +6,6 @@ class SocketService {
 
   connect() {
     if (this.socket && this.socket.connected) {
-      console.log('Socket already connected');
       return;
     }
 
@@ -16,11 +15,11 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('Socket connected:', this.socket.id);
+      // Connected
     });
 
     this.socket.on('disconnect', () => {
-      console.log('Socket disconnected');
+      // Disconnected
     });
   }
 

@@ -1,10 +1,23 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { ActivityIndicator, View } from 'react-native';
+import { AlertProvider } from './src/context/AlertContext';
+import { ActivityIndicator, View, LogBox } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
+
+// Hide Expo Go specific warnings
+LogBox.ignoreLogs([
+  'Expo push',
+  'expo-notifications',
+  'Push notifications',
+  'Cannot retrieve',
+  'development client',
+  'expo-av',
+]);
 
 import HomeScreen from './src/screens/HomeScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -15,8 +28,34 @@ import RegisterScreen from './src/screens/RegisterScreen';
 import CustomerOrders from './src/screens/CustomerOrders';
 import CustomerProfile from './src/screens/CustomerProfile';
 
+// Statuses that should show notifications to customer
+// pending_customer_confirm = needs action (confirm price)
+// in_delivery = driver picked up order
+const ALLOWED_NOTIFICATION_STATUSES = ['pending_customer_confirm', 'in_delivery'];
+
+// Configure notification handler - FILTER notifications here
+Notifications.setNotificationHandler({
+  handleNotification: async (notification) => {
+    // Get the status from notification data
+    const data = notification.request.content.data;
+    const status = data?.status;
+    
+    // Only show notification for allowed statuses
+    const shouldShow = ALLOWED_NOTIFICATION_STATUSES.includes(status);
+    
+    return {
+      shouldShowAlert: shouldShow,
+      shouldPlaySound: shouldShow,
+      shouldSetBadge: false,
+    };
+  },
+});
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// Navigation ref for notification tap handling
+const navigationRef = React.createRef();
 
 const HomeStack = createNativeStackNavigator();
 const HomeStackScreen = () => (
@@ -144,11 +183,53 @@ const AppNavigator = () => {
 };
 
 export default function App() {
+  const notificationListener = useRef();
+  const responseListener = useRef();
+
+  useEffect(() => {
+    // Listen for notifications when app is in foreground
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      // Notification received - handled by setNotificationHandler
+    });
+
+    // Handle notification tap (response) - navigate to TrackOrder
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      
+      // Navigate to TrackOrder with orderNumber
+      if (navigationRef.current) {
+        if (data?.orderNumber) {
+          // If we have orderNumber, navigate directly to TrackOrder
+          navigationRef.current.navigate('OrdersTab', {
+            screen: 'TrackOrder',
+            params: { orderNumber: data.orderNumber }
+          });
+        } else {
+          // Fallback - just go to Orders tab
+          navigationRef.current.navigate('OrdersTab');
+        }
+      }
+    });
+
+    return () => {
+      if (notificationListener.current) {
+        notificationListener.current.remove();
+      }
+      if (responseListener.current) {
+        responseListener.current.remove();
+      }
+    };
+  }, []);
+
   return (
-    <AuthProvider>
-      <NavigationContainer>
-        <AppNavigator />
-      </NavigationContainer>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AlertProvider>
+          <NavigationContainer ref={navigationRef}>
+            <AppNavigator />
+          </NavigationContainer>
+        </AlertProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

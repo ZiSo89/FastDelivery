@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Image, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,7 +95,7 @@ const OrderScreen = ({ route, navigation }) => {
       try {
         const permission = await Audio.requestPermissionsAsync();
         if (permission.status !== 'granted') {
-          Alert.alert('Άδεια', 'Απαιτείται άδεια μικροφώνου για ηχογράφηση.');
+          console.log('Microphone permission denied');
           return;
         }
 
@@ -135,7 +135,7 @@ const OrderScreen = ({ route, navigation }) => {
         console.error('Failed to start recording', err);
         setIsRecording(false);
         isRecordingRef.current = false;
-        Alert.alert('Σφάλμα', 'Πρόβλημα κατά την εκκίνηση της ηχογράφησης');
+        console.error('Recording error');
       }
     }, 200);
   };
@@ -205,8 +205,7 @@ const OrderScreen = ({ route, navigation }) => {
         }
       });
     } catch (error) {
-      console.error('Playback failed', error);
-      Alert.alert('Σφάλμα', 'Δεν ήταν δυνατή η αναπαραγωγή');
+      console.error('Playback failed:', error.message);
     }
   };
 
@@ -226,7 +225,7 @@ const OrderScreen = ({ route, navigation }) => {
 
   const handleSubmit = async () => {
     if ((!orderText && !recordedUri) || !name || !phone || !address) {
-      Alert.alert('Σφάλμα', 'Παρακαλώ συμπληρώστε τα στοιχεία και το περιεχόμενο της παραγγελίας');
+      console.log('Validation failed - missing fields');
       return;
     }
 
@@ -262,16 +261,12 @@ const OrderScreen = ({ route, navigation }) => {
       const response = await customerService.createOrder(formData);
       const orderNumber = response.data.order?.orderNumber || response.data.orderNumber;
 
-      Alert.alert(
-        'Επιτυχία', 
-        `Η παραγγελία #${orderNumber} καταχωρήθηκε!`,
-        [
-          { text: 'OK', onPress: () => navigation.navigate('TrackOrder', { orderNumber: orderNumber }) }
-        ]
-      );
+      console.log('✅ Order created:', orderNumber);
+      
+      // Navigate immediately
+      navigation.navigate('TrackOrder', { orderNumber: orderNumber });
     } catch (error) {
-      console.log(error);
-      Alert.alert('Σφάλμα', error.response?.data?.message || 'Κάτι πήγε στραβά');
+      console.error('Order error:', error.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }

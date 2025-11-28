@@ -46,7 +46,7 @@ exports.login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Λάθος email ή κωδικός'
+        message: 'Δεν βρέθηκε λογαριασμός με αυτό το email. Παρακαλώ κάντε εγγραφή.'
       });
     }
 
@@ -54,7 +54,7 @@ exports.login = async (req, res) => {
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Μη έγκυρα διαπιστευτήρια' });
+      return res.status(401).json({ success: false, message: 'Λάθος κωδικός πρόσβασης' });
     }
 
     // For Store and Driver, check if they are approved
@@ -71,7 +71,9 @@ exports.login = async (req, res) => {
         role: user.role || role,
         name: user.name || user.businessName,
         phone: user.phone,
-        address: user.address
+        address: user.address,
+        isApproved: user.isApproved,
+        status: user.status
     };
 
     res.status(200).json({
@@ -211,6 +213,7 @@ exports.registerDriver = async (req, res, next) => {
 exports.registerCustomer = async (req, res, next) => {
   try {
     const { name, email, password, phone, address, location } = req.body;
+    console.log('📥 Register Customer Request:', { name, email, phone, address, location });
 
     // Check if customer exists
     const existingCustomer = await Customer.findOne({ email });

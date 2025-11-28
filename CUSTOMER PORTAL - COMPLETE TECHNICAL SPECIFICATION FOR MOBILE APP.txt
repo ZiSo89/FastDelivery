@@ -418,3 +418,10 @@ This specification provides everything needed to recreate the customer portal as
 
 
 npx expo start -c
+
+eas login
+
+eas build --platform android --profile preview
+
+cd c:\Users\zisog\Documents\Projects\FastDelivery\fast-delivery-mobile\customer
+eas build --platform android --profile preview

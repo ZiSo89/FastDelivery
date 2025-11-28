@@ -12,6 +12,7 @@ import {
   ScrollView
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
@@ -27,6 +28,7 @@ const RegisterScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
   const { register } = useAuth();
+  const { showAlert } = useAlert();
 
   const handleChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -37,7 +39,7 @@ const RegisterScreen = ({ navigation }) => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Άρνηση πρόσβασης', 'Χρειαζόμαστε πρόσβαση στην τοποθεσία για να βρούμε τη διεύθυνσή σας.');
+        showAlert('Άρνηση πρόσβασης', 'Χρειαζόμαστε πρόσβαση στην τοποθεσία για να βρούμε τη διεύθυνσή σας.', [], 'warning');
         setGettingLocation(false);
         return;
       }
@@ -50,11 +52,13 @@ const RegisterScreen = ({ navigation }) => {
       
       if (addressResponse.length > 0) {
         const addr = addressResponse[0];
-        const formattedAddress = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}`;
+        // Keep only street and number as requested
+        const formattedAddress = `${addr.street || ''} ${addr.streetNumber || ''}`;
+        const finalAddress = formattedAddress.trim() || 'Άγνωστη διεύθυνση';
         
         setFormData(prev => ({
           ...prev,
-          address: formattedAddress.trim() || 'Άγνωστη διεύθυνση',
+          address: finalAddress,
           location: {
             type: 'Point',
             coordinates: [longitude, latitude]
@@ -71,7 +75,7 @@ const RegisterScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.log('Location error:', error);
-      Alert.alert('Σφάλμα', 'Δεν ήταν δυνατή η εύρεση της τοποθεσίας.');
+      showAlert('Σφάλμα', 'Δεν ήταν δυνατή η εύρεση της τοποθεσίας.', [], 'error');
     } finally {
       setGettingLocation(false);
     }
@@ -79,26 +83,63 @@ const RegisterScreen = ({ navigation }) => {
 
   const handleRegister = async () => {
     if (!formData.name || !formData.email || !formData.password || !formData.phone || !formData.address) {
-      Alert.alert('Σφάλμα', 'Παρακαλώ συμπληρώστε όλα τα πεδία');
+      showAlert('Σφάλμα', 'Παρακαλώ συμπληρώστε όλα τα πεδία', [], 'error');
       return;
     }
 
     if (formData.phone.length !== 10) {
-      Alert.alert('Σφάλμα', 'Το τηλέφωνο πρέπει να είναι 10ψήφιο');
+      showAlert('Σφάλμα', 'Το τηλέφωνο πρέπει να είναι 10ψήφιο', [], 'error');
       return;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert('Σφάλμα', 'Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες');
+      showAlert('Σφάλμα', 'Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες', [], 'error');
       return;
     }
 
     setLoading(true);
-    const result = await register(formData);
+
+    // Append city and country for accurate geocoding and saving
+    const fullAddress = `${formData.address.trim()}, Αλεξανδρούπολη, Ελλάδα`;
+
+    // Geocode address if location is missing or to ensure accuracy
+    let finalLocation = formData.location;
+    
+    try {
+      // Always try to geocode the address text to ensure it matches what the user typed
+      const geocodedLocation = await Location.geocodeAsync(fullAddress);
+      
+      if (geocodedLocation.length > 0) {
+        const { latitude, longitude } = geocodedLocation[0];
+        finalLocation = {
+          type: 'Point',
+          coordinates: [longitude, latitude]
+        };
+      }
+    } catch (error) {
+      console.log('Geocoding error:', error);
+      // If geocoding fails, we'll fall back to the existing location (from GPS) if available
+    }
+
+    if (!finalLocation) {
+      setLoading(false);
+      showAlert('Σφάλμα', 'Δεν βρέθηκε η τοποθεσία της διεύθυνσης. Παρακαλώ ελέγξτε τη διεύθυνση ή χρησιμοποιήστε το κουμπί εντοπισμού.', [], 'error');
+      return;
+    }
+
+    const dataToSubmit = {
+      ...formData,
+      address: fullAddress, // Send the full address to backend
+      location: finalLocation
+    };
+
+    console.log('📤 Registering with data:', JSON.stringify(dataToSubmit, null, 2));
+
+    const result = await register(dataToSubmit);
     setLoading(false);
 
     if (!result.success) {
-      Alert.alert('Σφάλμα', result.error);
+      showAlert('Σφάλμα', result.error, [], 'error');
     }
   };
 
@@ -107,7 +148,10 @@ const RegisterScreen = ({ navigation }) => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#333" />
@@ -166,7 +210,7 @@ const RegisterScreen = ({ navigation }) => {
               <Ionicons name="location-outline" size={20} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Διεύθυνση παράδοσης"
+                placeholder="Διεύθυνση (Οδός, Αριθμός)"
                 value={formData.address}
                 onChangeText={(text) => handleChange('address', text)}
               />
@@ -206,9 +250,7 @@ const RegisterScreen = ({ navigation }) => {
       </ScrollView>
     </KeyboardAvoidingView>
   );
-};
-
-const styles = StyleSheet.create({
+};const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',

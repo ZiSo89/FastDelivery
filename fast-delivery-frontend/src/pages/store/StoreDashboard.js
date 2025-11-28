@@ -7,7 +7,6 @@ import socketService from '../../services/socket';
 import StoreNavbar from '../../components/store/StoreNavbar';
 import StoreProfile from '../../components/store/StoreProfile';
 import StoreOrders from '../../components/store/StoreOrders';
-import NotificationToast from '../../components/NotificationToast';
 import '../../styles/StoreDashboard.css';
 
 const StoreDashboard = () => {
@@ -110,7 +109,6 @@ const StoreDashboard = () => {
   return (
     <div className="store-dashboard">
       <StoreNavbar user={user} profile={profile} />
-      <NotificationToast />
       
       <Container fluid className="py-4">
         {statusMessage && (

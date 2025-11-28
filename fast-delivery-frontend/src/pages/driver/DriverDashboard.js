@@ -6,7 +6,6 @@ import { driverService } from '../../services/api';
 import socketService from '../../services/socket';
 import DriverNavbar from '../../components/driver/DriverNavbar';
 import DriverOrders from '../../components/driver/DriverOrders';
-import NotificationToast from '../../components/NotificationToast';
 import '../../styles/DriverDashboard.css';
 
 const DriverDashboard = () => {
@@ -144,7 +143,6 @@ const DriverDashboard = () => {
     <div className="driver-dashboard">
       <div className="dashboard-content-wrapper">
         <DriverNavbar user={user} profile={profile} />
-        <NotificationToast />
         
         {/* Compact Status Bar */}
         <div className={`status-bar-sticky ${isOnline ? 'bg-online' : 'bg-offline'}`}>

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -19,14 +19,11 @@ const CustomerOrders = ({ navigation }) => {
     }
 
     try {
-      console.log('🔄 Loading orders...');
       const response = await customerService.getMyOrders();
       const ordersList = response.data.orders || response.data;
-      console.log('📦 Orders loaded:', Array.isArray(ordersList) ? ordersList.length : 'Not an array');
       setOrders(Array.isArray(ordersList) ? ordersList : []);
     } catch (error) {
-      console.error('❌ Error loading orders:', error);
-      // Alert.alert('Σφάλμα', 'Δεν ήταν δυνατή η φόρτωση του ιστορικού');
+      // Silent fail
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -35,7 +32,7 @@ const CustomerOrders = ({ navigation }) => {
 
   const handleTrackOrder = async () => {
     if (!guestPhone || guestPhone.length !== 10) {
-      Alert.alert('Προσοχή', 'Παρακαλώ εισάγετε ένα έγκυρο 10ψήφιο τηλέφωνο');
+      console.log('Invalid phone number');
       return;
     }
 
@@ -47,12 +44,11 @@ const CustomerOrders = ({ navigation }) => {
       if (response.data.success && response.data.order) {
         navigation.navigate('TrackOrder', { orderNumber: response.data.order.orderNumber });
       } else {
-        Alert.alert('Δεν βρέθηκε', 'Δεν υπάρχει ενεργή παραγγελία με αυτό το τηλέφωνο');
+        console.log('No active order found');
       }
     } catch (error) {
       setLoading(false);
-      console.error('Track order error:', error);
-      Alert.alert('Σφάλμα', 'Δεν βρέθηκε ενεργή παραγγελία ή υπήρξε πρόβλημα σύνδεσης');
+      console.log('Track order error:', error.message);
     }
   };
 

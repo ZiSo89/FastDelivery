@@ -1,5 +1,8 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { customerService } from '../services/api';
 import socketService from '../services/socket';
 
@@ -12,10 +15,44 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expoPushToken, setExpoPushToken] = useState('');
 
   useEffect(() => {
     loadUser();
   }, []);
+
+  const registerForPushNotificationsAsync = async () => {
+    let token;
+    try {
+      if (Device.isDevice) {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+          return null;
+        }
+        // Get push token - will fail in Expo Go, that's OK
+        token = (await Notifications.getExpoPushTokenAsync()).data;
+      }
+
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+    } catch (error) {
+      // Push tokens don't work in Expo Go - this is expected
+      return null;
+    }
+
+    return token;
+  };
 
   const loadUser = async () => {
     try {
@@ -31,9 +68,23 @@ export const AuthProvider = ({ children }) => {
         if (userData.phone) {
             socketService.joinRoom({ role: 'customer', userId: userData.phone });
         }
+
+        // Register for push notifications
+        const pushToken = await registerForPushNotificationsAsync();
+        if (pushToken) {
+          setExpoPushToken(pushToken);
+          // Update user profile with push token if it's different or not set
+          if (userData.pushToken !== pushToken) {
+             try {
+               await customerService.updateProfile({ pushToken });
+             } catch (err) {
+               // Silent fail
+             }
+          }
+        }
       }
     } catch (error) {
-      console.log('Error loading user:', error);
+      // Silent fail
     } finally {
       setLoading(false);
     }
@@ -54,9 +105,16 @@ export const AuthProvider = ({ children }) => {
         socketService.joinRoom({ role: 'customer', userId: user.phone });
       }
 
+      // Register for push notifications (don't await - do in background)
+      registerForPushNotificationsAsync().then(pushToken => {
+        if (pushToken) {
+          setExpoPushToken(pushToken);
+          customerService.updateProfile({ pushToken }).catch(() => {});
+        }
+      });
+
       return { success: true };
     } catch (error) {
-      console.log('Login error:', error.response?.data);
       return { 
         success: false, 
         error: error.response?.data?.message || 'Σφάλμα κατά τη σύνδεση' 
@@ -79,9 +137,19 @@ export const AuthProvider = ({ children }) => {
         socketService.joinRoom({ role: 'customer', userId: user.phone });
       }
 
+      // Register for push notifications
+      const pushToken = await registerForPushNotificationsAsync();
+      if (pushToken) {
+        setExpoPushToken(pushToken);
+        try {
+          await customerService.updateProfile({ pushToken });
+        } catch (err) {
+          // Silent fail
+        }
+      }
+
       return { success: true };
     } catch (error) {
-      console.log('Register error:', error.response?.data);
       return { 
         success: false, 
         error: error.response?.data?.message || 'Σφάλμα κατά την εγγραφή' 
@@ -96,7 +164,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       socketService.disconnect();
     } catch (error) {
-      console.log('Logout error:', error);
+      // Silent fail
     }
   };
 

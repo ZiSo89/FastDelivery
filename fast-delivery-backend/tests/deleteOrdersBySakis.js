@@ -8,12 +8,12 @@ const deleteOrdersBySakis = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
-    // Find all orders where customer name contains "Σακης"
+    // Find all orders where customer name contains "Σάκης"
     const ordersToDelete = await Order.find({
-      'customer.name': { $regex: 'Ζήσογλου', $options: 'i' }
+      'customer.name': { $regex: 'Σάκης', $options: 'i' }
     });
 
-    console.log(`\n📦 Found ${ordersToDelete.length} orders with customer name containing "Σακης":`);
+    console.log(`\n📦 Found ${ordersToDelete.length} orders with customer name containing "Σάκης":`);
     ordersToDelete.forEach(order => {
       console.log(`  - ${order.orderNumber}: ${order.customer.name} (${order.status})`);
     });
@@ -25,7 +25,7 @@ const deleteOrdersBySakis = async () => {
 
     // Delete the orders
     const result = await Order.deleteMany({
-      'customer.name': { $regex: 'Σακης', $options: 'i' }
+      'customer.name': { $regex: 'Σάκης', $options: 'i' }
     });
 
     console.log(`\n🗑️  Deleted ${result.deletedCount} orders`);

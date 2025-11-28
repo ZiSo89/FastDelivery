@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, Alert, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { customerService } from '../services/api';
 import socketService from '../services/socket';
 import { useAuth } from '../context/AuthContext';
+import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 
 const TrackOrderScreen = ({ route, navigation }) => {
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sound, setSound] = useState(null);
@@ -22,15 +24,13 @@ const TrackOrderScreen = ({ route, navigation }) => {
     // Connect socket
     socketService.connect();
     
-    // Listen for updates
+    // Listen for updates - just reload data, no toasts or local notifications
     const handleStatusChange = (data) => {
-      // If we are tracking a specific order, check if the update is for this order
       if (paramOrderNumber) {
         if (data.orderNumber === paramOrderNumber) {
           loadOrderData();
         }
       } else {
-        // If we are in "active order" mode, reload to see if the updated order is relevant
         loadOrderData();
       }
     };
@@ -51,7 +51,6 @@ const TrackOrderScreen = ({ route, navigation }) => {
       socketService.off('order:pending_admin', handleStatusChange);
       socketService.off('order:price_ready', handleStatusChange);
       socketService.off('order:assigned', handleStatusChange);
-      // Don't disconnect here as other screens might need it
       if (sound) {
         sound.unloadAsync();
       }
@@ -99,11 +98,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
         }
       }
     } catch (error) {
-      console.log('Error loading order:', error);
-      // Don't show alert if just checking for active order
-      if (paramOrderNumber) {
-        Alert.alert('Σφάλμα', 'Δεν βρέθηκε η παραγγελία');
-      }
+      console.log('Error loading order:', error.message);
     } finally {
       setLoading(false);
     }
@@ -139,8 +134,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
         }
       });
     } catch (error) {
-      console.error('Playback failed', error);
-      Alert.alert('Σφάλμα', 'Δεν ήταν δυνατή η αναπαραγωγή');
+      console.error('Playback failed:', error.message);
     }
   };
 
@@ -197,16 +191,36 @@ const TrackOrderScreen = ({ route, navigation }) => {
   };
 
   const handleConfirmPrice = async (confirm) => {
+    if (!confirm) {
+      showAlert(
+        'Ακύρωση Παραγγελίας',
+        'Είστε σίγουροι ότι θέλετε να ακυρώσετε την παραγγελία;',
+        [
+          { text: 'Όχι', style: 'cancel' },
+          { 
+            text: 'Ναι, Ακύρωση', 
+            style: 'destructive',
+            onPress: () => processConfirmation(false)
+          }
+        ],
+        'warning'
+      );
+      return;
+    }
+    
+    await processConfirmation(true);
+  };
+
+  const processConfirmation = async (confirm) => {
     try {
       setLoading(true);
       // Use user phone if available, otherwise use the phone from the order (for guests)
       const phoneToConfirm = user?.phone || order.customer.phone;
       await customerService.confirmPrice(order._id, phoneToConfirm, confirm);
-      Alert.alert('Επιτυχία', confirm ? 'Η παραγγελία επιβεβαιώθηκε!' : 'Η παραγγελία ακυρώθηκε.');
+      console.log(confirm ? '✅ Order confirmed' : '❌ Order cancelled');
       loadOrderData(); // Reload to get new status
     } catch (error) {
       console.error('Confirmation error:', error);
-      Alert.alert('Σφάλμα', 'Προέκυψε σφάλμα κατά την επιβεβαίωση');
       setLoading(false);
     }
   };
@@ -248,7 +262,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
                 style={[styles.actionButton, styles.rejectButton]}
                 onPress={() => handleConfirmPrice(false)}
               >
-                <Text style={styles.buttonText}>Ακύρωση</Text>
+                <Text style={styles.rejectButtonText}>Ακύρωση</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.confirmButton]}
@@ -567,10 +581,17 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   confirmButton: {
-    backgroundColor: '#27ae60',
+    backgroundColor: '#00c1e8',
   },
   rejectButton: {
-    backgroundColor: '#e74c3c',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#e74c3c',
+  },
+  rejectButtonText: {
+    color: '#e74c3c',
+    fontWeight: '700',
+    fontSize: 15,
   },
   buttonText: {
     color: '#fff',

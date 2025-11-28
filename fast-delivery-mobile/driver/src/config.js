@@ -5,7 +5,8 @@
 // export const BASE_URL = 'http://192.168.31.160:5000';
 
 // 2. PRODUCTION (Render.com)
-//export const BASE_URL = 'https://fastdelivery-hvff.onrender.com';
+// export const BASE_URL = 'https://fastdelivery-hvff.onrender.com';
+
 export const BASE_URL = 'http://192.168.31.160:5000';
 
 export const API_URL = `${BASE_URL}/api/v1`;

@@ -8,7 +8,6 @@ import StoresTab from '../../components/admin/StoresTab';
 import DriversTab from '../../components/admin/DriversTab';
 import OrdersTab from '../../components/admin/OrdersTab';
 import CustomersTab from '../../components/admin/CustomersTab';
-import NotificationToast from '../../components/NotificationToast';
 import '../../styles/AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -72,7 +71,6 @@ const AdminDashboard = () => {
   return (
     <div className="admin-dashboard">
       <AdminNavbar user={user} />
-      <NotificationToast />
       
       <Container fluid className="py-4">
         {/* Statistics Cards */}

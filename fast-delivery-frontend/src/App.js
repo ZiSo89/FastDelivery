@@ -18,6 +18,7 @@ import OrderStatus from './pages/customer/OrderStatus';
 import TrackOrder from './pages/customer/TrackOrder';
 import CustomerOrders from './pages/customer/CustomerOrders';
 import CustomerProfile from './pages/customer/CustomerProfile';
+import CustomerNotificationHandler from './components/customer/CustomerNotificationHandler';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import './styles/CustomerPortal.css';
@@ -29,6 +30,7 @@ function App() {
       <NotificationProvider>
         <NotificationToast />
         <Router>
+          <CustomerNotificationHandler />
           <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />

@@ -379,11 +379,11 @@ const StoreOrders = () => {
                     )}
                     {order.status === 'accepted_driver' && (
                       <Button
-                        variant="warning"
+                        variant="success"
                         onClick={() => handlePreparing(order._id)}
                         disabled={processingId === order._id}
                       >
-                        👨‍🍳 Προετοιμασία
+                        ✅ Έτοιμο για Παραλαβή
                       </Button>
                     )}
                   </div>
@@ -464,12 +464,12 @@ const StoreOrders = () => {
                     )}
                     {order.status === 'accepted_driver' && (
                       <Button
-                        variant="warning"
+                        variant="success"
                         size="sm"
                         onClick={() => handlePreparing(order._id)}
                         disabled={processingId === order._id}
                       >
-                        👨‍🍳 Προετοιμασία
+                        ✅ Έτοιμο για Παραλαβή
                       </Button>
                     )}
                   </td>

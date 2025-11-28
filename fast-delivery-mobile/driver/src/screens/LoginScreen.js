@@ -5,7 +5,6 @@ import {
   TextInput, 
   TouchableOpacity, 
   StyleSheet, 
-  Alert, 
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -16,11 +15,12 @@ import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, loginAsGuest } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const { login } = useAuth();
   const { showAlert } = useAlert();
 
   const handleLogin = async () => {
@@ -34,12 +34,8 @@ const LoginScreen = ({ navigation }) => {
     setLoading(false);
 
     if (!result.success) {
-      showAlert('Σφάλμα', result.error, [], 'error');
+      showAlert('Σφάλμα Σύνδεσης', result.error, [], 'error');
     }
-  };
-
-  const handleGuestLogin = () => {
-    loginAsGuest();
   };
 
   return (
@@ -55,7 +51,7 @@ const LoginScreen = ({ navigation }) => {
             resizeMode="contain"
           />
           <Text style={styles.title}>FastDelivery</Text>
-          <Text style={styles.subtitle}>Εσύ ζητάς, εμείς τρέχουμε</Text>
+          <Text style={styles.subtitle}>Οδηγός</Text>
         </View>
 
         <View style={styles.form}>
@@ -68,6 +64,7 @@ const LoginScreen = ({ navigation }) => {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              editable={!loading}
             />
           </View>
 
@@ -78,41 +75,39 @@ const LoginScreen = ({ navigation }) => {
               placeholder="Κωδικός πρόσβασης"
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
+              secureTextEntry={!showPassword}
+              editable={!loading}
             />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons 
+                name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                size={20} 
+                color="#666" 
+              />
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
-            style={styles.loginButton} 
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
             onPress={handleLogin}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>Σύνδεση</Text>
+              <>
+                <Ionicons name="car" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.loginButtonText}>Σύνδεση Οδηγού</Text>
+              </>
             )}
           </TouchableOpacity>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Δεν έχεις λογαριασμό; </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.linkText}>Εγγραφή</Text>
-            </TouchableOpacity>
+          <View style={styles.infoContainer}>
+            <Ionicons name="information-circle-outline" size={20} color="#666" />
+            <Text style={styles.infoText}>
+              Η εγγραφή οδηγών γίνεται από την ιστοσελίδα και απαιτεί έγκριση από τον διαχειριστή.
+            </Text>
           </View>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ή</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity 
-            style={styles.guestButton} 
-            onPress={handleGuestLogin}
-          >
-            <Text style={styles.guestButtonText}>Συνέχεια ως Επισκέπτης</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -145,8 +140,9 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 18,
+    color: '#00c2e8',
+    fontWeight: '600',
   },
   form: {
     width: '100%',
@@ -155,10 +151,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 15,
     paddingHorizontal: 15,
-    height: 50,
+    height: 55,
     borderWidth: 1,
     borderColor: '#eee',
   },
@@ -169,63 +165,46 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
+    color: '#333',
   },
   loginButton: {
     backgroundColor: '#00c2e8',
-    borderRadius: 10,
-    height: 50,
+    borderRadius: 12,
+    height: 55,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    marginBottom: 20,
+    shadowColor: '#00c2e8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
   },
   loginButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
-  footer: {
+  infoContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  footerText: {
-    color: '#666',
-    fontSize: 15,
-  },
-  linkText: {
-    color: '#00c2e8',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#eee',
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    color: '#999',
-  },
-  guestButton: {
-    backgroundColor: 'transparent',
-    borderColor: '#00c2e8',
-    borderWidth: 2,
-    paddingVertical: 14,
+    alignItems: 'flex-start',
+    backgroundColor: '#f0f9ff',
+    padding: 15,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
+    marginTop: 30,
+    borderWidth: 1,
+    borderColor: '#e0f2fe',
   },
-  guestButtonText: {
-    color: '#00c2e8',
-    fontSize: 16,
-    fontWeight: 'bold',
+  infoText: {
+    flex: 1,
+    marginLeft: 10,
+    color: '#666',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

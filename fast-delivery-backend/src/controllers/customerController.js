@@ -287,21 +287,12 @@ exports.confirmOrderPrice = async (req, res) => {
       order.confirmedAt = new Date();
       await order.save();
 
-      // Notify admin and store
-      io.to('admin').emit('order:confirmed', {
+      // Use broadcastOrderEvent to notify all parties AND send push notification
+      broadcastOrderEvent(io, order, 'order:status_changed', {
         orderId: order._id,
-        orderNumber: order.orderNumber
-      });
-      
-      io.to(`store:${order.storeId}`).emit('order:confirmed', {
-        orderId: order._id,
-        orderNumber: order.orderNumber
-      });
-
-      // Notify customer (to remove sticky notification)
-      io.to(`customer:${order.customer.phone}`).emit('order:confirmed', {
-        orderId: order._id,
-        orderNumber: order.orderNumber
+        orderNumber: order.orderNumber,
+        storeId: order.storeId?.toString(),
+        newStatus: 'confirmed'
       });
 
       res.json({
@@ -432,7 +423,7 @@ exports.getActiveOrderByPhone = async (req, res) => {
 // @access  Private (Customer)
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, address, location, pushToken } = req.body;
     console.log('📥 Update Profile Request:', { userId: req.user._id, body: req.body });
     
     // Find customer by ID (from auth middleware)
@@ -450,6 +441,8 @@ exports.updateProfile = async (req, res) => {
     if (name) customer.name = name;
     if (phone) customer.phone = phone;
     if (address) customer.address = address;
+    if (location) customer.location = location;
+    if (pushToken) customer.pushToken = pushToken;
 
     await customer.save();
     console.log('✅ Customer updated:', customer);
@@ -463,6 +456,8 @@ exports.updateProfile = async (req, res) => {
         email: customer.email,
         phone: customer.phone,
         address: customer.address,
+        location: customer.location,
+        pushToken: customer.pushToken,
         role: 'customer'
       }
     });

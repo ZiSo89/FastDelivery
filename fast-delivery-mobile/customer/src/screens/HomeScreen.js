@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -42,6 +42,42 @@ const HomeScreen = ({ navigation }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [loading, setLoading] = useState(true);
+  const mapRef = useRef(null);
+
+  const fitMapToMarkers = () => {
+    if (filteredStores.length > 0 && mapRef.current) {
+      const coordinates = filteredStores
+        .filter(store => store.location && store.location.coordinates)
+        .map(store => ({
+          latitude: store.location.coordinates[1],
+          longitude: store.location.coordinates[0],
+        }));
+
+      if (coordinates.length > 0) {
+        // Add user location to bounds if available so user sees themselves relative to stores
+        if (location) {
+          coordinates.push({
+            latitude: location.latitude,
+            longitude: location.longitude
+          });
+        }
+
+        mapRef.current.fitToCoordinates(coordinates, {
+          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+          animated: true,
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'map') {
+      // Try to fit immediately if map is already ready (e.g. switching back and forth)
+      fitMapToMarkers();
+      // Also set a small timeout to ensure map layout is complete
+      setTimeout(fitMapToMarkers, 500);
+    }
+  }, [viewMode, filteredStores, location]);
 
   useEffect(() => {
     if (user?.address) {
@@ -51,33 +87,37 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     (async () => {
+      // 1. Check if user has a saved location in their profile
+      if (user?.location?.coordinates) {
+        const [lng, lat] = user.location.coordinates;
+        setLocation({ latitude: lat, longitude: lng });
+        return;
+      }
+
+      // 2. Fallback to GPS if no user location
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          console.log('Permission to access location was denied');
           // Load stores with default location if permission denied
           loadStores();
           return;
         }
 
-        // 1. Try to get last known position first (Very fast)
+        // Try to get last known position first (Very fast)
         let lastKnown = await Location.getLastKnownPositionAsync({});
         if (lastKnown) {
-          console.log('📍 Using last known location');
           setLocation(lastKnown.coords);
         }
 
-        // 2. Get fresh current position
+        // Get fresh current position
         let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        console.log('📍 Got fresh location');
         setLocation(loc.coords);
       } catch (error) {
-        console.error('Error getting location:', error);
         // Fallback to default location
         loadStores();
       }
     })();
-  }, []);
+  }, [user]); // Re-run if user changes (e.g. login)
 
   useEffect(() => {
     if (location) {
@@ -106,7 +146,7 @@ const HomeScreen = ({ navigation }) => {
       setStores(response.data.stores || []);
     } catch (error) {
       console.error('❌ Error loading stores:', error);
-      Alert.alert('Σφάλμα', 'Δεν ήταν δυνατή η φόρτωση των καταστημάτων');
+      // Silent fail - just log error
     } finally {
       setLoading(false);
     }
@@ -298,15 +338,33 @@ const HomeScreen = ({ navigation }) => {
         ) : (
           <View style={styles.mapContainer}>
             <MapView
+              ref={mapRef}
               style={styles.map}
+              onMapReady={fitMapToMarkers}
               initialRegion={{
                 latitude: location ? location.latitude : 40.8457,
                 longitude: location ? location.longitude : 25.8733,
                 latitudeDelta: 0.0922,
                 longitudeDelta: 0.0421,
               }}
-              showsUserLocation={true}
+              showsUserLocation={!user?.location} // Only show GPS dot if no user address
             >
+              {/* User Address Marker */}
+              {user?.location?.coordinates && (
+                <Marker
+                  coordinate={{
+                    latitude: user.location.coordinates[1],
+                    longitude: user.location.coordinates[0],
+                  }}
+                  title="Η διεύθυνσή μου"
+                  description={user.address}
+                >
+                  <View style={styles.userLocationMarker}>
+                    <Ionicons name="home" size={16} color="#fff" />
+                  </View>
+                </Marker>
+              )}
+
               {filteredStores.map(store => {
                 // Check if store has valid location data
                 // GeoJSON format: { type: "Point", coordinates: [longitude, latitude] }
@@ -569,6 +627,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: '#666',
     fontSize: 16,
+  },
+  userLocationMarker: {
+    backgroundColor: '#00c2e8',
+    padding: 6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#fff',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
 });
 
