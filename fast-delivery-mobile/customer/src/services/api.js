@@ -56,7 +56,7 @@ export const customerService = {
   createOrder: (orderData) => api.post('/orders', orderData, {
     headers: orderData instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
   }),
-  getMyOrders: () => api.get('/orders/my-orders'),
+  getMyOrders: (page = 1, limit = 10) => api.get(`/orders/my-orders?page=${page}&limit=${limit}`),
   getOrderStatus: (orderNumber) => api.get(`/orders/${orderNumber}/status`),
   confirmPrice: (orderId, phone, confirm) => api.put(`/orders/${orderId}/confirm`, { phone, confirm }),
   getActiveOrderByPhone: (phone) => api.get(`/orders/active-by-phone/${phone}`),

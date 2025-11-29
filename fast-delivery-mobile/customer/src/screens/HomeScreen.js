@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { 
   View, 
   Text, 
@@ -23,30 +23,82 @@ import { useAuth } from '../context/AuthContext';
 import GuestDetailsModal from '../components/GuestDetailsModal';
 import api from '../services/api';
 
-// Icon mapping for store types - add new types here with their icons
-const STORE_TYPE_ICONS = {
-  'Όλα': '🍽️',
-  'Καφετέρια': '☕',
-  'Ταβέρνα': '🍔',
-  'Mini Market': '🛒',
-  'Γλυκά': '🍰',
-  'Φαρμακείο': '💊',
-  'Σουβλατζίδικο': '🥙',
-  'Πιτσαρία': '🍕',
-  'Ψητοπωλείο': '🍖',
-  'Αρτοποιείο': '🥖',
-  'Ζαχαροπλαστείο': '🎂',
-  'Κρεοπωλείο': '🥩',
-  'Ιχθυοπωλείο': '🐟',
-  'Οπωροπωλείο': '🍎',
-  'Κάβα': '🍷',
-  'Ανθοπωλείο': '💐',
-  'Pet Shop': '🐕',
-  'Άλλο': '🏪',
-};
-
-// Default icon for unknown types
+// Default icon for unknown types (fallback)
 const DEFAULT_ICON = '🏪';
+
+// Memoized Store Marker Component to prevent flickering
+const StoreMarker = memo(({ store, onPress, styles, storeId }) => {
+  if (!store.location?.coordinates || store.location.coordinates.length !== 2) {
+    return null;
+  }
+  
+  // Use state to track if marker has been rendered once
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    // After first render, disable view tracking
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  return (
+    <Marker
+      identifier={storeId}
+      coordinate={{
+        latitude: store.location.coordinates[1],
+        longitude: store.location.coordinates[0],
+      }}
+      title={store.businessName}
+      description={store.storeType}
+      onCalloutPress={() => onPress(store)}
+      tracksViewChanges={!isReady}
+    >
+      <View style={styles.markerContainer}>
+        <View style={[styles.marker, styles.storeMarker]}>
+          <Ionicons name="storefront" size={14} color="#fff" />
+        </View>
+      </View>
+    </Marker>
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if store ID changes
+  return prevProps.storeId === nextProps.storeId;
+});
+
+// Memoized User Location Marker
+const UserLocationMarker = memo(({ user, styles }) => {
+  if (!user?.location?.coordinates) {
+    return null;
+  }
+  
+  // Use state to track if marker has been rendered once
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  return (
+    <Marker
+      identifier="user-location"
+      coordinate={{
+        latitude: user.location.coordinates[1],
+        longitude: user.location.coordinates[0],
+      }}
+      title="Η διεύθυνσή μου"
+      description={user.address}
+      tracksViewChanges={!isReady}
+    >
+      <View style={styles.userLocationMarker}>
+        <Ionicons name="home" size={16} color="#fff" />
+      </View>
+    </Marker>
+  );
+}, (prevProps, nextProps) => {
+  // Only re-render if user ID changes
+  return prevProps.user?._id === nextProps.user?._id;
+});
 
 const HomeScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -54,7 +106,6 @@ const HomeScreen = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [address, setAddress] = useState(user?.address || 'Αλεξανδρούπολη'); 
   const [stores, setStores] = useState([]);
-  const [filteredStores, setFilteredStores] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,6 +119,9 @@ const HomeScreen = ({ navigation }) => {
   const [selectedStore, setSelectedStore] = useState(null);
   const [guestDetails, setGuestDetails] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  
+  // Store type icon mapping (loaded from backend)
+  const [storeTypeIcons, setStoreTypeIcons] = useState({});
 
   // Fetch store types for categories
   useEffect(() => {
@@ -75,13 +129,29 @@ const HomeScreen = ({ navigation }) => {
       try {
         const response = await api.get('/auth/store-types');
         if (response.data.success && response.data.storeTypes?.length > 0) {
+          // Build icon mapping from backend data
+          const iconMap = {};
+          response.data.storeTypes.forEach(type => {
+            if (typeof type === 'object' && type.name) {
+              iconMap[type.name] = type.icon || DEFAULT_ICON;
+            } else if (typeof type === 'string') {
+              // Fallback for old string format
+              iconMap[type] = DEFAULT_ICON;
+            }
+          });
+          setStoreTypeIcons(iconMap);
+          
           const dynamicCategories = [
             { id: 'all', label: 'Όλα', icon: '🍽️' },
-            ...response.data.storeTypes.map(type => ({
-              id: type,
-              label: type,
-              icon: STORE_TYPE_ICONS[type] || DEFAULT_ICON
-            }))
+            ...response.data.storeTypes.map(type => {
+              const typeName = typeof type === 'object' ? type.name : type;
+              const typeIcon = typeof type === 'object' ? (type.icon || DEFAULT_ICON) : DEFAULT_ICON;
+              return {
+                id: typeName,
+                label: typeName,
+                icon: typeIcon
+              };
+            })
           ];
           setCategories(dynamicCategories);
         }
@@ -186,8 +256,25 @@ const HomeScreen = ({ navigation }) => {
     }
   }, [location]);
 
-  useEffect(() => {
-    filterStores();
+  // Use useMemo for filtered stores to prevent unnecessary re-renders
+  const filteredStores = useMemo(() => {
+    console.log('🔍 Filtering stores:', stores.length, 'activeCategory:', activeCategory, 'searchTerm:', searchTerm);
+    let result = stores;
+
+    // Filter by Category
+    if (activeCategory !== 'all') {
+      result = result.filter(store => store.storeType === activeCategory);
+    }
+
+    // Filter by Search
+    if (searchTerm) {
+      result = result.filter(store => 
+        store.businessName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    console.log('🔍 Filtered result:', result.length);
+    return result;
   }, [stores, activeCategory, searchTerm]);
 
   const loadStores = async () => {
@@ -200,36 +287,16 @@ const HomeScreen = ({ navigation }) => {
       const lat = location ? location.latitude : 40.8457;
       const lng = location ? location.longitude : 25.8733;
       
+      console.log('📍 Loading stores for location:', lat, lng);
       const response = await customerService.getStores(lat, lng);
+      console.log('📍 Stores loaded:', response.data.stores?.length || 0);
       
       setStores(response.data.stores || []);
     } catch (error) {
-      // Silent fail
+      console.error('📍 Load stores error:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const filterStores = () => {
-    let result = stores;
-
-    // Filter by Category - find the selected category and use its type
-    if (activeCategory !== 'all') {
-      const selectedCat = categories.find(cat => cat.id === activeCategory);
-      if (selectedCat) {
-        // For dynamic categories, the id IS the store type (except 'all')
-        result = result.filter(store => store.storeType === activeCategory);
-      }
-    }
-
-    // Filter by Search
-    if (searchTerm) {
-      result = result.filter(store => 
-        store.businessName.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    setFilteredStores(result);
   };
 
   const handleLogout = () => {
@@ -284,7 +351,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const getStoreIcon = (type) => {
-    return STORE_TYPE_ICONS[type] || '🏪';
+    return storeTypeIcons[type] || DEFAULT_ICON;
   };
 
   const renderStoreItem = ({ item }) => (
@@ -435,47 +502,19 @@ const HomeScreen = ({ navigation }) => {
               }}
               showsUserLocation={!user?.location} // Only show GPS dot if no user address
             >
-              {/* User Address Marker */}
-              {user?.location?.coordinates && (
-                <Marker
-                  coordinate={{
-                    latitude: user.location.coordinates[1],
-                    longitude: user.location.coordinates[0],
-                  }}
-                  title="Η διεύθυνσή μου"
-                  description={user.address}
-                >
-                  <View style={styles.userLocationMarker}>
-                    <Ionicons name="home" size={16} color="#fff" />
-                  </View>
-                </Marker>
-              )}
+              {/* User Address Marker - Memoized */}
+              <UserLocationMarker user={user} styles={styles} />
 
-              {filteredStores.map(store => {
-                // Check if store has valid location data
-                // GeoJSON format: { type: "Point", coordinates: [longitude, latitude] }
-                if (store.location && store.location.coordinates && store.location.coordinates.length === 2) {
-                  return (
-                    <Marker
-                      key={store._id}
-                      coordinate={{
-                        latitude: store.location.coordinates[1], // Latitude is 2nd element in GeoJSON
-                        longitude: store.location.coordinates[0], // Longitude is 1st element in GeoJSON
-                      }}
-                      title={store.businessName}
-                      description={store.storeType}
-                      onCalloutPress={() => handleStoreSelect(store)}
-                    >
-                      <View style={styles.markerContainer}>
-                        <View style={[styles.marker, styles.storeMarker]}>
-                          <Ionicons name="storefront" size={14} color="#fff" />
-                        </View>
-                      </View>
-                    </Marker>
-                  );
-                }
-                return null;
-              })}
+              {/* Store Markers - Memoized */}
+              {filteredStores.map(store => (
+                <StoreMarker
+                  key={store._id}
+                  storeId={store._id}
+                  store={store}
+                  onPress={handleStoreSelect}
+                  styles={styles}
+                />
+              ))}
             </MapView>
           </View>
         )}

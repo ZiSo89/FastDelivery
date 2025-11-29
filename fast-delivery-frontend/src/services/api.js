@@ -115,10 +115,11 @@ export const adminService = {
     return response.data;
   },
 
-  // Get all stores
-  getStores: async (status = null) => {
-    const url = status ? `/admin/stores?status=${status}` : '/admin/stores';
-    const response = await api.get(url);
+  // Get all stores with pagination
+  getStores: async (status = null, page = 1, limit = 20) => {
+    const params = new URLSearchParams({ page, limit });
+    if (status) params.append('status', status);
+    const response = await api.get(`/admin/stores?${params}`);
     return response.data;
   },
 
@@ -136,12 +137,12 @@ export const adminService = {
     return response.data;
   },
 
-  // Get all drivers
-  getDrivers: async (status = null, isOnline = null) => {
-    let url = '/admin/drivers?';
-    if (status) url += `status=${status}&`;
-    if (isOnline !== null) url += `isOnline=${isOnline}`;
-    const response = await api.get(url);
+  // Get all drivers with pagination
+  getDrivers: async (status = null, isOnline = null, page = 1, limit = 20) => {
+    const params = new URLSearchParams({ page, limit });
+    if (status) params.append('status', status);
+    if (isOnline !== null) params.append('isOnline', isOnline);
+    const response = await api.get(`/admin/drivers?${params}`);
     return response.data;
   },
 
@@ -185,9 +186,11 @@ export const adminService = {
     return response.data;
   },
 
-  // Get all customers
-  getCustomers: async () => {
-    const response = await api.get('/admin/customers');
+  // Get all customers with pagination
+  getCustomers: async (page = 1, limit = 20, search = '') => {
+    const params = new URLSearchParams({ page, limit });
+    if (search) params.append('search', search);
+    const response = await api.get(`/admin/customers?${params}`);
     return response.data;
   },
 
@@ -214,8 +217,11 @@ export const storeService = {
   },
 
   // Get store orders
-  getOrders: async (status = null) => {
-    const url = status ? `/store/orders?status=${status}` : '/store/orders';
+  getOrders: async (status = null, page = 1, limit = 20) => {
+    let url = `/store/orders?page=${page}&limit=${limit}`;
+    if (status) {
+      url += `&status=${status}`;
+    }
     const response = await api.get(url);
     return response.data;
   },
@@ -333,9 +339,9 @@ export const customerService = {
     return response.data;
   },
 
-  // Get my orders
-  getMyOrders: async () => {
-    const response = await api.get('/orders/my-orders');
+  // Get my orders with pagination
+  getMyOrders: async (page = 1, limit = 10) => {
+    const response = await api.get(`/orders/my-orders?page=${page}&limit=${limit}`);
     return response.data;
   },
 

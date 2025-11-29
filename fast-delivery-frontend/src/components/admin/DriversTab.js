@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col } from 'react-bootstrap';
+import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col, Pagination } from 'react-bootstrap';
 import { adminService } from '../../services/api';
 import socketService from '../../services/socket';
 import AlertModal from '../AlertModal';
@@ -12,6 +12,12 @@ const DriversTab = () => {
   const [processingId, setProcessingId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -19,26 +25,29 @@ const DriversTab = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchDrivers = useCallback(async () => {
+  const fetchDrivers = useCallback(async (page = currentPage) => {
     try {
       setLoading(true);
-      const response = await adminService.getDrivers(filter === 'all' ? null : filter);
-      // Backend επιστρέφει { success: true, drivers: [...] }
-      setDrivers(response.drivers || response.data || []);
+      const response = await adminService.getDrivers(filter === 'all' ? null : filter, null, page, itemsPerPage);
+      setDrivers(response.drivers || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalCount(response.totalCount || 0);
+      setCurrentPage(response.currentPage || page);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης οδηγών');
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, currentPage]);
 
   useEffect(() => {
-    fetchDrivers();
+    setCurrentPage(1);
+    fetchDrivers(1);
     
     // Socket.IO listener for driver online/offline status changes
-    const handleDriverStatusChange = (data) => {
-      fetchDrivers(); // Refresh driver list to show updated online status
+    const handleDriverStatusChange = () => {
+      fetchDrivers(currentPage);
     };
 
     socketService.on('driver:availability_changed', handleDriverStatusChange);
@@ -46,7 +55,63 @@ const DriversTab = () => {
     return () => {
       socketService.off('driver:availability_changed', handleDriverStatusChange);
     };
-  }, [fetchDrivers]);
+  }, [filter]);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchDrivers(page);
+  };
+
+  // Pagination component
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="d-flex justify-content-center mt-3">
+        <Pagination>
+          <Pagination.First 
+            onClick={() => handlePageChange(1)} 
+            disabled={currentPage === 1} 
+          />
+          <Pagination.Prev 
+            onClick={() => handlePageChange(currentPage - 1)} 
+            disabled={currentPage === 1} 
+          />
+          
+          {[...Array(totalPages)].map((_, index) => {
+            const pageNum = index + 1;
+            if (
+              pageNum === 1 || 
+              pageNum === totalPages || 
+              (pageNum >= currentPage - 2 && pageNum <= currentPage + 2)
+            ) {
+              return (
+                <Pagination.Item
+                  key={pageNum}
+                  active={pageNum === currentPage}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </Pagination.Item>
+              );
+            } else if (pageNum === currentPage - 3 || pageNum === currentPage + 3) {
+              return <Pagination.Ellipsis key={pageNum} disabled />;
+            }
+            return null;
+          })}
+          
+          <Pagination.Next 
+            onClick={() => handlePageChange(currentPage + 1)} 
+            disabled={currentPage === totalPages} 
+          />
+          <Pagination.Last 
+            onClick={() => handlePageChange(totalPages)} 
+            disabled={currentPage === totalPages} 
+          />
+        </Pagination>
+      </div>
+    );
+  };
 
   const handleApprove = async (driverId, action) => {
     try {
@@ -127,6 +192,14 @@ const DriversTab = () => {
             Όλοι
           </Button>
         </div>
+        
+        {/* Count info */}
+        {!loading && (
+          <div className="text-muted mt-2">
+            Σύνολο: {totalCount} οδηγοί
+            {totalPages > 1 && ` (Σελίδα ${currentPage} από ${totalPages})`}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -277,6 +350,9 @@ const DriversTab = () => {
           </Table>
         </div>
       )}
+      
+      {/* Pagination */}
+      {!loading && renderPagination()}
 
       <AlertModal
         show={alertModal.show}

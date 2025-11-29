@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col } from 'react-bootstrap';
+import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Card, Row, Col, Pagination } from 'react-bootstrap';
 import { adminService } from '../../services/api';
 import AlertModal from '../AlertModal';
 
@@ -11,6 +11,12 @@ const StoresTab = () => {
   const [processingId, setProcessingId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [alertModal, setAlertModal] = useState({ show: false, variant: 'success', message: '' });
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -18,23 +24,82 @@ const StoresTab = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchStores = useCallback(async () => {
+  const fetchStores = useCallback(async (page = currentPage) => {
     try {
       setLoading(true);
-      const response = await adminService.getStores(filter === 'all' ? null : filter);
-      // Backend επιστρέφει { success: true, stores: [...] }
-      setStores(response.stores || response.data || []);
+      const response = await adminService.getStores(filter === 'all' ? null : filter, page, itemsPerPage);
+      setStores(response.stores || []);
+      setTotalPages(response.totalPages || 1);
+      setTotalCount(response.totalCount || 0);
+      setCurrentPage(response.currentPage || page);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης καταστημάτων');
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, currentPage]);
 
   useEffect(() => {
-    fetchStores();
-  }, [fetchStores]);
+    setCurrentPage(1);
+    fetchStores(1);
+  }, [filter]);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchStores(page);
+  };
+
+  // Pagination component
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="d-flex justify-content-center mt-3">
+        <Pagination>
+          <Pagination.First 
+            onClick={() => handlePageChange(1)} 
+            disabled={currentPage === 1} 
+          />
+          <Pagination.Prev 
+            onClick={() => handlePageChange(currentPage - 1)} 
+            disabled={currentPage === 1} 
+          />
+          
+          {[...Array(totalPages)].map((_, index) => {
+            const pageNum = index + 1;
+            if (
+              pageNum === 1 || 
+              pageNum === totalPages || 
+              (pageNum >= currentPage - 2 && pageNum <= currentPage + 2)
+            ) {
+              return (
+                <Pagination.Item
+                  key={pageNum}
+                  active={pageNum === currentPage}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </Pagination.Item>
+              );
+            } else if (pageNum === currentPage - 3 || pageNum === currentPage + 3) {
+              return <Pagination.Ellipsis key={pageNum} disabled />;
+            }
+            return null;
+          })}
+          
+          <Pagination.Next 
+            onClick={() => handlePageChange(currentPage + 1)} 
+            disabled={currentPage === totalPages} 
+          />
+          <Pagination.Last 
+            onClick={() => handlePageChange(totalPages)} 
+            disabled={currentPage === totalPages} 
+          />
+        </Pagination>
+      </div>
+    );
+  };
 
   const handleApprove = async (storeId, action) => {
     try {
@@ -116,6 +181,14 @@ const StoresTab = () => {
             Όλα
           </Button>
         </div>
+        
+        {/* Count info */}
+        {!loading && (
+          <div className="text-muted mt-2">
+            Σύνολο: {totalCount} καταστήματα
+            {totalPages > 1 && ` (Σελίδα ${currentPage} από ${totalPages})`}
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -260,6 +333,9 @@ const StoresTab = () => {
           </Table>
         </div>
       )}
+      
+      {/* Pagination */}
+      {!loading && renderPagination()}
 
       <AlertModal
         show={alertModal.show}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Badge, Button, Spinner, Alert } from 'react-bootstrap';
 import { customerService } from '../../services/api';
@@ -9,16 +9,79 @@ const CustomerOrders = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const observerRef = useRef();
+  const lastOrderRef = useRef();
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (loading || loadingMore || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          loadMoreOrders();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (lastOrderRef.current) {
+      observer.observe(lastOrderRef.current);
+    }
+
+    observerRef.current = observer;
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loading, loadingMore, hasMore, orders]);
+
+  const fetchOrders = useCallback(async (page = 1, append = false) => {
+    try {
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      const response = await customerService.getMyOrders(page, 10);
+      if (response.success) {
+        if (append) {
+          setOrders(prev => [...prev, ...response.orders]);
+        } else {
+          setOrders(response.orders);
+        }
+        setHasMore(response.hasMore || page < response.totalPages);
+        setCurrentPage(page);
+      }
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      setError('Σφάλμα φόρτωσης ιστορικού παραγγελιών');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  const loadMoreOrders = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      fetchOrders(currentPage + 1, true);
+    }
+  }, [currentPage, loadingMore, hasMore, fetchOrders]);
 
   useEffect(() => {
-    fetchOrders();
+    fetchOrders(1, false);
     
     // Socket.IO real-time updates for customer orders
-    const handleOrderUpdate = (data) => {
-      // Refresh orders when any order event is received
-      // The backend sends all events globally, so we'll refresh to get latest state
-      fetchOrders();
+    const handleOrderUpdate = () => {
+      // Refresh only first page to show new orders
+      fetchOrders(1, false);
     };
 
     // Subscribe to all order events
@@ -41,21 +104,7 @@ const CustomerOrders = () => {
       socketService.off('order:completed', handleOrderUpdate);
       socketService.off('order:cancelled', handleOrderUpdate);
     };
-  }, []);
-
-  const fetchOrders = async () => {
-    try {
-      const response = await customerService.getMyOrders();
-      if (response.success) {
-        setOrders(response.orders);
-      }
-    } catch (err) {
-      console.error('Error fetching orders:', err);
-      setError('Σφάλμα φόρτωσης ιστορικού παραγγελιών');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchOrders]);
 
   const getStatusBadge = (status) => {
     const statusMap = {
@@ -119,9 +168,10 @@ const CustomerOrders = () => {
                 </div>
               ) : (
                 <div className="orders-list">
-                  {orders.map((order) => (
+                  {orders.map((order, index) => (
                     <Card 
                       key={order._id} 
+                      ref={index === orders.length - 1 ? lastOrderRef : null}
                       className="mb-3 shadow-sm border-0 cursor-pointer"
                       onClick={() => navigate(`/order-status/${order.orderNumber}`)}
                     >
@@ -151,6 +201,21 @@ const CustomerOrders = () => {
                       </Card.Body>
                     </Card>
                   ))}
+                  
+                  {/* Loading more indicator */}
+                  {loadingMore && (
+                    <div className="text-center py-3">
+                      <Spinner animation="border" size="sm" variant="primary" />
+                      <small className="ms-2 text-muted">Φόρτωση περισσότερων...</small>
+                    </div>
+                  )}
+                  
+                  {/* End of list */}
+                  {!hasMore && orders.length > 0 && (
+                    <div className="text-center py-3">
+                      <small className="text-muted">Τέλος λίστας παραγγελιών</small>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

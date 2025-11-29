@@ -14,7 +14,7 @@ const { broadcastOrderEvent } = require('../utils/socketHelpers');
 // @access  Private (Admin)
 exports.getStores = async (req, res) => {
   try {
-    const { status, showUnverified } = req.query;
+    const { status, showUnverified, page, limit } = req.query;
 
     const filter = {};
     if (status) {
@@ -26,11 +26,27 @@ exports.getStores = async (req, res) => {
       filter.isEmailVerified = true;
     }
 
-    const stores = await Store.find(filter).select('-password').sort({ createdAt: -1 });
+    // Pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get total count for pagination
+    const totalCount = await Store.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    const stores = await Store.find(filter)
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
 
     res.json({
       success: true,
       count: stores.length,
+      totalCount,
+      totalPages,
+      currentPage: pageNum,
       stores
     });
   } catch (error) {
@@ -117,7 +133,7 @@ exports.approveRejectStore = async (req, res) => {
 // @access  Private (Admin)
 exports.getDrivers = async (req, res) => {
   try {
-    const { status, isOnline, showUnverified } = req.query;
+    const { status, isOnline, showUnverified, page, limit } = req.query;
 
     const filter = {};
     if (status) {
@@ -132,14 +148,28 @@ exports.getDrivers = async (req, res) => {
       filter.isEmailVerified = true;
     }
 
+    // Pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get total count for pagination
+    const totalCount = await Driver.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / limitNum);
+
     const drivers = await Driver.find(filter)
       .select('-password')
       .populate('currentOrder', 'orderNumber status')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
 
     res.json({
       success: true,
       count: drivers.length,
+      totalCount,
+      totalPages,
+      currentPage: pageNum,
       drivers
     });
   } catch (error) {
@@ -484,7 +514,32 @@ exports.cancelOrder = async (req, res) => {
 // @access  Private (Admin)
 exports.getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find().select('-password').sort({ createdAt: -1 });
+    const { page, limit, search } = req.query;
+
+    // Build filter
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get total count for pagination
+    const totalCount = await Customer.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / limitNum);
+
+    const customers = await Customer.find(filter)
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
 
     // Get order count for each customer
     const customersWithOrders = await Promise.all(
@@ -502,6 +557,9 @@ exports.getCustomers = async (req, res) => {
     res.json({
       success: true,
       count: customersWithOrders.length,
+      totalCount,
+      totalPages,
+      currentPage: pageNum,
       customers: customersWithOrders
     });
   } catch (error) {
@@ -701,7 +759,7 @@ exports.updateSettings = async (req, res) => {
 // @access  Private (Admin)
 exports.addStoreType = async (req, res) => {
   try {
-    const { storeType } = req.body;
+    const { storeType, icon } = req.body;
     
     if (!storeType || storeType.trim() === '') {
       return res.status(400).json({
@@ -713,14 +771,18 @@ exports.addStoreType = async (req, res) => {
     const settings = await Settings.getSettings();
     
     // Check if already exists
-    if (settings.storeTypes.includes(storeType.trim())) {
+    const exists = settings.storeTypes.some(t => t.name === storeType.trim());
+    if (exists) {
       return res.status(400).json({
         success: false,
         message: 'Αυτός ο τύπος καταστήματος υπάρχει ήδη'
       });
     }
     
-    settings.storeTypes.push(storeType.trim());
+    settings.storeTypes.push({
+      name: storeType.trim(),
+      icon: icon || '🏪'
+    });
     await settings.save();
     
     res.json({
@@ -758,7 +820,7 @@ exports.deleteStoreType = async (req, res) => {
     }
     
     const settings = await Settings.getSettings();
-    settings.storeTypes = settings.storeTypes.filter(t => t !== storeType);
+    settings.storeTypes = settings.storeTypes.filter(t => t.name !== storeType);
     await settings.save();
     
     res.json({
@@ -771,6 +833,44 @@ exports.deleteStoreType = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Σφάλμα διαγραφής τύπου καταστήματος'
+    });
+  }
+};
+
+// @desc    Update store type icon
+// @route   PUT /api/v1/admin/settings/store-types/:storeType
+// @access  Private (Admin)
+exports.updateStoreType = async (req, res) => {
+  try {
+    const { storeType } = req.params;
+    const { icon } = req.body;
+    
+    const settings = await Settings.getSettings();
+    const typeIndex = settings.storeTypes.findIndex(t => t.name === storeType);
+    
+    if (typeIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ο τύπος καταστήματος δεν βρέθηκε'
+      });
+    }
+    
+    if (icon) {
+      settings.storeTypes[typeIndex].icon = icon;
+    }
+    
+    await settings.save();
+    
+    res.json({
+      success: true,
+      message: 'Ο τύπος καταστήματος ενημερώθηκε',
+      storeTypes: settings.storeTypes
+    });
+  } catch (error) {
+    console.error('Update store type error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ενημέρωσης τύπου καταστήματος'
     });
   }
 };

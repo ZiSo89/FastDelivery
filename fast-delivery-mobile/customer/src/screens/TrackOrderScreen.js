@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking, Dimensions, Animated } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { customerService } from '../services/api';
@@ -10,6 +10,96 @@ import { Audio } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.35; // 35% of screen height for map
+
+// Memoized Store Marker - prevents flickering
+const StoreMarkerMemo = memo(({ coordinate, title, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  if (!coordinate) return null;
+  
+  return (
+    <Marker
+      identifier="store-marker"
+      coordinate={coordinate}
+      title={title}
+      tracksViewChanges={!isReady}
+    >
+      <View style={styles.markerContainer}>
+        <View style={[styles.marker, styles.storeMarker]}>
+          <Ionicons name="storefront" size={16} color="#fff" />
+        </View>
+      </View>
+    </Marker>
+  );
+});
+
+// Memoized Customer Marker - prevents flickering
+const CustomerMarkerMemo = memo(({ coordinate, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  if (!coordinate) return null;
+  
+  return (
+    <Marker
+      identifier="customer-marker"
+      coordinate={coordinate}
+      title="Διεύθυνση Παράδοσης"
+      tracksViewChanges={!isReady}
+    >
+      <View style={styles.markerContainer}>
+        <View style={[styles.marker, styles.customerMarker]}>
+          <Ionicons name="home" size={16} color="#fff" />
+        </View>
+      </View>
+    </Marker>
+  );
+});
+
+// Memoized Driver Marker - this one needs to update when driver moves
+const DriverMarkerMemo = memo(({ coordinate, title, styles }) => {
+  // Driver marker needs tracksViewChanges=true initially but can be false after stable
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    // Longer delay for driver since position updates
+    const timer = setTimeout(() => setIsReady(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Reset isReady when coordinate changes significantly
+  useEffect(() => {
+    setIsReady(false);
+    const timer = setTimeout(() => setIsReady(true), 200);
+    return () => clearTimeout(timer);
+  }, [coordinate?.latitude, coordinate?.longitude]);
+  
+  if (!coordinate) return null;
+  
+  return (
+    <Marker
+      identifier="driver-marker"
+      coordinate={coordinate}
+      title={title}
+      tracksViewChanges={!isReady}
+    >
+      <View style={styles.markerContainer}>
+        <View style={[styles.marker, styles.driverMarker]}>
+          <Ionicons name="bicycle" size={16} color="#fff" />
+        </View>
+      </View>
+    </Marker>
+  );
+});
 
 const TrackOrderScreen = ({ route, navigation }) => {
   const { user } = useAuth();
@@ -421,46 +511,26 @@ const TrackOrderScreen = ({ route, navigation }) => {
             showsScale={false}
             toolbarEnabled={false}
           >
-            {/* Store Marker - Orange */}
-            {storeLocation && (
-              <Marker
-                coordinate={storeLocation}
-                title={order.storeName}
-              >
-                <View style={styles.markerContainer}>
-                  <View style={[styles.marker, styles.storeMarker]}>
-                    <Ionicons name="storefront" size={16} color="#fff" />
-                  </View>
-                </View>
-              </Marker>
-            )}
+            {/* Store Marker - Orange (Memoized) */}
+            <StoreMarkerMemo 
+              coordinate={storeLocation} 
+              title={order.storeName} 
+              styles={styles} 
+            />
 
-            {/* Customer Home Marker - Green */}
-            {customerLocation && (
-              <Marker
-                coordinate={customerLocation}
-                title="Διεύθυνση Παράδοσης"
-              >
-                <View style={styles.markerContainer}>
-                  <View style={[styles.marker, styles.customerMarker]}>
-                    <Ionicons name="home" size={16} color="#fff" />
-                  </View>
-                </View>
-              </Marker>
-            )}
+            {/* Customer Home Marker - Green (Memoized) */}
+            <CustomerMarkerMemo 
+              coordinate={customerLocation} 
+              styles={styles} 
+            />
 
-            {/* Driver Marker - Blue (only when in_delivery) */}
-            {driverLocation && order.status === 'in_delivery' && (
-              <Marker
-                coordinate={driverLocation}
-                title={order.driverName || 'Οδηγός'}
-              >
-                <View style={styles.markerContainer}>
-                  <View style={[styles.marker, styles.driverMarker]}>
-                    <Ionicons name="bicycle" size={16} color="#fff" />
-                  </View>
-                </View>
-              </Marker>
+            {/* Driver Marker - Blue (only when in_delivery, Memoized) */}
+            {order.status === 'in_delivery' && (
+              <DriverMarkerMemo 
+                coordinate={driverLocation} 
+                title={order.driverName || 'Οδηγός'} 
+                styles={styles} 
+              />
             )}
           </MapView>
 

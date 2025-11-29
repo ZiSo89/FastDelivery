@@ -10,7 +10,10 @@ const CustomerOrders = ({ navigation }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [guestPhone, setGuestPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [alertConfig, setAlertConfig] = useState({
@@ -32,21 +35,50 @@ const CustomerOrders = ({ navigation }) => {
     }
   }, [user?.isGuest, loading]);
 
-  const loadOrders = async () => {
+  const loadOrders = async (page = 1, append = false) => {
+    console.log('📦 loadOrders called, page:', page, 'user:', user?.email, 'isGuest:', user?.isGuest);
+    
     if (user?.isGuest) {
+      console.log('📦 User is guest, skipping load');
       setLoading(false);
       return;
     }
 
     try {
-      const response = await customerService.getMyOrders();
-      const ordersList = response.data.orders || response.data;
-      setOrders(Array.isArray(ordersList) ? ordersList : []);
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      
+      console.log('📦 Calling API getMyOrders...');
+      const response = await customerService.getMyOrders(page, 10);
+      console.log('📦 API Response:', response.data);
+      const data = response.data;
+      const ordersList = data.orders || [];
+      
+      console.log('📦 Orders received:', ordersList.length, 'hasMore:', data.hasMore);
+      
+      if (append) {
+        setOrders(prev => [...prev, ...ordersList]);
+      } else {
+        setOrders(ordersList);
+      }
+      
+      setHasMore(data.hasMore || page < data.totalPages);
+      setCurrentPage(page);
     } catch (error) {
-      // Silent fail
+      console.error('📦 loadOrders ERROR:', error.response?.data || error.message);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
+    }
+  };
+
+  const loadMoreOrders = () => {
+    if (!loadingMore && hasMore && !loading) {
+      loadOrders(currentPage + 1, true);
     }
   };
 
@@ -112,13 +144,20 @@ const CustomerOrders = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      loadOrders();
-    }, [])
+      console.log('📦 useFocusEffect triggered, user:', user?.email);
+      if (user && !user.isGuest) {
+        loadOrders(1, false);
+      } else if (user?.isGuest) {
+        setLoading(false);
+      }
+    }, [user])
   );
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadOrders();
+    setCurrentPage(1);
+    setHasMore(true);
+    loadOrders(1, false);
   };
 
   const getStatusColor = (status) => {
@@ -257,6 +296,28 @@ const CustomerOrders = ({ navigation }) => {
     );
   }
 
+  const renderFooter = () => {
+    if (!loadingMore || orders.length === 0) return null;
+    return (
+      <View style={styles.loadingMore}>
+        <ActivityIndicator size="small" color="#00c2e8" />
+        <Text style={styles.loadingMoreText}>Φόρτωση περισσότερων...</Text>
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (loading) return null;
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="receipt-outline" size={64} color="#ccc" />
+        <Text style={styles.emptyText}>
+          {user?.isGuest ? 'Συνδεθείτε για να δείτε το ιστορικό σας' : 'Δεν υπάρχουν παραγγελίες'}
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -267,14 +328,10 @@ const CustomerOrders = ({ navigation }) => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#00c2e8']} />
         }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="receipt-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>
-              {user?.isGuest ? 'Συνδεθείτε για να δείτε το ιστορικό σας' : 'Δεν υπάρχουν παραγγελίες'}
-            </Text>
-          </View>
-        }
+        onEndReached={loadMoreOrders}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
       />
     </View>
   );
@@ -424,6 +481,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  loadingMore: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  loadingMoreText: {
+    marginLeft: 10,
+    color: '#666',
+    fontSize: 14,
   },
 });
 

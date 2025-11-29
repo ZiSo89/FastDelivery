@@ -20,29 +20,7 @@ const defaultCenter = {
   lng: 25.8733
 };
 
-// Icon mapping for store types - add new types here with their icons
-const STORE_TYPE_ICONS = {
-  'Όλα': '🍽️',
-  'Καφετέρια': '☕',
-  'Ταβέρνα': '🍔',
-  'Mini Market': '🛒',
-  'Γλυκά': '🍰',
-  'Φαρμακείο': '💊',
-  'Σουβλατζίδικο': '🥙',
-  'Πιτσαρία': '🍕',
-  'Ψητοπωλείο': '🍖',
-  'Αρτοποιείο': '🥖',
-  'Ζαχαροπλαστείο': '🎂',
-  'Κρεοπωλείο': '🥩',
-  'Ιχθυοπωλείο': '🐟',
-  'Οπωροπωλείο': '🍎',
-  'Κάβα': '🍷',
-  'Ανθοπωλείο': '💐',
-  'Pet Shop': '🐕',
-  'Άλλο': '🏪',
-};
-
-// Default icon for unknown types
+// Default icon for unknown types (fallback)
 const DEFAULT_ICON = '🏪';
 
 const CustomerHome = () => {
@@ -58,6 +36,7 @@ const CustomerHome = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [map, setMap] = useState(null);
   const [categories, setCategories] = useState([{ id: 'all', label: 'Όλα', icon: '🍽️' }]);
+  const [storeTypeIcons, setStoreTypeIcons] = useState({});
   const categoriesRef = React.useRef(null);
   
   // Get guest info from localStorage
@@ -82,13 +61,28 @@ const CustomerHome = () => {
       try {
         const response = await api.get('/auth/store-types');
         if (response.data.success && response.data.storeTypes?.length > 0) {
+          // Build icon mapping from backend data
+          const iconMap = {};
+          response.data.storeTypes.forEach(type => {
+            if (typeof type === 'object' && type.name) {
+              iconMap[type.name] = type.icon || DEFAULT_ICON;
+            } else if (typeof type === 'string') {
+              iconMap[type] = DEFAULT_ICON;
+            }
+          });
+          setStoreTypeIcons(iconMap);
+          
           const dynamicCategories = [
             { id: 'all', label: 'Όλα', icon: '🍽️' },
-            ...response.data.storeTypes.map(type => ({
-              id: type,
-              label: type,
-              icon: STORE_TYPE_ICONS[type] || DEFAULT_ICON
-            }))
+            ...response.data.storeTypes.map(type => {
+              const typeName = typeof type === 'object' ? type.name : type;
+              const typeIcon = typeof type === 'object' ? (type.icon || DEFAULT_ICON) : DEFAULT_ICON;
+              return {
+                id: typeName,
+                label: typeName,
+                icon: typeIcon
+              };
+            })
           ];
           setCategories(dynamicCategories);
         }
@@ -348,7 +342,7 @@ const CustomerHome = () => {
                     filteredStores.map(store => (
                       <div key={store._id} className="store-card" onClick={() => handleStoreClick(store)}>
                         <div className="store-image-placeholder">
-                          {STORE_TYPE_ICONS[store.storeType] || DEFAULT_ICON}
+                          {storeTypeIcons[store.storeType] || DEFAULT_ICON}
                         </div>
                         <div className="store-info">
                           <div className="store-header">

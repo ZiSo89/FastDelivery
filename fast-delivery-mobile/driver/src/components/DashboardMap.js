@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { 
   View, 
   Text, 
@@ -12,6 +12,56 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { GOOGLE_MAPS_API_KEY } from '../config';
+
+// Memoized Marker Components to prevent flickering
+const DriverMarkerMemo = memo(({ coordinate, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    setIsReady(false);
+    const timer = setTimeout(() => setIsReady(true), 200);
+    return () => clearTimeout(timer);
+  }, [coordinate?.latitude, coordinate?.longitude]);
+  if (!coordinate) return null;
+  return (
+    <Marker coordinate={coordinate} title="Εσύ" anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={!isReady}>
+      <View style={styles.driverMarker}>
+        <Ionicons name="bicycle" size={12} color="#fff" />
+      </View>
+    </Marker>
+  );
+});
+
+const StoreMarkerMemo = memo(({ coordinate, title, description, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!coordinate) return null;
+  return (
+    <Marker coordinate={coordinate} title={title} description={description} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={!isReady}>
+      <View style={styles.storeMarker}>
+        <Ionicons name="storefront" size={10} color="#fff" />
+      </View>
+    </Marker>
+  );
+});
+
+const CustomerMarkerMemo = memo(({ coordinate, title, description, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!coordinate) return null;
+  return (
+    <Marker coordinate={coordinate} title={title} description={description} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={!isReady}>
+      <View style={styles.customerMarker}>
+        <Ionicons name="home" size={10} color="#fff" />
+      </View>
+    </Marker>
+  );
+});
 
 const DashboardMap = ({ orders, driverLocation }) => {
   const mapRef = useRef(null);
@@ -385,45 +435,30 @@ const DashboardMap = ({ orders, driverLocation }) => {
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        {/* Driver Marker (always shown) */}
-        {currentLocation && (
-          <Marker
-            coordinate={currentLocation}
-            title="Εσύ"
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.driverMarker}>
-              <Ionicons name="bicycle" size={12} color="#fff" />
-            </View>
-          </Marker>
-        )}
+        {/* Driver Marker (always shown) - Memoized */}
+        <DriverMarkerMemo
+          coordinate={currentLocation}
+          styles={styles}
+        />
 
-        {/* Store Marker */}
-        {activeOrder && storeCoords && (
-          <Marker
+        {/* Store Marker - Memoized */}
+        {activeOrder && (
+          <StoreMarkerMemo
             coordinate={storeCoords}
             title={activeOrder.storeId?.businessName || 'Κατάστημα'}
             description={activeOrder.storeId?.address}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.storeMarker}>
-              <Ionicons name="storefront" size={10} color="#fff" />
-            </View>
-          </Marker>
+            styles={styles}
+          />
         )}
 
-        {/* Customer Marker */}
-        {activeOrder && customerCoords && (
-          <Marker
+        {/* Customer Marker - Memoized */}
+        {activeOrder && (
+          <CustomerMarkerMemo
             coordinate={customerCoords}
             title={activeOrder.customer?.name || 'Πελάτης'}
             description={activeOrder.customer?.address || activeOrder.deliveryAddress}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View style={styles.customerMarker}>
-              <Ionicons name="home" size={10} color="#fff" />
-            </View>
-          </Marker>
+            styles={styles}
+          />
         )}
 
         {/* Route Polyline */}

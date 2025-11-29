@@ -16,6 +16,7 @@ const {
   updateSettings,
   addStoreType,
   deleteStoreType,
+  updateStoreType,
   getMonthlyExpense,
   updateMonthlyExpense,
   getExtendedStats,
@@ -57,6 +58,7 @@ router.get('/stats/extended', getExtendedStats);
 router.get('/settings', getSettings);
 router.put('/settings', updateSettings);
 router.post('/settings/store-types', addStoreType);
+router.put('/settings/store-types/:storeType', updateStoreType);
 router.delete('/settings/store-types/:storeType', deleteStoreType);
 
 // Monthly expenses

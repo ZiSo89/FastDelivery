@@ -48,8 +48,12 @@ const StoreRegister = () => {
       try {
         const response = await axios.get(`${API_URL}/auth/store-types`);
         if (response.data.success && response.data.storeTypes?.length > 0) {
-          setStoreTypes(response.data.storeTypes);
-          setFormData(prev => ({ ...prev, storeType: response.data.storeTypes[0] }));
+          // Handle both old format (strings) and new format (objects with name/icon)
+          const types = response.data.storeTypes.map(t => 
+            typeof t === 'object' ? t.name : t
+          );
+          setStoreTypes(types);
+          setFormData(prev => ({ ...prev, storeType: types[0] }));
         }
       } catch (err) {
         console.log('Using default store types');

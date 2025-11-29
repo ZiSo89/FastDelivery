@@ -352,17 +352,34 @@ exports.getMyOrders = async (req, res) => {
       });
     }
 
+    const { page, limit } = req.query;
+    
     const query = {
       'customer.phone': new RegExp(`^${req.user.phone.trim()}$`)
     };
 
+    // Pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10; // Default 10 for mobile/web customers
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get total count for pagination
+    const totalCount = await Order.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limitNum);
+
     const orders = await Order.find(query)
-    .sort({ createdAt: -1 })
-    .populate('storeId', 'businessName image');
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .populate('storeId', 'businessName image');
 
     res.json({
       success: true,
       count: orders.length,
+      totalCount,
+      totalPages,
+      currentPage: pageNum,
+      hasMore: pageNum < totalPages,
       orders
     });
   } catch (error) {

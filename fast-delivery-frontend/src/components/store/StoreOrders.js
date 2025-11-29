@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Modal, Form, Card, Row, Col } from 'react-bootstrap';
+import { Table, Button, Badge, Spinner, Alert, ButtonGroup, Modal, Form, Card, Row, Col, Pagination } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/api';
 import socketService from '../../services/socket';
@@ -22,6 +22,9 @@ const StoreOrders = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectOrderId, setRejectOrderId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const filterRef = useRef(filter);
 
   // Keep filterRef in sync with filter state
@@ -35,27 +38,41 @@ const StoreOrders = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const fetchOrders = useCallback(async (currentFilter = null) => {
+  const fetchOrders = useCallback(async (currentFilter = null, page = 1) => {
     try {
       setLoading(true);
       const filterToUse = currentFilter !== null ? currentFilter : filterRef.current;
       
-      // For in_progress, fetch all and filter client-side
-      const statusFilter = filterToUse === 'in_progress' || filterToUse === 'all' ? null : filterToUse;
-      const response = await storeService.getOrders(statusFilter);
-      let allOrders = response.orders || response.data || [];
-      
-      // Filter for "Σε Εξέλιξη": all orders from last 3 hours except completed
+      // For in_progress, we need all recent orders - use higher limit without pagination
+      // For 'all' and specific statuses, use pagination
       if (filterToUse === 'in_progress') {
+        // Fetch more orders without pagination for in_progress filter
+        const response = await storeService.getOrders(null, 1, 100);
+        let allOrders = response.orders || response.data || [];
+        
+        // Filter for "Σε Εξέλιξη": all orders from last 3 hours except completed
         const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
         allOrders = allOrders.filter(order => {
           const isNotCompleted = order.status !== 'completed';
           const isRecent = new Date(order.createdAt) >= threeHoursAgo;
           return isNotCompleted && isRecent;
         });
+        
+        setOrders(allOrders);
+        setTotalPages(1);
+        setTotalCount(allOrders.length);
+        setCurrentPage(1);
+      } else {
+        // For 'all' or specific status, use pagination
+        const statusFilter = filterToUse === 'all' ? null : filterToUse;
+        const response = await storeService.getOrders(statusFilter, page, 20);
+        
+        setOrders(response.orders || response.data || []);
+        setTotalPages(response.pages || 1);
+        setTotalCount(response.total || 0);
+        setCurrentPage(page);
       }
       
-      setOrders(allOrders);
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα φόρτωσης παραγγελιών');
@@ -64,10 +81,17 @@ const StoreOrders = () => {
     }
   }, []);
 
-  // Fetch orders when filter changes
+  // Fetch orders when filter changes - reset to page 1
   useEffect(() => {
-    fetchOrders(filter);
+    setCurrentPage(1);
+    fetchOrders(filter, 1);
   }, [filter, fetchOrders]);
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchOrders(filter, page);
+  };
 
   // Socket.IO listeners (setup once, never recreate)
   useEffect(() => {
@@ -301,6 +325,13 @@ const StoreOrders = () => {
         </ButtonGroup>
       </div>
 
+      {/* Order count - show for paginated filters */}
+      {filter !== 'in_progress' && totalCount > 0 && (
+        <div className="text-muted mb-3">
+          <small>Σύνολο: {totalCount} παραγγελίες (Σελίδα {currentPage} από {totalPages})</small>
+        </div>
+      )}
+
       {loading ? (
         <div className="text-center py-5">
           <Spinner animation="border" variant="primary" />
@@ -477,6 +508,39 @@ const StoreOrders = () => {
               ))}
             </tbody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination - only show for 'all' and specific status filters */}
+      {filter !== 'in_progress' && totalPages > 1 && (
+        <div className="d-flex justify-content-center mt-3">
+          <Pagination className="mb-0">
+            <Pagination.First onClick={() => handlePageChange(1)} disabled={currentPage === 1} />
+            <Pagination.Prev onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} />
+            {[...Array(Math.min(5, totalPages))].map((_, idx) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = idx + 1;
+              } else if (currentPage <= 3) {
+                pageNum = idx + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + idx;
+              } else {
+                pageNum = currentPage - 2 + idx;
+              }
+              return (
+                <Pagination.Item
+                  key={pageNum}
+                  active={pageNum === currentPage}
+                  onClick={() => handlePageChange(pageNum)}
+                >
+                  {pageNum}
+                </Pagination.Item>
+              );
+            })}
+            <Pagination.Next onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} />
+            <Pagination.Last onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} />
+          </Pagination>
         </div>
       )}
 

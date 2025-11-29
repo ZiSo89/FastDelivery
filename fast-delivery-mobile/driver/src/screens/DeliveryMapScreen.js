@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { 
   View, 
   Text, 
@@ -16,6 +16,62 @@ import locationService from '../services/locationService';
 import { GOOGLE_MAPS_API_KEY } from '../config';
 
 const { width, height } = Dimensions.get('window');
+
+// Memoized Marker Components to prevent flickering
+const StoreMarkerMemo = memo(({ coordinate, title, description, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!coordinate) return null;
+  return (
+    <Marker coordinate={coordinate} title={title} description={description} tracksViewChanges={!isReady}>
+      <View style={styles.markerContainer}>
+        <View style={[styles.marker, styles.storeMarker]}>
+          <Ionicons name="storefront" size={20} color="#fff" />
+        </View>
+      </View>
+    </Marker>
+  );
+});
+
+const CustomerMarkerMemo = memo(({ coordinate, title, description, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!coordinate) return null;
+  return (
+    <Marker coordinate={coordinate} title={title} description={description} tracksViewChanges={!isReady}>
+      <View style={styles.markerContainer}>
+        <View style={[styles.marker, styles.customerMarker]}>
+          <Ionicons name="home" size={20} color="#fff" />
+        </View>
+      </View>
+    </Marker>
+  );
+});
+
+const DriverMarkerMemo = memo(({ coordinate, styles }) => {
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    setIsReady(false);
+    const timer = setTimeout(() => setIsReady(true), 200);
+    return () => clearTimeout(timer);
+  }, [coordinate?.latitude, coordinate?.longitude]);
+  if (!coordinate) return null;
+  return (
+    <Marker coordinate={coordinate} title="Εσείς" tracksViewChanges={!isReady}>
+      <View style={styles.markerContainer}>
+        <View style={[styles.marker, styles.driverMarker]}>
+          <Ionicons name="car-sport" size={20} color="#fff" />
+        </View>
+      </View>
+    </Marker>
+  );
+});
 
 const DeliveryMapScreen = ({ route, navigation }) => {
   const { order } = route.params;
@@ -247,49 +303,27 @@ const DeliveryMapScreen = ({ route, navigation }) => {
             />
           )}
 
-          {/* Store Marker */}
-          {storeLocation && (
-            <Marker
-              coordinate={storeLocation}
-              title="Κατάστημα"
-              description={order?.storeId?.businessName}
-            >
-              <View style={styles.markerContainer}>
-                <View style={[styles.marker, styles.storeMarker]}>
-                  <Ionicons name="storefront" size={20} color="#fff" />
-                </View>
-              </View>
-            </Marker>
-          )}
+          {/* Store Marker - Memoized */}
+          <StoreMarkerMemo
+            coordinate={storeLocation}
+            title="Κατάστημα"
+            description={order?.storeId?.businessName}
+            styles={styles}
+          />
 
-          {/* Customer Marker */}
-          {customerLocation && (
-            <Marker
-              coordinate={customerLocation}
-              title="Πελάτης"
-              description={order?.customer?.name}
-            >
-              <View style={styles.markerContainer}>
-                <View style={[styles.marker, styles.customerMarker]}>
-                  <Ionicons name="home" size={20} color="#fff" />
-                </View>
-              </View>
-            </Marker>
-          )}
+          {/* Customer Marker - Memoized */}
+          <CustomerMarkerMemo
+            coordinate={customerLocation}
+            title="Πελάτης"
+            description={order?.customer?.name}
+            styles={styles}
+          />
 
-          {/* Driver Location */}
-          {driverLocation && (
-            <Marker
-              coordinate={driverLocation}
-              title="Εσείς"
-            >
-              <View style={styles.markerContainer}>
-                <View style={[styles.marker, styles.driverMarker]}>
-                  <Ionicons name="car-sport" size={20} color="#fff" />
-                </View>
-              </View>
-            </Marker>
-          )}
+          {/* Driver Location - Memoized */}
+          <DriverMarkerMemo
+            coordinate={driverLocation}
+            styles={styles}
+          />
         </MapView>
 
         {/* Route Info Card */}

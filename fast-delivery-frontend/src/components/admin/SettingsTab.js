@@ -10,7 +10,9 @@ import {
   Spinner, 
   Alert,
   InputGroup,
-  Modal
+  Modal,
+  OverlayTrigger,
+  Tooltip
 } from 'react-bootstrap';
 import { 
   FaCog, 
@@ -22,9 +24,17 @@ import {
   FaMotorcycle,
   FaUser,
   FaLock,
-  FaEnvelope
+  FaEnvelope,
+  FaEdit
 } from 'react-icons/fa';
 import api from '../../services/api';
+
+// Available icons for store types
+const AVAILABLE_ICONS = [
+  '🏪', '🛒', '☕', '🍔', '🍕', '🥙', '🍖', '🥖', '🎂', '🍰',
+  '🥩', '🐟', '🍎', '🍷', '💐', '💊', '🐕', '🍜', '🍣', '🥗',
+  '🍦', '🍩', '🧁', '🥪', '🌮', '🍿', '🥤', '🍺', '🍝', '🥘'
+];
 
 const SettingsTab = () => {
   const [loading, setLoading] = useState(true);
@@ -37,7 +47,15 @@ const SettingsTab = () => {
   const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(2.5);
   const [storeTypes, setStoreTypes] = useState([]);
   const [newStoreType, setNewStoreType] = useState('');
+  const [newStoreIcon, setNewStoreIcon] = useState('🏪');
   const [addingType, setAddingType] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
+  
+  // Edit icon modal state
+  const [showEditIconModal, setShowEditIconModal] = useState(false);
+  const [editingType, setEditingType] = useState(null);
+  const [editingIcon, setEditingIcon] = useState('🏪');
+  const [savingIcon, setSavingIcon] = useState(false);
   
   // Admin profile state
   const [adminProfile, setAdminProfile] = useState({ name: '', email: '' });
@@ -184,12 +202,14 @@ const SettingsTab = () => {
       setError(null);
       
       const res = await api.post('/admin/settings/store-types', {
-        storeType: newStoreType.trim()
+        storeType: newStoreType.trim(),
+        icon: newStoreIcon
       });
       
       if (res.data.success) {
         setStoreTypes(res.data.storeTypes);
         setNewStoreType('');
+        setNewStoreIcon('🏪');
         setSuccess('Ο τύπος καταστήματος προστέθηκε!');
         setTimeout(() => setSuccess(null), 3000);
       }
@@ -201,9 +221,43 @@ const SettingsTab = () => {
     }
   };
 
+  // Update store type icon
+  const handleUpdateIcon = async () => {
+    if (!editingType) return;
+    
+    try {
+      setSavingIcon(true);
+      setError(null);
+      
+      const res = await api.put(`/admin/settings/store-types/${encodeURIComponent(editingType)}`, {
+        icon: editingIcon
+      });
+      
+      if (res.data.success) {
+        setStoreTypes(res.data.storeTypes);
+        setShowEditIconModal(false);
+        setEditingType(null);
+        setSuccess('Το εικονίδιο ενημερώθηκε!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error updating icon:', err);
+      setError(err.response?.data?.message || 'Σφάλμα ενημέρωσης εικονιδίου');
+    } finally {
+      setSavingIcon(false);
+    }
+  };
+
+  // Open edit icon modal
+  const openEditIconModal = (storeType) => {
+    setEditingType(storeType.name);
+    setEditingIcon(storeType.icon);
+    setShowEditIconModal(true);
+  };
+
   // Confirm delete store type
   const confirmDeleteStoreType = (storeType) => {
-    setTypeToDelete(storeType);
+    setTypeToDelete(storeType.name);
     setShowDeleteModal(true);
   };
 
@@ -343,27 +397,83 @@ const SettingsTab = () => {
               Τύποι Καταστημάτων
             </Card.Header>
             <Card.Body>
-              {/* Add new type */}
-              <InputGroup className="mb-3">
-                <Form.Control
-                  type="text"
-                  placeholder="Νέος τύπος καταστήματος..."
-                  value={newStoreType}
-                  onChange={(e) => setNewStoreType(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddStoreType()}
-                />
-                <Button 
-                  variant="success" 
-                  onClick={handleAddStoreType}
-                  disabled={addingType || !newStoreType.trim()}
-                >
-                  {addingType ? (
-                    <Spinner size="sm" animation="border" />
-                  ) : (
-                    <FaPlus />
-                  )}
-                </Button>
-              </InputGroup>
+              {/* Add new type with icon picker */}
+              <div className="mb-3">
+                <div className="d-flex gap-2 mb-2">
+                  {/* Icon Picker Dropdown */}
+                  <div className="position-relative">
+                    <Button 
+                      variant="outline-secondary"
+                      onClick={() => setShowIconPicker(!showIconPicker)}
+                      style={{ fontSize: '1.5rem', padding: '4px 12px', minWidth: '50px' }}
+                      title="Επιλογή εικονιδίου"
+                    >
+                      {newStoreIcon}
+                    </Button>
+                    {showIconPicker && (
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          zIndex: 1000,
+                          backgroundColor: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          padding: '10px',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(6, 1fr)',
+                          gap: '5px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          maxWidth: '280px'
+                        }}
+                      >
+                        {AVAILABLE_ICONS.map((icon, idx) => (
+                          <Button
+                            key={idx}
+                            variant={newStoreIcon === icon ? 'primary' : 'outline-light'}
+                            onClick={() => {
+                              setNewStoreIcon(icon);
+                              setShowIconPicker(false);
+                            }}
+                            style={{ 
+                              fontSize: '1.3rem', 
+                              padding: '5px',
+                              border: newStoreIcon === icon ? '' : '1px solid #eee'
+                            }}
+                          >
+                            {icon}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Store type input */}
+                  <Form.Control
+                    type="text"
+                    placeholder="Νέος τύπος καταστήματος..."
+                    value={newStoreType}
+                    onChange={(e) => setNewStoreType(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddStoreType()}
+                    className="flex-grow-1"
+                  />
+                  <Button 
+                    variant="success" 
+                    onClick={handleAddStoreType}
+                    disabled={addingType || !newStoreType.trim()}
+                  >
+                    {addingType ? (
+                      <Spinner size="sm" animation="border" />
+                    ) : (
+                      <FaPlus />
+                    )}
+                  </Button>
+                </div>
+                <Form.Text className="text-muted">
+                  Επιλέξτε εικονίδιο και πληκτρολογήστε τον τύπο καταστήματος
+                </Form.Text>
+              </div>
 
               {/* Store types list */}
               {storeTypes.length === 0 ? (
@@ -377,19 +487,38 @@ const SettingsTab = () => {
                       key={index}
                       className="d-flex justify-content-between align-items-center"
                     >
-                      <span>
-                        <Badge bg="secondary" className="me-2">
-                          {index + 1}
-                        </Badge>
-                        {type}
+                      <span className="d-flex align-items-center">
+                        <span style={{ fontSize: '1.4rem', marginRight: '10px' }}>
+                          {type.icon || '🏪'}
+                        </span>
+                        <span>{type.name}</span>
                       </span>
-                      <Button 
-                        variant="outline-danger" 
-                        size="sm"
-                        onClick={() => confirmDeleteStoreType(type)}
-                      >
-                        <FaTrash />
-                      </Button>
+                      <div className="d-flex gap-2">
+                        <OverlayTrigger
+                          placement="top"
+                          overlay={<Tooltip>Αλλαγή εικονιδίου</Tooltip>}
+                        >
+                          <Button 
+                            variant="outline-primary" 
+                            size="sm"
+                            onClick={() => openEditIconModal(type)}
+                          >
+                            <FaEdit />
+                          </Button>
+                        </OverlayTrigger>
+                        <OverlayTrigger
+                          placement="top"
+                          overlay={<Tooltip>Διαγραφή</Tooltip>}
+                        >
+                          <Button 
+                            variant="outline-danger" 
+                            size="sm"
+                            onClick={() => confirmDeleteStoreType(type)}
+                          >
+                            <FaTrash />
+                          </Button>
+                        </OverlayTrigger>
+                      </div>
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
@@ -597,6 +726,70 @@ const SettingsTab = () => {
               <>
                 <FaLock className="me-2" />
                 Αλλαγή Κωδικού
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Edit Icon Modal */}
+      <Modal show={showEditIconModal} onHide={() => setShowEditIconModal(false)} centered>
+        <Modal.Header closeButton className="bg-info text-white">
+          <Modal.Title>
+            <FaEdit className="me-2" />
+            Αλλαγή Εικονιδίου
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-center mb-3">
+            Επιλέξτε εικονίδιο για τον τύπο: <strong>{editingType}</strong>
+          </p>
+          <div 
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(6, 1fr)',
+              gap: '8px',
+              padding: '10px'
+            }}
+          >
+            {AVAILABLE_ICONS.map((icon, idx) => (
+              <Button
+                key={idx}
+                variant={editingIcon === icon ? 'primary' : 'outline-secondary'}
+                onClick={() => setEditingIcon(icon)}
+                style={{ 
+                  fontSize: '1.5rem', 
+                  padding: '8px',
+                  aspectRatio: '1'
+                }}
+              >
+                {icon}
+              </Button>
+            ))}
+          </div>
+          <div className="text-center mt-3">
+            <span style={{ fontSize: '2rem' }}>{editingIcon}</span>
+            <p className="text-muted small mt-1">Επιλεγμένο εικονίδιο</p>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowEditIconModal(false)}>
+            Ακύρωση
+          </Button>
+          <Button 
+            variant="info" 
+            onClick={handleUpdateIcon}
+            disabled={savingIcon}
+          >
+            {savingIcon ? (
+              <>
+                <Spinner size="sm" animation="border" className="me-2" />
+                Αποθήκευση...
+              </>
+            ) : (
+              <>
+                <FaSave className="me-2" />
+                Αποθήκευση
               </>
             )}
           </Button>
