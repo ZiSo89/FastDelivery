@@ -19,6 +19,8 @@ import TrackOrder from './pages/customer/TrackOrder';
 import CustomerOrders from './pages/customer/CustomerOrders';
 import CustomerProfile from './pages/customer/CustomerProfile';
 import CustomerNotificationHandler from './components/customer/CustomerNotificationHandler';
+import VerifyEmail from './pages/VerifyEmail';
+import ResetPassword from './pages/ResetPassword';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import './styles/CustomerPortal.css';
@@ -39,6 +41,8 @@ function App() {
           <Route path="/register-business" element={<RegisterSelection />} />
           <Route path="/register-business/store" element={<StoreRegister />} />
           <Route path="/register-business/driver" element={<DriverRegister />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/order" element={<CustomerHome />} />
           <Route path="/new-order" element={<NewOrder />} />
           <Route path="/my-orders" element={<CustomerOrders />} />
