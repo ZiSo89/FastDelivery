@@ -30,8 +30,16 @@
       "package": "com.fastdelivery.driver",
       "permissions": [
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
-      ]
+        "RECEIVE_BOOT_COMPLETED",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDUy3hiyc50qQv1ox6wyH4U9O_YsKyKdVE"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
