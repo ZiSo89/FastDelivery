@@ -4,6 +4,8 @@
 
 Το σύστημα email verification και password reset για το Fast Delivery.
 
+**Email Provider:** Mailjet (δωρεάν plan - 200 emails/ημέρα)
+
 ---
 
 ## 🔧 Backend Setup
@@ -11,8 +13,9 @@
 ### Environment Variables (`.env` / Render.com)
 
 ```env
-RESEND_API_KEY=re_xxxxxx_xxxxxxxxxx
-EMAIL_FROM=Fast Delivery <onboarding@resend.dev>
+MAILJET_API_KEY=your-mailjet-api-key
+MAILJET_SECRET_KEY=your-mailjet-secret-key
+EMAIL_FROM=your-verified-email@example.com
 NODE_ENV=production
 ```
 
@@ -264,17 +267,19 @@ fast-delivery-frontend/
     └── App.js                    # Routes
 ```
 
-### Mobile (TODO)
+### Mobile (✅ IMPLEMENTED)
 ```
 fast-delivery-mobile/
 ├── customer/src/
 │   └── screens/
-│       ├── ForgotPasswordScreen.js    # TODO
-│       └── LoginScreen.js             # Add link
+│       ├── ForgotPasswordScreen.js    # ✅ Done
+│       ├── VerifyEmailScreen.js       # ✅ Done
+│       ├── RegisterScreen.js          # ✅ Updated - shows email verification message
+│       └── LoginScreen.js             # ✅ Updated - forgot password link
 └── driver/src/
     └── screens/
-        ├── ForgotPasswordScreen.js    # TODO
-        └── LoginScreen.js             # Add link
+        ├── ForgotPasswordScreen.js    # ✅ Done
+        └── LoginScreen.js             # ✅ Updated - forgot password link
 ```
 
 ---

@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 
 import LoginScreen from './src/screens/LoginScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 import DeliveryMapScreen from './src/screens/DeliveryMapScreen';
@@ -86,11 +87,18 @@ const AppNavigator = () => {
     >
       {!user ? (
         // Auth Stack
-        <Stack.Screen 
-          name="Login" 
-          component={LoginScreen} 
-          options={{ headerShown: false }}
-        />
+        <>
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen} 
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="ForgotPassword" 
+            component={ForgotPasswordScreen} 
+            options={{ headerShown: false }}
+          />
+        </>
       ) : user.status === 'pending' || !user.isApproved ? (
         // Pending Approval
         <Stack.Screen 

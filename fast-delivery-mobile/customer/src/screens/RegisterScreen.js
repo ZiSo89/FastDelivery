@@ -292,7 +292,18 @@ const RegisterScreen = ({ navigation }) => {
     const result = await register(dataToSubmit);
     setLoading(false);
 
-    if (!result.success) {
+    if (result.success) {
+      if (result.needsVerification) {
+        // Show email verification message
+        showAlert(
+          'Επιβεβαίωση Email', 
+          'Η εγγραφή ολοκληρώθηκε! Ελέγξτε το email σας για να επιβεβαιώσετε τον λογαριασμό σας.\n\n💡 Ελέγξτε και τον φάκελο Spam!',
+          [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+          'success'
+        );
+      }
+      // If no verification needed, AuthContext handles login automatically
+    } else {
       showAlert('Σφάλμα', result.error, [], 'error');
     }
   };

@@ -147,6 +147,16 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await customerService.register(userData);
+      
+      // Check if email verification is needed (production mode)
+      if (response.data.needsVerification) {
+        return { 
+          success: true, 
+          needsVerification: true,
+          message: response.data.message || 'Ελέγξτε το email σας για επιβεβαίωση.'
+        };
+      }
+      
       const { token, user } = response.data;
 
       await SecureStore.setItemAsync('token', token);

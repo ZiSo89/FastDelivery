@@ -26,6 +26,8 @@ import OrderScreen from './src/screens/OrderScreen';
 import TrackOrderScreen from './src/screens/TrackOrderScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import VerifyEmailScreen from './src/screens/VerifyEmailScreen';
 import CustomerOrders from './src/screens/CustomerOrders';
 import CustomerProfile from './src/screens/CustomerProfile';
 
@@ -188,6 +190,16 @@ const AppNavigator = () => {
           <Stack.Screen 
             name="Register" 
             component={RegisterScreen} 
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="ForgotPassword" 
+            component={ForgotPasswordScreen} 
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen 
+            name="VerifyEmail" 
+            component={VerifyEmailScreen} 
             options={{ headerShown: false }}
           />
         </>

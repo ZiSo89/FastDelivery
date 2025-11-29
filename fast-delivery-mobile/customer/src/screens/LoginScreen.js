@@ -136,6 +136,10 @@ const LoginScreen = ({ navigation }) => {
               </View>
               <Text style={styles.rememberText}>Να με θυμάσαι</Text>
             </TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.forgotPasswordText}>Ξέχασες τον κωδικό;</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
@@ -229,7 +233,12 @@ const styles = StyleSheet.create({
   rememberContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 10,
+  },
+  forgotPasswordText: {
+    color: '#00c2e8',
+    fontSize: 14,
   },
   rememberTouchable: {
     flexDirection: 'row',

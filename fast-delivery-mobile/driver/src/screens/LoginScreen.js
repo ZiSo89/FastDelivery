@@ -16,7 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 
-const LoginScreen = () => {
+const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -143,6 +143,13 @@ const LoginScreen = () => {
           </View>
 
           <TouchableOpacity 
+            style={styles.forgotPasswordLink}
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
+            <Text style={styles.forgotPasswordText}>Ξέχασες τον κωδικό σου;</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
             style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
             onPress={handleLogin}
             disabled={loading}
@@ -248,6 +255,14 @@ const styles = StyleSheet.create({
   rememberText: {
     fontSize: 14,
     color: '#666',
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 15,
+  },
+  forgotPasswordText: {
+    color: '#00c2e8',
+    fontSize: 14,
   },
   loginButton: {
     backgroundColor: '#00c2e8',
