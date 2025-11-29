@@ -94,7 +94,7 @@ const ForgotPassword = () => {
                 <div className="text-center">
                   <Link to="/login" className="text-decoration-none">
                     <FaArrowLeft className="me-2" />
-                    Πίσω στη Σύνδεση
+                    Πίσω στη Σύνδεση (Υπάλληλοι)
                   </Link>
                 </div>
               </Form>
@@ -109,7 +109,7 @@ const ForgotPassword = () => {
               </Alert>
               <Link to="/login" className="btn btn-outline-primary">
                 <FaArrowLeft className="me-2" />
-                Πίσω στη Σύνδεση
+                Πίσω στη Σύνδεση (Υπάλληλοι)
               </Link>
             </div>
           )}

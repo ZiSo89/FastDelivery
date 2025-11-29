@@ -22,6 +22,7 @@ import CustomerNotificationHandler from './components/customer/CustomerNotificat
 import VerifyEmail from './pages/VerifyEmail';
 import ResetPassword from './pages/ResetPassword';
 import ForgotPassword from './pages/ForgotPassword';
+import CustomerForgotPassword from './pages/customer/CustomerForgotPassword';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import './styles/CustomerPortal.css';
@@ -45,6 +46,7 @@ function App() {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/customer/forgot-password" element={<CustomerForgotPassword />} />
           <Route path="/order" element={<CustomerHome />} />
           <Route path="/new-order" element={<NewOrder />} />
           <Route path="/my-orders" element={<CustomerOrders />} />

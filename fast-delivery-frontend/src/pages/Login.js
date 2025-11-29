@@ -115,12 +115,16 @@ const Login = () => {
                 disabled={loading}
                 className="form-input-custom"
               />
-              <div className="text-end mt-2">
-                <Link to="/forgot-password" className="text-decoration-none small">
-                  Ξέχασες τον κωδικό σου;
-                </Link>
-              </div>
             </Form.Group>
+
+            <div className="text-center mb-3">
+              <Link 
+                to="/forgot-password" 
+                className={`forgot-password-link ${error ? 'forgot-password-highlight' : ''}`}
+              >
+                🔑 Ξέχασες τον κωδικό σου;
+              </Link>
+            </div>
 
             <Button
               type="submit"

@@ -72,6 +72,12 @@ const CustomerPortal = () => {
 
                   {error && <div className="error-msg">{error}</div>}
 
+                  <div style={{ textAlign: 'center', margin: '12px 0' }}>
+                    <Link to="/customer/forgot-password" style={{ color: '#00c2e8', fontSize: '14px' }}>
+                      🔑 Ξέχασες τον κωδικό σου;
+                    </Link>
+                  </div>
+
                   <button type="submit" className="btn-primary-app" disabled={loading}>
                     {loading ? 'Σύνδεση...' : 'Σύνδεση'}
                   </button>

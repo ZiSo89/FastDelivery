@@ -221,6 +221,41 @@
   margin-bottom: 24px;
 }
 
+/* Forgot Password Link */
+.forgot-password-link {
+  color: #00c2e8;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.forgot-password-link:hover {
+  color: #00a8cc;
+  text-decoration: underline;
+}
+
+/* Highlighted when there's an error */
+.forgot-password-highlight {
+  display: inline-block;
+  background: #fff3e0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ffcc80;
+  animation: pulse-highlight 2s ease-in-out infinite;
+}
+
+@keyframes pulse-highlight {
+  0%, 100% { 
+    background: #fff3e0;
+    transform: scale(1);
+  }
+  50% { 
+    background: #ffe0b2;
+    transform: scale(1.02);
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 576px) {
   .dashboard-content-wrapper {
