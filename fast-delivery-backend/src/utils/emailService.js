@@ -34,6 +34,9 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
       from: EMAIL_FROM,
       to: email,
       subject: '✉️ Επιβεβαίωση Email - Fast Delivery',
+      headers: {
+        'X-Entity-Ref-ID': `verify-${Date.now()}` // Unique ID to prevent threading
+      },
       html: `
         <!DOCTYPE html>
         <html>
@@ -111,6 +114,9 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
       from: EMAIL_FROM,
       to: email,
       subject: '🔐 Επαναφορά Κωδικού - Fast Delivery',
+      headers: {
+        'X-Entity-Ref-ID': `reset-${Date.now()}` // Unique ID to prevent threading
+      },
       html: `
         <!DOCTYPE html>
         <html>
@@ -138,6 +144,10 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
               <center>
                 <a href="${resetLink}" class="button">🔐 Αλλαγή Κωδικού</a>
               </center>
+              <p>Ή αντέγραψε αυτό το link στον browser σου:</p>
+              <p style="word-break: break-all; background: #eee; padding: 10px; border-radius: 4px; font-size: 12px;">
+                ${resetLink}
+              </p>
               <p><strong>Το link ισχύει για 1 ώρα.</strong></p>
               <p>Αν δεν ζήτησες εσύ επαναφορά κωδικού, αγνόησε αυτό το email.</p>
             </div>
