@@ -199,9 +199,15 @@ exports.registerStore = async (req, res) => {
       });
     }
 
+    // Different message based on environment
+    const message = process.env.NODE_ENV === 'production'
+      ? 'Η εγγραφή σας ολοκληρώθηκε! Ελέγξτε το email σας για επιβεβαίωση. Μετά την επιβεβαίωση, θα αναμένετε έγκριση από διαχειριστή.'
+      : 'Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση από διαχειριστή.';
+
     res.status(201).json({
       success: true,
-      message: 'Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση από διαχειριστή.',
+      message,
+      needsEmailVerification: process.env.NODE_ENV === 'production',
       store: {
         _id: store._id,
         businessName: store.businessName,
@@ -267,7 +273,17 @@ exports.registerDriver = async (req, res, next) => {
       });
     }
 
-    res.status(201).json({ success: true, message: 'Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση.', driver });
+    // Different message based on environment
+    const message = process.env.NODE_ENV === 'production'
+      ? 'Η εγγραφή σας ολοκληρώθηκε! Ελέγξτε το email σας για επιβεβαίωση. Μετά την επιβεβαίωση, θα αναμένετε έγκριση από διαχειριστή.'
+      : 'Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση.';
+
+    res.status(201).json({ 
+      success: true, 
+      message,
+      needsEmailVerification: process.env.NODE_ENV === 'production',
+      driver 
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
