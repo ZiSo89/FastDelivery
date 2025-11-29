@@ -6,7 +6,7 @@ import api from '../services/api';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
-  const [userType, setUserType] = useState('customer');
+  const [userType, setUserType] = useState('store');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('form'); // form, success
   const [message, setMessage] = useState('');
@@ -57,7 +57,6 @@ const ForgotPassword = () => {
                     value={userType}
                     onChange={(e) => setUserType(e.target.value)}
                   >
-                    <option value="customer">Πελάτης</option>
                     <option value="store">Κατάστημα</option>
                     <option value="driver">Διανομέας</option>
                   </Form.Select>
