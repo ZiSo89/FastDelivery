@@ -1,49 +1,86 @@
-const Brevo = require('@getbrevo/brevo');
+const https = require('https');
 
-// Initialize Brevo API
-const apiInstance = new Brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
-
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'zisoglou@hotmail.gr';
 const EMAIL_FROM_NAME = 'Fast Delivery';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Log configuration on startup
-console.log('📧 Email Service Initializing (Brevo API)...');
-console.log('   API Key configured:', process.env.BREVO_API_KEY ? 'YES ✅' : 'NO ❌');
+console.log('📧 Email Service Initializing (Brevo HTTP API)...');
+console.log('   API Key configured:', BREVO_API_KEY ? 'YES ✅' : 'NO ❌');
+console.log('   API Key prefix:', BREVO_API_KEY ? BREVO_API_KEY.substring(0, 15) + '...' : 'N/A');
 console.log('   From Email:', EMAIL_FROM);
 console.log('   Frontend URL:', FRONTEND_URL);
 console.log('   NODE_ENV:', process.env.NODE_ENV);
 
 /**
- * Send email using Brevo API
+ * Send email using Brevo HTTP API directly
  */
-const sendEmailWithBrevo = async (to, subject, htmlContent) => {
-  const sendSmtpEmail = new Brevo.SendSmtpEmail();
-  
-  sendSmtpEmail.sender = { name: EMAIL_FROM_NAME, email: EMAIL_FROM };
-  sendSmtpEmail.to = [{ email: to }];
-  sendSmtpEmail.subject = subject;
-  sendSmtpEmail.htmlContent = htmlContent;
+const sendEmailWithBrevo = (to, subject, htmlContent) => {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      sender: { name: EMAIL_FROM_NAME, email: EMAIL_FROM },
+      to: [{ email: to }],
+      subject: subject,
+      htmlContent: htmlContent
+    });
 
-  try {
-    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-    console.log(`✅ Email sent to ${to} (MessageId: ${result.body?.messageId || result.messageId || 'N/A'})`);
-    return { success: true, messageId: result.body?.messageId || result.messageId };
-  } catch (error) {
-    console.error('❌ Brevo API Error:', error.message);
-    console.error('   Status:', error.status);
-    console.error('   Response body:', JSON.stringify(error.response?.body || error.body || error.response?.text, null, 2));
-    throw error;
-  }
+    const options = {
+      hostname: 'api.brevo.com',
+      port: 443,
+      path: '/v3/smtp/email',
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(data)
+      }
+    };
+
+    console.log('📤 Sending to Brevo API...');
+    console.log('   To:', to);
+    console.log('   Subject:', subject);
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      
+      res.on('data', (chunk) => {
+        body += chunk;
+      });
+      
+      res.on('end', () => {
+        console.log('   Response status:', res.statusCode);
+        console.log('   Response body:', body);
+        
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          try {
+            const result = JSON.parse(body);
+            console.log(`✅ Email sent to ${to} (MessageId: ${result.messageId})`);
+            resolve({ success: true, messageId: result.messageId });
+          } catch (e) {
+            resolve({ success: true });
+          }
+        } else {
+          console.error(`❌ Brevo API Error: Status ${res.statusCode}`);
+          console.error('   Response:', body);
+          reject(new Error(`Brevo API error: ${res.statusCode} - ${body}`));
+        }
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error('❌ HTTP Request Error:', error.message);
+      reject(error);
+    });
+
+    req.write(data);
+    req.end();
+  });
 };
 
 /**
  * Send verification email to user
- * @param {string} email - User's email
- * @param {string} name - User's name
- * @param {string} token - Verification token
- * @param {string} userType - 'customer', 'store', or 'driver'
  */
 exports.sendVerificationEmail = async (email, name, token, userType) => {
   // Skip email in development mode
@@ -79,14 +116,14 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
     <body>
       <div class="container">
         <div class="header">
-          <h1>🚀 Fast Delivery</h1>
+          <h1>Fast Delivery</h1>
         </div>
         <div class="content">
           <h2>Γεια σου ${name}!</h2>
-          <p>Ευχαριστούμε για την εγγραφή σου ως <strong>${userTypeGreek[userType]}</strong> στο Fast Delivery.</p>
+          <p>Ευχαριστούμε για την εγγραφή σου ως <strong>${userTypeGreek[userType] || userType}</strong> στο Fast Delivery.</p>
           <p>Για να ολοκληρώσεις την εγγραφή σου, κάνε κλικ στο παρακάτω κουμπί:</p>
           <center>
-            <a href="${verificationLink}" class="button">✅ Επιβεβαίωση Email</a>
+            <a href="${verificationLink}" class="button">Επιβεβαίωση Email</a>
           </center>
           <p>Ή αντέγραψε αυτό το link στον browser σου:</p>
           <p style="word-break: break-all; background: #eee; padding: 10px; border-radius: 4px;">
@@ -96,7 +133,7 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
         </div>
         <div class="footer">
           <p>Αν δεν έκανες εσύ αυτή την εγγραφή, αγνόησε αυτό το email.</p>
-          <p>© ${new Date().getFullYear()} Fast Delivery - Αλεξανδρούπολη</p>
+          <p>${new Date().getFullYear()} Fast Delivery - Αλεξανδρούπολη</p>
         </div>
       </div>
     </body>
@@ -107,7 +144,7 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
     console.log(`📧 Sending verification email to: ${email}`);
     console.log(`   Link: ${verificationLink}`);
     
-    const result = await sendEmailWithBrevo(email, '✉️ Επιβεβαίωση Email - Fast Delivery', htmlContent);
+    const result = await sendEmailWithBrevo(email, 'Επιβεβαίωση Email - Fast Delivery', htmlContent);
     return result;
   } catch (error) {
     console.error('❌ Email service error:', error.message);
@@ -117,10 +154,6 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
 
 /**
  * Send password reset email
- * @param {string} email - User's email
- * @param {string} name - User's name
- * @param {string} token - Reset token
- * @param {string} userType - 'customer', 'store', or 'driver'
  */
 exports.sendPasswordResetEmail = async (email, name, token, userType) => {
   // Skip email in development mode
@@ -149,7 +182,7 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
     <body>
       <div class="container">
         <div class="header">
-          <h1>🚀 Fast Delivery</h1>
+          <h1>Fast Delivery</h1>
         </div>
         <div class="content">
           <h2>Επαναφορά Κωδικού</h2>
@@ -157,7 +190,7 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
           <p>Λάβαμε αίτημα για επαναφορά του κωδικού σου.</p>
           <p>Κάνε κλικ στο παρακάτω κουμπί για να ορίσεις νέο κωδικό:</p>
           <center>
-            <a href="${resetLink}" class="button">🔐 Αλλαγή Κωδικού</a>
+            <a href="${resetLink}" class="button">Αλλαγή Κωδικού</a>
           </center>
           <p>Ή αντέγραψε αυτό το link στον browser σου:</p>
           <p style="word-break: break-all; background: #eee; padding: 10px; border-radius: 4px; font-size: 12px;">
@@ -167,7 +200,7 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
           <p>Αν δεν ζήτησες εσύ επαναφορά κωδικού, αγνόησε αυτό το email.</p>
         </div>
         <div class="footer">
-          <p>© ${new Date().getFullYear()} Fast Delivery - Αλεξανδρούπολη</p>
+          <p>${new Date().getFullYear()} Fast Delivery - Αλεξανδρούπολη</p>
         </div>
       </div>
     </body>
@@ -177,7 +210,7 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
   try {
     console.log(`📧 Sending password reset email to: ${email}`);
     
-    const result = await sendEmailWithBrevo(email, '🔐 Επαναφορά Κωδικού - Fast Delivery', htmlContent);
+    const result = await sendEmailWithBrevo(email, 'Επαναφορά Κωδικού - Fast Delivery', htmlContent);
     return result;
   } catch (error) {
     console.error('❌ Email service error:', error.message);
