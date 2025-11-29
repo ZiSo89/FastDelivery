@@ -11,6 +11,11 @@ const ResetPassword = () => {
   const token = searchParams.get('token');
   const type = searchParams.get('type');
 
+  // Determine redirect URL based on user type
+  const getRedirectUrl = () => {
+    return type === 'customer' ? '/' : '/login';
+  };
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,8 +54,8 @@ const ResetPassword = () => {
       if (response.data.success) {
         setStatus('success');
         setMessage(response.data.message);
-        // Redirect to login after 3 seconds
-        setTimeout(() => navigate('/login'), 3000);
+        // Redirect based on user type after 3 seconds
+        setTimeout(() => navigate(getRedirectUrl()), 3000);
       } else {
         setStatus('error');
         setMessage(response.data.message);
@@ -71,8 +76,8 @@ const ResetPassword = () => {
             <FaTimesCircle size={80} className="text-danger mb-4" />
             <h3 className="text-danger">Μη έγκυρο Link</h3>
             <p>Το link επαναφοράς κωδικού είναι άκυρο ή έχει λήξει.</p>
-            <Link to="/login" className="btn btn-outline-primary">
-              Πίσω στη Σύνδεση
+            <Link to="/" className="btn btn-outline-primary">
+              Πίσω στην Αρχική
             </Link>
           </Card.Body>
         </Card>
@@ -152,7 +157,7 @@ const ResetPassword = () => {
               <FaTimesCircle size={80} className="text-danger mb-4" />
               <h3 className="text-danger">Αποτυχία</h3>
               <p>{message}</p>
-              <Link to="/login" className="btn btn-outline-primary">
+              <Link to={getRedirectUrl()} className="btn btn-outline-primary">
                 Πίσω στη Σύνδεση
               </Link>
             </div>
