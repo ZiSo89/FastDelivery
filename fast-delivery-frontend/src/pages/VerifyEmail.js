@@ -39,9 +39,15 @@ const VerifyEmail = () => {
   }, [token, type]);
 
   const getLoginPath = () => {
-    if (type === 'customer') return '/login';
+    // Customers go to home page (CustomerPortal), others go to login
+    if (type === 'customer') return '/';
     if (type === 'store' || type === 'driver') return '/login';
-    return '/login';
+    return '/';
+  };
+
+  const getButtonText = () => {
+    if (type === 'customer') return 'Συνέχεια';
+    return 'Σύνδεση';
   };
 
   return (
@@ -62,7 +68,7 @@ const VerifyEmail = () => {
               <h3 className="text-success">Επιτυχία!</h3>
               <p className="mb-4">{message}</p>
               <Link to={getLoginPath()} className="btn btn-primary btn-lg">
-                Σύνδεση
+                {getButtonText()}
               </Link>
             </>
           )}
@@ -76,8 +82,8 @@ const VerifyEmail = () => {
                 <FaEnvelope className="me-2" />
                 Αν χρειάζεστε νέο email επιβεβαίωσης, δοκιμάστε να συνδεθείτε και θα σας ζητηθεί.
               </Alert>
-              <Link to="/login" className="btn btn-outline-primary">
-                Πίσω στη Σύνδεση
+              <Link to="/" className="btn btn-outline-primary">
+                Αρχική Σελίδα
               </Link>
             </>
           )}
