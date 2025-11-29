@@ -1,10 +1,17 @@
 import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { customerService, healthCheck } from '../services/api';
 import socketService from '../services/socket';
+
+// Safe import for expo-notifications
+let Notifications = null;
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.log('expo-notifications not available');
+}
 
 const AuthContext = createContext();
 
@@ -25,15 +32,20 @@ export const AuthProvider = ({ children }) => {
 
   const initializeApp = async () => {
     // Step 1: Wake up server (MongoDB cold start fix)
+    console.log('🚀 Starting initializeApp...');
     setServerStatus('Εκκίνηση συστήματος...');
     const healthResult = await healthCheck(3);
+    console.log('🏥 Health check result:', healthResult);
     
     if (healthResult.success) {
       setServerReady(true);
       setServerStatus('Έλεγχος σύνδεσης...');
       // Step 2: Load user
+      console.log('👤 Loading user...');
       await loadUser();
+      console.log('✅ User loaded');
     } else {
+      console.log('❌ Health check failed');
       setServerStatus('Αδυναμία σύνδεσης. Ελέγξτε το internet.');
       // Still allow app to load after delay
       setTimeout(() => {
@@ -44,6 +56,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const registerForPushNotificationsAsync = async () => {
+    // Skip if Notifications not available
+    if (!Notifications) {
+      return null;
+    }
+    
     let token;
     try {
       if (Device.isDevice) {
@@ -60,10 +77,10 @@ export const AuthProvider = ({ children }) => {
         token = (await Notifications.getExpoPushTokenAsync()).data;
       }
 
-      if (Platform.OS === 'android') {
+      if (Platform.OS === 'android' && Notifications.setNotificationChannelAsync) {
         await Notifications.setNotificationChannelAsync('default', {
           name: 'default',
-          importance: Notifications.AndroidImportance.MAX,
+          importance: Notifications.AndroidImportance?.MAX || 4,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#FF231F7C',
         });

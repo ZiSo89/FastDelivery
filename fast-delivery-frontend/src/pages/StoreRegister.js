@@ -185,12 +185,13 @@ const StoreRegister = () => {
       const response = await axios.post(`${API_URL}/auth/store/register`, registrationData);
 
       if (response.data.success) {
-        setSuccess('Η εγγραφή σας υποβλήθηκε επιτυχώς! Αναμένετε έγκριση από τον διαχειριστή.');
+        // Use the message from backend (includes email verification info in production)
+        setSuccess(response.data.message);
         
-        // Redirect to login after 3 seconds
+        // Redirect to login after 5 seconds (more time to read email verification message)
         setTimeout(() => {
           navigate('/login');
-        }, 3000);
+        }, 5000);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Σφάλμα εγγραφής. Δοκιμάστε ξανά.');
@@ -406,6 +407,14 @@ const StoreRegister = () => {
                 className="form-input-custom"
               />
             </Form.Group>
+
+            <Alert variant="info" className="custom-alert mt-3">
+              <small>
+                <strong>Σημείωση:</strong> Μετά την υποβολή της αίτησης:
+                <br />1. Θα λάβετε email επιβεβαίωσης (ελέγξτε και τον φάκελο Spam)
+                <br />2. Μετά την επιβεβαίωση, ο διαχειριστής θα εγκρίνει τον λογαριασμό σας
+              </small>
+            </Alert>
 
             <Button
               type="submit"

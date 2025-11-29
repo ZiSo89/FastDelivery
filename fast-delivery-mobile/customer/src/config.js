@@ -10,7 +10,7 @@ import Constants from 'expo-constants';
 // URLs για κάθε περιβάλλον
 const ENV = {
   development: {
-    apiUrl: 'http://192.168.31.160:5000',  // Τοπικό IP (άλλαξέ το αν χρειαστεί)
+    apiUrl: 'https://fastdelivery-hvff.onrender.com',  // Production URL για testing
   },
   production: {
     apiUrl: 'https://fastdelivery-hvff.onrender.com',

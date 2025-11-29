@@ -1,8 +1,15 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform, AppState } from 'react-native';
+
+// Safe import for expo-notifications
+let Notifications = null;
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.log('expo-notifications not available in AuthContext');
+}
 import { driverService } from '../services/api';
 import socketService from '../services/socket';
 
@@ -12,14 +19,16 @@ export const useAuth = () => {
   return useContext(AuthContext);
 };
 
-// Configure notifications to show even when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Configure notifications to show even when app is in foreground (only if available)
+if (Notifications && Notifications.setNotificationHandler) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -45,8 +54,14 @@ export const AuthProvider = ({ children }) => {
   const registerForPushNotificationsAsync = async () => {
     let token = null;
     
+    // Check if Notifications is available
+    if (!Notifications) {
+      console.log('Notifications not available, skipping push registration');
+      return null;
+    }
+    
     try {
-      if (Platform.OS === 'android') {
+      if (Platform.OS === 'android' && Notifications.setNotificationChannelAsync) {
         await Notifications.setNotificationChannelAsync('orders', {
           name: 'Παραγγελίες',
           importance: Notifications.AndroidImportance.MAX,

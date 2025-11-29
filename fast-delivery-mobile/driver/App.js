@@ -5,7 +5,14 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
 import { ActivityIndicator, View, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
+
+// Safe import for expo-notifications (may not work in all environments)
+let Notifications = null;
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.log('expo-notifications not available');
+}
 
 import LoginScreen from './src/screens/LoginScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
@@ -19,14 +26,16 @@ LogBox.ignoreLogs([
   '`expo-notifications` functionality is not fully supported',
 ]);
 
-// Configure notification handler for foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Configure notification handler for foreground (only if available)
+if (Notifications && Notifications.setNotificationHandler) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+}
 
 const Stack = createNativeStackNavigator();
 
@@ -36,15 +45,17 @@ const AppNavigator = () => {
   const responseListener = useRef();
 
   useEffect(() => {
-    // Listen for incoming notifications
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      // Notification received
-    });
+    // Listen for incoming notifications (only if Notifications available)
+    if (Notifications && Notifications.addNotificationReceivedListener) {
+      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+        // Notification received
+      });
 
-    // Listen for notification responses (when user taps)
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      // Notification tapped
-    });
+      // Listen for notification responses (when user taps)
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+        // Notification tapped
+      });
+    }
 
     return () => {
       // Use .remove() method instead of removeNotificationSubscription

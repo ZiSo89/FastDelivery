@@ -5,9 +5,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
-import { ActivityIndicator, View, LogBox } from 'react-native';
+import { ActivityIndicator, View, LogBox, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import ServerLoadingScreen from './src/components/ServerLoadingScreen';
 
 // Hide Expo Go specific warnings
@@ -19,6 +18,14 @@ LogBox.ignoreLogs([
   'development client',
   'expo-av',
 ]);
+
+// Import notifications conditionally
+let Notifications = null;
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.log('expo-notifications not available');
+}
 
 import HomeScreen from './src/screens/HomeScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -37,22 +44,28 @@ import CustomerProfile from './src/screens/CustomerProfile';
 const ALLOWED_NOTIFICATION_STATUSES = ['pending_customer_confirm', 'in_delivery'];
 
 // Configure notification handler - FILTER notifications here
-Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    // Get the status from notification data
-    const data = notification.request.content.data;
-    const status = data?.status;
-    
-    // Only show notification for allowed statuses
-    const shouldShow = ALLOWED_NOTIFICATION_STATUSES.includes(status);
-    
-    return {
-      shouldShowAlert: shouldShow,
-      shouldPlaySound: shouldShow,
-      shouldSetBadge: false,
-    };
-  },
-});
+if (Notifications && Notifications.setNotificationHandler) {
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        // Get the status from notification data
+        const data = notification.request.content.data;
+        const status = data?.status;
+        
+        // Only show notification for allowed statuses
+        const shouldShow = ALLOWED_NOTIFICATION_STATUSES.includes(status);
+        
+        return {
+          shouldShowAlert: shouldShow,
+          shouldPlaySound: shouldShow,
+          shouldSetBadge: false,
+        };
+      },
+    });
+  } catch (e) {
+    console.log('Failed to set notification handler:', e);
+  }
+}
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -222,29 +235,38 @@ export default function App() {
   const responseListener = useRef();
 
   useEffect(() => {
-    // Listen for notifications when app is in foreground
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      // Notification received - handled by setNotificationHandler
-    });
+    // Only set up notification listeners if Notifications is available
+    if (!Notifications || !Notifications.addNotificationReceivedListener) {
+      return;
+    }
 
-    // Handle notification tap (response) - navigate to TrackOrder
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data;
-      
-      // Navigate to TrackOrder with orderNumber
-      if (navigationRef.current) {
-        if (data?.orderNumber) {
-          // If we have orderNumber, navigate directly to TrackOrder
-          navigationRef.current.navigate('OrdersTab', {
-            screen: 'TrackOrder',
-            params: { orderNumber: data.orderNumber }
-          });
-        } else {
-          // Fallback - just go to Orders tab
-          navigationRef.current.navigate('OrdersTab');
+    try {
+      // Listen for notifications when app is in foreground
+      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+        // Notification received - handled by setNotificationHandler
+      });
+
+      // Handle notification tap (response) - navigate to TrackOrder
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+        const data = response.notification.request.content.data;
+        
+        // Navigate to TrackOrder with orderNumber
+        if (navigationRef.current) {
+          if (data?.orderNumber) {
+            // If we have orderNumber, navigate directly to TrackOrder
+            navigationRef.current.navigate('OrdersTab', {
+              screen: 'TrackOrder',
+              params: { orderNumber: data.orderNumber }
+            });
+          } else {
+            // Fallback - just go to Orders tab
+            navigationRef.current.navigate('OrdersTab');
+          }
         }
-      }
-    });
+      });
+    } catch (e) {
+      console.log('Failed to setup notification listeners:', e);
+    }
 
     return () => {
       if (notificationListener.current) {
