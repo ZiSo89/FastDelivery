@@ -32,9 +32,8 @@ const sendEmailWithBrevo = async (to, subject, htmlContent) => {
     return { success: true, messageId: result.body?.messageId || result.messageId };
   } catch (error) {
     console.error('❌ Brevo API Error:', error.message);
-    if (error.body) {
-      console.error('   Response:', JSON.stringify(error.body, null, 2));
-    }
+    console.error('   Status:', error.status);
+    console.error('   Response body:', JSON.stringify(error.response?.body || error.body || error.response?.text, null, 2));
     throw error;
   }
 };
