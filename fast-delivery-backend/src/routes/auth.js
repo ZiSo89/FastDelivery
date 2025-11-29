@@ -40,6 +40,17 @@ router.post('/resend-verification', resendVerification);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 
+// Debug endpoint to check environment
+router.get('/debug-env', (req, res) => {
+  res.json({
+    NODE_ENV: process.env.NODE_ENV,
+    hasResendKey: !!process.env.RESEND_API_KEY,
+    resendKeyPrefix: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 10) + '...' : null,
+    emailFrom: process.env.EMAIL_FROM,
+    frontendUrl: process.env.FRONTEND_URL
+  });
+});
+
 // One-time admin setup (protected by secret key)
 router.post('/setup-admin', async (req, res) => {
   try {

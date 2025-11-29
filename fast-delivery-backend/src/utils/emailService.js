@@ -35,8 +35,12 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
       to: email,
       subject: '✉️ Επιβεβαίωση Email - Fast Delivery',
       headers: {
-        'X-Entity-Ref-ID': `verify-${Date.now()}` // Unique ID to prevent threading
+        'X-Entity-Ref-ID': `verify-${Date.now()}`,
+        'List-Unsubscribe': `<mailto:unsubscribe@fastdelivery.gr>`
       },
+      tags: [
+        { name: 'category', value: 'verification' }
+      ],
       html: `
         <!DOCTYPE html>
         <html>
