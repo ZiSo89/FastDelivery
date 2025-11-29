@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import '../styles/Login.css';
@@ -115,6 +115,11 @@ const Login = () => {
                 disabled={loading}
                 className="form-input-custom"
               />
+              <div className="text-end mt-2">
+                <Link to="/forgot-password" className="text-decoration-none small">
+                  Ξέχασες τον κωδικό σου;
+                </Link>
+              </div>
             </Form.Group>
 
             <Button
