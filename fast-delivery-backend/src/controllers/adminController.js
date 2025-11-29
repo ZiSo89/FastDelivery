@@ -14,11 +14,16 @@ const { broadcastOrderEvent } = require('../utils/socketHelpers');
 // @access  Private (Admin)
 exports.getStores = async (req, res) => {
   try {
-    const { status } = req.query;
+    const { status, showUnverified } = req.query;
 
     const filter = {};
     if (status) {
       filter.status = status;
+    }
+    
+    // By default, only show email verified stores (unless showUnverified=true)
+    if (showUnverified !== 'true') {
+      filter.isEmailVerified = true;
     }
 
     const stores = await Store.find(filter).select('-password').sort({ createdAt: -1 });
@@ -112,7 +117,7 @@ exports.approveRejectStore = async (req, res) => {
 // @access  Private (Admin)
 exports.getDrivers = async (req, res) => {
   try {
-    const { status, isOnline } = req.query;
+    const { status, isOnline, showUnverified } = req.query;
 
     const filter = {};
     if (status) {
@@ -120,6 +125,11 @@ exports.getDrivers = async (req, res) => {
     }
     if (isOnline !== undefined) {
       filter.isOnline = isOnline === 'true';
+    }
+    
+    // By default, only show email verified drivers (unless showUnverified=true)
+    if (showUnverified !== 'true') {
+      filter.isEmailVerified = true;
     }
 
     const drivers = await Driver.find(filter)

@@ -65,20 +65,20 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Λάθος κωδικός πρόσβασης' });
     }
 
-    // For Store and Driver, check if they are approved
-    if ((role === 'store' || role === 'driver') && !user.isApproved) {
-        return res.status(401).json({ success: false, message: 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή.' });
-    }
-
-    // Check email verification (only in production)
+    // FIRST: Check email verification (only in production, not for admin)
     if (process.env.NODE_ENV === 'production' && role !== 'admin') {
       if (!user.isEmailVerified) {
         return res.status(401).json({ 
           success: false, 
-          message: 'Παρακαλώ επιβεβαιώστε το email σας πρώτα. Ελέγξτε τα εισερχόμενά σας.',
+          message: 'Παρακαλώ επιβεβαιώστε το email σας πρώτα. Ελέγξτε τα εισερχόμενά σας (και τον φάκελο Spam).',
           needsVerification: true
         });
       }
+    }
+
+    // THEN: For Store and Driver, check if they are approved
+    if ((role === 'store' || role === 'driver') && !user.isApproved) {
+        return res.status(401).json({ success: false, message: 'Το email σας επιβεβαιώθηκε! Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή.' });
     }
 
     const token = generateToken(user._id, user.role || role);
