@@ -44,8 +44,8 @@ router.post('/reset-password', resetPassword);
 router.get('/debug-env', (req, res) => {
   res.json({
     NODE_ENV: process.env.NODE_ENV,
-    hasResendKey: !!process.env.RESEND_API_KEY,
-    resendKeyPrefix: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 10) + '...' : null,
+    hasBrevoKey: !!process.env.BREVO_SMTP_KEY,
+    brevoKeyPrefix: process.env.BREVO_SMTP_KEY ? process.env.BREVO_SMTP_KEY.substring(0, 15) + '...' : null,
     emailFrom: process.env.EMAIL_FROM,
     frontendUrl: process.env.FRONTEND_URL
   });
