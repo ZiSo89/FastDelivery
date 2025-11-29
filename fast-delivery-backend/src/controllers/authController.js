@@ -3,8 +3,15 @@ const Driver = require('../models/Driver');
 const Admin = require('../models/Admin');
 const Customer = require('../models/Customer');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { generateToken } = require('../utils/jwt');
 const { geocodeAddress } = require('../utils/geocoding');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailService');
+
+// Helper: Generate verification token
+const generateVerificationToken = () => {
+  return crypto.randomBytes(32).toString('hex');
+};
 
 // @desc    Login (Store/Driver/Admin)
 // @route   POST /api/v1/auth/login
@@ -61,6 +68,17 @@ exports.login = async (req, res) => {
     // For Store and Driver, check if they are approved
     if ((role === 'store' || role === 'driver') && !user.isApproved) {
         return res.status(401).json({ success: false, message: 'Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή.' });
+    }
+
+    // Check email verification (only in production)
+    if (process.env.NODE_ENV === 'production' && role !== 'admin') {
+      if (!user.isEmailVerified) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Παρακαλώ επιβεβαιώστε το email σας πρώτα. Ελέγξτε τα εισερχόμενά σας.',
+          needsVerification: true
+        });
+      }
     }
 
     const token = generateToken(user._id, user.role || role);
@@ -156,8 +174,19 @@ exports.registerStore = async (req, res) => {
       description,
       serviceAreas,
       status: 'pending',
-      isApproved: false
+      isApproved: false,
+      isEmailVerified: process.env.NODE_ENV === 'development' // Auto-verify in development
     });
+
+    // Send verification email (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      const verificationToken = generateVerificationToken();
+      store.emailVerificationToken = verificationToken;
+      store.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      await store.save();
+      
+      await sendVerificationEmail(email, businessName, verificationToken, 'store');
+    }
 
     // Notify all admins about new store registration
     const io = req.app.get('io');
@@ -214,8 +243,19 @@ exports.registerDriver = async (req, res, next) => {
       phone,
       status: 'pending',
       isApproved: false,
-      isOnline: false
+      isOnline: false,
+      isEmailVerified: process.env.NODE_ENV === 'development' // Auto-verify in development
     });
+
+    // Send verification email (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      const verificationToken = generateVerificationToken();
+      driver.emailVerificationToken = verificationToken;
+      driver.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      await driver.save();
+      
+      await sendVerificationEmail(email, name, verificationToken, 'driver');
+    }
 
     // Notify all admins about new driver registration
     const io = req.app.get('io');
@@ -256,8 +296,25 @@ exports.registerCustomer = async (req, res, next) => {
       password,
       phone,
       address,
-      location // GeoJSON Point
+      location, // GeoJSON Point
+      isEmailVerified: process.env.NODE_ENV === 'development' // Auto-verify in development
     });
+
+    // Send verification email (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      const verificationToken = generateVerificationToken();
+      customer.emailVerificationToken = verificationToken;
+      customer.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+      await customer.save();
+      
+      await sendVerificationEmail(email, name, verificationToken, 'customer');
+      
+      return res.status(201).json({
+        success: true,
+        message: 'Η εγγραφή σας ολοκληρώθηκε! Ελέγξτε το email σας για επιβεβαίωση.',
+        needsVerification: true
+      });
+    }
 
     // Create token
     const token = generateToken(customer._id, 'customer');
@@ -306,6 +363,275 @@ exports.getStoreTypes = async (req, res) => {
     res.json({
       success: true,
       storeTypes: ['Mini Market', 'Φαρμακείο', 'Ταβέρνα', 'Καφετέρια', 'Γλυκά', 'Άλλο']
+    });
+  }
+};
+
+// ==================== EMAIL VERIFICATION ====================
+
+// @desc    Verify email with token
+// @route   GET /api/v1/auth/verify-email
+// @access  Public
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token, type } = req.query;
+
+    if (!token || !type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token και τύπος χρήστη είναι απαραίτητα'
+      });
+    }
+
+    // Find user by token
+    let Model;
+    switch (type) {
+      case 'customer':
+        Model = Customer;
+        break;
+      case 'store':
+        Model = Store;
+        break;
+      case 'driver':
+        Model = Driver;
+        break;
+      default:
+        return res.status(400).json({ success: false, message: 'Μη έγκυρος τύπος χρήστη' });
+    }
+
+    const user = await Model.findOne({
+      emailVerificationToken: token,
+      emailVerificationExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το link επιβεβαίωσης είναι άκυρο ή έχει λήξει'
+      });
+    }
+
+    // Verify email
+    user.isEmailVerified = true;
+    user.emailVerificationToken = null;
+    user.emailVerificationExpires = null;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Το email επιβεβαιώθηκε επιτυχώς! Μπορείτε να συνδεθείτε.'
+    });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα επιβεβαίωσης email'
+    });
+  }
+};
+
+// @desc    Resend verification email
+// @route   POST /api/v1/auth/resend-verification
+// @access  Public
+exports.resendVerification = async (req, res) => {
+  try {
+    const { email, type } = req.body;
+
+    if (!email || !type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email και τύπος χρήστη είναι απαραίτητα'
+      });
+    }
+
+    // Find user
+    let Model;
+    let nameField;
+    switch (type) {
+      case 'customer':
+        Model = Customer;
+        nameField = 'name';
+        break;
+      case 'store':
+        Model = Store;
+        nameField = 'businessName';
+        break;
+      case 'driver':
+        Model = Driver;
+        nameField = 'name';
+        break;
+      default:
+        return res.status(400).json({ success: false, message: 'Μη έγκυρος τύπος χρήστη' });
+    }
+
+    const user = await Model.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Δεν βρέθηκε χρήστης με αυτό το email'
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το email έχει ήδη επιβεβαιωθεί'
+      });
+    }
+
+    // Generate new token
+    const verificationToken = generateVerificationToken();
+    user.emailVerificationToken = verificationToken;
+    user.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    await user.save();
+
+    // Send email
+    await sendVerificationEmail(email, user[nameField], verificationToken, type);
+
+    res.json({
+      success: true,
+      message: 'Το email επιβεβαίωσης στάλθηκε ξανά'
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα αποστολής email'
+    });
+  }
+};
+
+// @desc    Request password reset
+// @route   POST /api/v1/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email, type } = req.body;
+
+    if (!email || !type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email και τύπος χρήστη είναι απαραίτητα'
+      });
+    }
+
+    // Find user
+    let Model;
+    let nameField;
+    switch (type) {
+      case 'customer':
+        Model = Customer;
+        nameField = 'name';
+        break;
+      case 'store':
+        Model = Store;
+        nameField = 'businessName';
+        break;
+      case 'driver':
+        Model = Driver;
+        nameField = 'name';
+        break;
+      default:
+        return res.status(400).json({ success: false, message: 'Μη έγκυρος τύπος χρήστη' });
+    }
+
+    const user = await Model.findOne({ email });
+
+    if (!user) {
+      // Don't reveal if email exists
+      return res.json({
+        success: true,
+        message: 'Αν το email υπάρχει, θα λάβετε οδηγίες επαναφοράς κωδικού'
+      });
+    }
+
+    // Generate reset token
+    const resetToken = generateVerificationToken();
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    await user.save();
+
+    // Send email
+    await sendPasswordResetEmail(email, user[nameField], resetToken, type);
+
+    res.json({
+      success: true,
+      message: 'Αν το email υπάρχει, θα λάβετε οδηγίες επαναφοράς κωδικού'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα αποστολής email'
+    });
+  }
+};
+
+// @desc    Reset password with token
+// @route   POST /api/v1/auth/reset-password
+// @access  Public
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, type, password } = req.body;
+
+    if (!token || !type || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token, τύπος χρήστη και νέος κωδικός είναι απαραίτητα'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες'
+      });
+    }
+
+    // Find user by token
+    let Model;
+    switch (type) {
+      case 'customer':
+        Model = Customer;
+        break;
+      case 'store':
+        Model = Store;
+        break;
+      case 'driver':
+        Model = Driver;
+        break;
+      default:
+        return res.status(400).json({ success: false, message: 'Μη έγκυρος τύπος χρήστη' });
+    }
+
+    const user = await Model.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Το link επαναφοράς κωδικού είναι άκυρο ή έχει λήξει'
+      });
+    }
+
+    // Update password
+    user.password = password; // Will be hashed by pre-save hook
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Ο κωδικός άλλαξε επιτυχώς! Μπορείτε να συνδεθείτε.'
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα επαναφοράς κωδικού'
     });
   }
 };

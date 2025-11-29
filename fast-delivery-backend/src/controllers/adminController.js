@@ -734,13 +734,16 @@ exports.deleteStoreType = async (req, res) => {
   try {
     const { storeType } = req.params;
     
-    // Check if any store uses this type
-    const storesWithType = await Store.countDocuments({ storeType });
+    // Check if any ACTIVE store uses this type (exclude rejected/inactive)
+    const storesWithType = await Store.countDocuments({ 
+      storeType,
+      status: { $in: ['pending', 'approved'] }  // Only count active stores
+    });
     
     if (storesWithType > 0) {
       return res.status(400).json({
         success: false,
-        message: `Δεν μπορεί να διαγραφεί - ${storesWithType} καταστήματα χρησιμοποιούν αυτόν τον τύπο`
+        message: `Δεν μπορεί να διαγραφεί - ${storesWithType} ενεργά καταστήματα χρησιμοποιούν αυτόν τον τύπο`
       });
     }
     
