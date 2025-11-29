@@ -1,44 +1,59 @@
 const https = require('https');
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
+// Mailjet API credentials
+const MAILJET_API_KEY = process.env.MAILJET_API_KEY;
+const MAILJET_SECRET_KEY = process.env.MAILJET_SECRET_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'zisoglou@hotmail.gr';
 const EMAIL_FROM_NAME = 'Fast Delivery';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Log configuration on startup
-console.log('📧 Email Service Initializing (Brevo HTTP API)...');
-console.log('   API Key configured:', BREVO_API_KEY ? 'YES ✅' : 'NO ❌');
-console.log('   API Key prefix:', BREVO_API_KEY ? BREVO_API_KEY.substring(0, 15) + '...' : 'N/A');
+console.log('📧 Email Service Initializing (Mailjet HTTP API)...');
+console.log('   API Key configured:', MAILJET_API_KEY ? 'YES ✅' : 'NO ❌');
+console.log('   Secret Key configured:', MAILJET_SECRET_KEY ? 'YES ✅' : 'NO ❌');
 console.log('   From Email:', EMAIL_FROM);
 console.log('   Frontend URL:', FRONTEND_URL);
 console.log('   NODE_ENV:', process.env.NODE_ENV);
 
 /**
- * Send email using Brevo HTTP API directly
+ * Send email using Mailjet HTTP API directly
  */
-const sendEmailWithBrevo = (to, subject, htmlContent) => {
+const sendEmailWithMailjet = (to, subject, htmlContent) => {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
-      sender: { name: EMAIL_FROM_NAME, email: EMAIL_FROM },
-      to: [{ email: to }],
-      subject: subject,
-      htmlContent: htmlContent
+      Messages: [
+        {
+          From: {
+            Email: EMAIL_FROM,
+            Name: EMAIL_FROM_NAME
+          },
+          To: [
+            {
+              Email: to
+            }
+          ],
+          Subject: subject,
+          HTMLPart: htmlContent
+        }
+      ]
     });
 
+    // Mailjet uses Basic Auth with API_KEY:SECRET_KEY
+    const auth = Buffer.from(`${MAILJET_API_KEY}:${MAILJET_SECRET_KEY}`).toString('base64');
+
     const options = {
-      hostname: 'api.brevo.com',
+      hostname: 'api.mailjet.com',
       port: 443,
-      path: '/v3/smtp/email',
+      path: '/v3.1/send',
       method: 'POST',
       headers: {
-        'accept': 'application/json',
-        'api-key': BREVO_API_KEY,
-        'content-type': 'application/json',
-        'content-length': Buffer.byteLength(data)
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${auth}`,
+        'Content-Length': Buffer.byteLength(data)
       }
     };
 
-    console.log('📤 Sending to Brevo API...');
+    console.log('📤 Sending to Mailjet API...');
     console.log('   To:', to);
     console.log('   Subject:', subject);
 
@@ -56,15 +71,16 @@ const sendEmailWithBrevo = (to, subject, htmlContent) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
             const result = JSON.parse(body);
-            console.log(`✅ Email sent to ${to} (MessageId: ${result.messageId})`);
-            resolve({ success: true, messageId: result.messageId });
+            const messageId = result.Messages?.[0]?.To?.[0]?.MessageID;
+            console.log(`✅ Email sent to ${to} (MessageId: ${messageId})`);
+            resolve({ success: true, messageId: messageId });
           } catch (e) {
             resolve({ success: true });
           }
         } else {
-          console.error(`❌ Brevo API Error: Status ${res.statusCode}`);
+          console.error(`❌ Mailjet API Error: Status ${res.statusCode}`);
           console.error('   Response:', body);
-          reject(new Error(`Brevo API error: ${res.statusCode} - ${body}`));
+          reject(new Error(`Mailjet API error: ${res.statusCode} - ${body}`));
         }
       });
     });
@@ -144,7 +160,7 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
     console.log(`📧 Sending verification email to: ${email}`);
     console.log(`   Link: ${verificationLink}`);
     
-    const result = await sendEmailWithBrevo(email, 'Επιβεβαίωση Email - Fast Delivery', htmlContent);
+    const result = await sendEmailWithMailjet(email, 'Επιβεβαίωση Email - Fast Delivery', htmlContent);
     return result;
   } catch (error) {
     console.error('❌ Email service error:', error.message);
@@ -210,7 +226,7 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
   try {
     console.log(`📧 Sending password reset email to: ${email}`);
     
-    const result = await sendEmailWithBrevo(email, 'Επαναφορά Κωδικού - Fast Delivery', htmlContent);
+    const result = await sendEmailWithMailjet(email, 'Επαναφορά Κωδικού - Fast Delivery', htmlContent);
     return result;
   } catch (error) {
     console.error('❌ Email service error:', error.message);
