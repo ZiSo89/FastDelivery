@@ -1,8 +1,17 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Brevo SMTP configuration
+const transporter = nodemailer.createTransport({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.BREVO_SMTP_USER || 'zisoglou@hotmail.gr',
+    pass: process.env.BREVO_SMTP_KEY
+  }
+});
 
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Fast Delivery <onboarding@resend.dev>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Fast Delivery <zisoglou@hotmail.gr>';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 /**
@@ -30,17 +39,10 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
   };
 
   try {
-    const { data, error } = await resend.emails.send({
+    const info = await transporter.sendMail({
       from: EMAIL_FROM,
       to: email,
       subject: '✉️ Επιβεβαίωση Email - Fast Delivery',
-      headers: {
-        'X-Entity-Ref-ID': `verify-${Date.now()}`,
-        'List-Unsubscribe': `<mailto:unsubscribe@fastdelivery.gr>`
-      },
-      tags: [
-        { name: 'category', value: 'verification' }
-      ],
       html: `
         <!DOCTYPE html>
         <html>
@@ -83,13 +85,8 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
       `
     });
 
-    if (error) {
-      console.error('❌ Email send error:', error);
-      return { success: false, error };
-    }
-
-    console.log(`✅ Verification email sent to ${email}`);
-    return { success: true, data };
+    console.log(`✅ Verification email sent to ${email} (ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Email service error:', error);
     return { success: false, error };
@@ -114,13 +111,10 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
   const resetLink = `${FRONTEND_URL}/reset-password?token=${token}&type=${userType}`;
 
   try {
-    const { data, error } = await resend.emails.send({
+    const info = await transporter.sendMail({
       from: EMAIL_FROM,
       to: email,
       subject: '🔐 Επαναφορά Κωδικού - Fast Delivery',
-      headers: {
-        'X-Entity-Ref-ID': `reset-${Date.now()}` // Unique ID to prevent threading
-      },
       html: `
         <!DOCTYPE html>
         <html>
@@ -164,13 +158,8 @@ exports.sendPasswordResetEmail = async (email, name, token, userType) => {
       `
     });
 
-    if (error) {
-      console.error('❌ Email send error:', error);
-      return { success: false, error };
-    }
-
-    console.log(`✅ Password reset email sent to ${email}`);
-    return { success: true, data };
+    console.log(`✅ Password reset email sent to ${email} (ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Email service error:', error);
     return { success: false, error };
