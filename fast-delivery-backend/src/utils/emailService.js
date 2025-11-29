@@ -1,13 +1,33 @@
 const nodemailer = require('nodemailer');
 
-// Brevo SMTP configuration
+// Log SMTP configuration (without sensitive data)
+console.log('📧 Email Service Initializing...');
+console.log('   SMTP Host: smtp-relay.brevo.com');
+console.log('   SMTP Port: 587 (STARTTLS)');
+console.log('   SMTP User:', process.env.BREVO_SMTP_USER || '9cce7f001@smtp-brevo.com');
+console.log('   SMTP Key configured:', process.env.BREVO_SMTP_KEY ? 'YES' : 'NO ❌');
+console.log('   NODE_ENV:', process.env.NODE_ENV);
+
+// Brevo SMTP configuration - Using port 587 with STARTTLS (more compatible with cloud providers)
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 465,
-  secure: true,
+  port: 587,
+  secure: false, // Use STARTTLS
   auth: {
     user: process.env.BREVO_SMTP_USER || '9cce7f001@smtp-brevo.com',
     pass: process.env.BREVO_SMTP_KEY
+  },
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,
+  socketTimeout: 15000
+});
+
+// Verify transporter connection on startup
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('❌ SMTP Connection Error:', error.message);
+  } else {
+    console.log('✅ SMTP Server is ready to send emails');
   }
 });
 
@@ -39,6 +59,10 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
   };
 
   try {
+    console.log(`📧 Sending verification email to: ${email}`);
+    console.log(`   From: ${EMAIL_FROM}`);
+    console.log(`   Link: ${verificationLink}`);
+    
     const info = await transporter.sendMail({
       from: EMAIL_FROM,
       to: email,
@@ -88,8 +112,9 @@ exports.sendVerificationEmail = async (email, name, token, userType) => {
     console.log(`✅ Verification email sent to ${email} (ID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('❌ Email service error:', error);
-    return { success: false, error };
+    console.error('❌ Email service error:', error.message);
+    console.error('   Full error:', JSON.stringify(error, null, 2));
+    return { success: false, error: error.message };
   }
 };
 

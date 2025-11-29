@@ -487,8 +487,18 @@ exports.resendVerification = async (req, res) => {
     await user.save();
 
     // Send email
-    await sendVerificationEmail(email, user[nameField], verificationToken, type);
+    console.log(`📧 Attempting to send verification email to ${email} (type: ${type})`);
+    const emailResult = await sendVerificationEmail(email, user[nameField], verificationToken, type);
+    
+    if (!emailResult.success) {
+      console.error('❌ Failed to send verification email:', emailResult.error);
+      return res.status(500).json({
+        success: false,
+        message: 'Αποτυχία αποστολής email. Δοκιμάστε ξανά αργότερα.'
+      });
+    }
 
+    console.log(`✅ Verification email sent successfully to ${email}`);
     res.json({
       success: true,
       message: 'Το email επιβεβαίωσης στάλθηκε ξανά'
@@ -497,7 +507,7 @@ exports.resendVerification = async (req, res) => {
     console.error('Resend verification error:', error);
     res.status(500).json({
       success: false,
-      message: 'Σφάλμα αποστολής email'
+      message: 'Σφάλμα αποστολής email: ' + error.message
     });
   }
 };
