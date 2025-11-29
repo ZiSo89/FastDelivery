@@ -22,22 +22,28 @@ class SocketService {
       reconnectionAttempts: 5
     });
 
+    // Store user reference for reconnection
+    this.currentUser = user;
+
     this.socket.on('connect', () => {
+      // Safety check - ensure socket still exists
+      if (!this.socket) return;
+      
       // Join appropriate rooms based on user role
-      if (user) {
+      if (this.currentUser) {
         let roomData;
         
-        if (user.role === 'admin') {
-          roomData = { role: 'admin', userId: user._id };
-        } else if (user.role === 'store') {
-          roomData = { role: 'store', userId: user._id };
-        } else if (user.role === 'driver') {
-          roomData = { role: 'driver', userId: user._id };
-        } else if (user.role === 'customer') {
-          roomData = { role: 'customer', userId: user.phone }; // Join by phone for customers
+        if (this.currentUser.role === 'admin') {
+          roomData = { role: 'admin', userId: this.currentUser._id };
+        } else if (this.currentUser.role === 'store') {
+          roomData = { role: 'store', userId: this.currentUser._id };
+        } else if (this.currentUser.role === 'driver') {
+          roomData = { role: 'driver', userId: this.currentUser._id };
+        } else if (this.currentUser.role === 'customer') {
+          roomData = { role: 'customer', userId: this.currentUser.phone }; // Join by phone for customers
         }
         
-        if (roomData) {
+        if (roomData && this.socket) {
           this.socket.emit('join', roomData);
         }
       }
@@ -64,6 +70,7 @@ class SocketService {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
+      this.currentUser = null;
       this.listeners.clear();
       this.pendingListeners.clear();
     }
@@ -161,8 +168,8 @@ class SocketService {
 
   // Emit event
   emit(event, data) {
-    if (!this.socket) {
-      console.warn('Socket not connected. Call connect() first.');
+    if (!this.socket || !this.socket.connected) {
+      console.warn('Socket not connected. Cannot emit:', event);
       return;
     }
 
@@ -171,13 +178,16 @@ class SocketService {
 
   // Join room
   joinRoom(room) {
-    if (!this.socket) return;
+    if (!this.socket || !this.socket.connected) {
+      console.warn('Socket not connected. Cannot join room:', room);
+      return;
+    }
     this.socket.emit('join', room);
   }
 
   // Leave room
   leaveRoom(room) {
-    if (!this.socket) return;
+    if (!this.socket || !this.socket.connected) return;
     this.socket.emit('leave', room);
   }
 

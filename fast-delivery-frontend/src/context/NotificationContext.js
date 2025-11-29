@@ -247,10 +247,8 @@ export const NotificationProvider = ({ children }) => {
 
     // Customer notifications (Global)
     if (user.role === 'customer') {
-      // Ensure we are in the customer room (in case socket.js didn't catch it or for extra safety)
-      if (user.phone) {
-        socketService.joinRoom(`customer:${user.phone}`);
-      }
+      // Note: Room joining is handled in socket.js connect() function
+      // No need to call joinRoom here as it's already done during connection
 
       const handleOrderPriceReady = (data) => {
         addNotification(`Επιβεβαίωση: Απαιτείται η έγκρισή σας`, 'warning', '🔔', data.orderNumber, true);
