@@ -539,10 +539,9 @@ exports.forgotPassword = async (req, res) => {
     const user = await Model.findOne({ email });
 
     if (!user) {
-      // Don't reveal if email exists
-      return res.json({
-        success: true,
-        message: 'Αν το email υπάρχει, θα λάβετε οδηγίες επαναφοράς κωδικού'
+      return res.status(404).json({
+        success: false,
+        message: 'Δεν βρέθηκε λογαριασμός με αυτό το email'
       });
     }
 
@@ -557,7 +556,7 @@ exports.forgotPassword = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Αν το email υπάρχει, θα λάβετε οδηγίες επαναφοράς κωδικού'
+      message: 'Το email επαναφοράς κωδικού στάλθηκε επιτυχώς!'
     });
   } catch (error) {
     console.error('Forgot password error:', error);
