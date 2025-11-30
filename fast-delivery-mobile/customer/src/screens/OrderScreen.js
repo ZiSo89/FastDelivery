@@ -295,6 +295,22 @@ const OrderScreen = ({ route, navigation }) => {
 
     setLoading(true);
     try {
+      // First check if service is open
+      try {
+        const statusResponse = await customerService.getServiceStatus();
+        if (statusResponse.data.serviceHoursEnabled && !statusResponse.data.isOpen) {
+          setLoading(false);
+          showAlert(
+            'Υπηρεσία Κλειστή',
+            `Η υπηρεσία είναι κλειστή αυτή τη στιγμή.\n\nΏρες λειτουργίας: ${statusResponse.data.serviceHoursStart} - ${statusResponse.data.serviceHoursEnd}`,
+            'warning'
+          );
+          return;
+        }
+      } catch (statusError) {
+        console.log('Could not check service status, proceeding with order');
+      }
+
       const formData = new FormData();
       formData.append('storeId', store._id);
       formData.append('orderType', recordedUri ? 'voice' : 'text');
@@ -331,6 +347,21 @@ const OrderScreen = ({ route, navigation }) => {
       navigation.navigate('TrackOrder', { orderNumber: orderNumber });
     } catch (error) {
       console.error('Order error:', error.response?.data?.message || error.message);
+      
+      // Check if it's a service closed error
+      if (error.response?.data?.isServiceClosed) {
+        showAlert(
+          'Υπηρεσία Κλειστή',
+          `Η υπηρεσία είναι κλειστή αυτή τη στιγμή.\n\nΏρες λειτουργίας: ${error.response.data.serviceHoursStart} - ${error.response.data.serviceHoursEnd}`,
+          'warning'
+        );
+      } else {
+        showAlert(
+          'Σφάλμα',
+          error.response?.data?.message || 'Κάτι πήγε στραβά. Δοκιμάστε ξανά.',
+          'error'
+        );
+      }
     } finally {
       setLoading(false);
     }

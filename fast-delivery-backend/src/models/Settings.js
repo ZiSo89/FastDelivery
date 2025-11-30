@@ -44,10 +44,18 @@ const settingsSchema = new mongoose.Schema({
     min: 0
   },
   
-  // Service hours
-  serviceHours: {
+  // Service hours (structured)
+  serviceHoursEnabled: {
+    type: Boolean,
+    default: false
+  },
+  serviceHoursStart: {
     type: String,
-    default: '08:00 - 22:00'
+    default: '09:00'
+  },
+  serviceHoursEnd: {
+    type: String,
+    default: '23:00'
   }
 }, {
   timestamps: true

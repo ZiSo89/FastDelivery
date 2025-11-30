@@ -10,7 +10,7 @@ import Constants from 'expo-constants';
 // URLs για κάθε περιβάλλον
 const ENV = {
   development: {
-    apiUrl: 'http://192.168.31.160:5000',  // Local testing
+    apiUrl: 'http://192.168.31.160:5000',  //http://192.168.31.160:5000 Use Render.com for Expo Go testing
   },
   production: {
     apiUrl: 'https://fastdelivery-hvff.onrender.com',

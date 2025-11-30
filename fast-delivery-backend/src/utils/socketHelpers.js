@@ -10,11 +10,13 @@ const STATUS_MESSAGES = {
   'pricing': 'Η παραγγελία σας έγινε αποδεκτή από το κατάστημα.',
   'pending_customer_confirm': 'Η παραγγελία σας κοστολογήθηκε. Παρακαλώ επιβεβαιώστε.',
   'confirmed': 'Η παραγγελία σας επιβεβαιώθηκε και αναζητούμε διανομέα.',
+  'assigned': 'Ανατέθηκε διανομέας στην παραγγελία σας.',
+  'accepted_driver': 'Ο διανομέας αποδέχτηκε την παραγγελία σας! Μπορείτε να παρακολουθείτε τη θέση του.',
   'preparing': 'Η παραγγελία σας ετοιμάζεται.',
   'in_delivery': 'Ο διανομέας παρέλαβε την παραγγελία σας.',
   'completed': 'Η παραγγελία σας ολοκληρώθηκε.',
   'rejected_store': 'Η παραγγελία σας απορρίφθηκε από το κατάστημα.',
-  'rejected_driver': 'Δεν βρέθηκε διαθέσιμος διανομέας.',
+  'rejected_driver': 'Αναζητούμε νέο διαθέσιμο διανομέα για την παραγγελία σας.',
   'cancelled': 'Η παραγγελία ακυρώθηκε.'
 };
 
@@ -39,6 +41,11 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
   // Send to the specific driver if assigned
   if (order.driverId) {
     io.to(`driver:${order.driverId}`).emit(eventName, data);
+  }
+
+  // Send to order room (for customers watching this specific order)
+  if (order._id) {
+    io.to(`order:${order._id}`).emit(eventName, data);
   }
 
   // Send to customer (using phone number or order number as room)

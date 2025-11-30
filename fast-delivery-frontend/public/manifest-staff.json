@@ -1,0 +1,25 @@
+{
+  "short_name": "FD Staff",
+  "name": "Fast Delivery - Υπάλληλοι",
+  "description": "Διαχείριση για καταστήματα, οδηγούς και admin",
+  "icons": [
+    {
+      "src": "assets/icon-staff-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-staff-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#198754",
+  "background_color": "#ffffff",
+  "orientation": "portrait"
+}

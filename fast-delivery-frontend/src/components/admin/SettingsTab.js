@@ -25,7 +25,8 @@ import {
   FaUser,
   FaLock,
   FaEnvelope,
-  FaEdit
+  FaEdit,
+  FaClock
 } from 'react-icons/fa';
 import api from '../../services/api';
 
@@ -50,6 +51,11 @@ const SettingsTab = () => {
   const [newStoreIcon, setNewStoreIcon] = useState('🏪');
   const [addingType, setAddingType] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  
+  // Service hours state
+  const [serviceHoursEnabled, setServiceHoursEnabled] = useState(false);
+  const [serviceHoursStart, setServiceHoursStart] = useState('09:00');
+  const [serviceHoursEnd, setServiceHoursEnd] = useState('23:00');
   
   // Edit icon modal state
   const [showEditIconModal, setShowEditIconModal] = useState(false);
@@ -86,6 +92,9 @@ const SettingsTab = () => {
         setDriverSalary(settings.driverSalary || 800);
         setDefaultDeliveryFee(settings.defaultDeliveryFee || 2.5);
         setStoreTypes(settings.storeTypes || []);
+        setServiceHoursEnabled(settings.serviceHoursEnabled || false);
+        setServiceHoursStart(settings.serviceHoursStart || '09:00');
+        setServiceHoursEnd(settings.serviceHoursEnd || '23:00');
       }
       
       // Fetch admin profile
@@ -116,7 +125,10 @@ const SettingsTab = () => {
       
       const res = await api.put('/admin/settings', {
         driverSalary: parseFloat(driverSalary),
-        defaultDeliveryFee: parseFloat(defaultDeliveryFee)
+        defaultDeliveryFee: parseFloat(defaultDeliveryFee),
+        serviceHoursEnabled,
+        serviceHoursStart,
+        serviceHoursEnd
       });
       
       if (res.data.success) {
@@ -342,7 +354,6 @@ const SettingsTab = () => {
                   </Form.Text>
                 </Form.Group>
 
-                {/* Default Delivery Fee */}
                 <Form.Group className="mb-4">
                   <Form.Label>
                     <FaEuroSign className="me-2" />
@@ -362,6 +373,47 @@ const SettingsTab = () => {
                   </InputGroup>
                   <Form.Text className="text-muted">
                     Η προεπιλεγμένη χρέωση παράδοσης για νέες παραγγελίες
+                  </Form.Text>
+                </Form.Group>
+
+                {/* Service Hours */}
+                <Form.Group className="mb-4">
+                  <Form.Label>
+                    <FaClock className="me-2" />
+                    Ώρες Λειτουργίας Υπηρεσίας
+                  </Form.Label>
+                  <Form.Check
+                    type="switch"
+                    id="service-hours-switch"
+                    label={serviceHoursEnabled ? 'Ενεργοποιημένο' : 'Απενεργοποιημένο'}
+                    checked={serviceHoursEnabled}
+                    onChange={(e) => setServiceHoursEnabled(e.target.checked)}
+                    className="mb-2"
+                  />
+                  {serviceHoursEnabled && (
+                    <Row className="mt-2">
+                      <Col xs={6}>
+                        <Form.Label className="small text-muted">Ώρα Έναρξης</Form.Label>
+                        <Form.Control
+                          type="time"
+                          value={serviceHoursStart}
+                          onChange={(e) => setServiceHoursStart(e.target.value)}
+                        />
+                      </Col>
+                      <Col xs={6}>
+                        <Form.Label className="small text-muted">Ώρα Λήξης</Form.Label>
+                        <Form.Control
+                          type="time"
+                          value={serviceHoursEnd}
+                          onChange={(e) => setServiceHoursEnd(e.target.value)}
+                        />
+                      </Col>
+                    </Row>
+                  )}
+                  <Form.Text className="text-muted">
+                    {serviceHoursEnabled 
+                      ? `Οι πελάτες μπορούν να παραγγείλουν μόνο ${serviceHoursStart} - ${serviceHoursEnd}`
+                      : 'Οι πελάτες μπορούν να παραγγείλουν οποιαδήποτε ώρα'}
                   </Form.Text>
                 </Form.Group>
 
@@ -610,6 +662,7 @@ const SettingsTab = () => {
                 <li>Οι τύποι καταστημάτων εμφανίζονται κατά την εγγραφή νέων καταστημάτων.</li>
                 <li>Τύποι καταστημάτων που χρησιμοποιούνται από υπάρχοντα καταστήματα δεν μπορούν να διαγραφούν.</li>
                 <li>Το προεπιλεγμένο κόστος παράδοσης συμπληρώνεται αυτόματα στην ανάθεση μεταφορικών.</li>
+                <li><strong>Ώρες Λειτουργίας:</strong> Όταν είναι ενεργές, οι πελάτες μπορούν να παραγγείλουν μόνο εντός του καθορισμένου ωραρίου.</li>
                 <li>Για τα μηνιαία έξοδα, χρησιμοποιήστε την καρτέλα Στατιστικά.</li>
               </ul>
             </Card.Body>

@@ -53,6 +53,7 @@ export const customerService = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/customer/register', data),
   getStores: (lat, lng) => api.get(`/orders/stores?latitude=${lat}&longitude=${lng}&maxDistance=5000000`),
+  getServiceStatus: () => api.get('/orders/service-status'),
   createOrder: (orderData) => api.post('/orders', orderData, {
     headers: orderData instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
   }),
@@ -62,6 +63,7 @@ export const customerService = {
   getActiveOrderByPhone: (phone) => api.get(`/orders/active-by-phone/${phone}`),
   getProfile: () => api.put('/orders/profile'),
   updateProfile: (data) => api.put('/orders/profile', data),
+  deleteAccount: () => api.delete('/orders/profile'),
 };
 
 export default api;

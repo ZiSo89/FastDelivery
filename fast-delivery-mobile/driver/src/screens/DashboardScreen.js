@@ -109,17 +109,21 @@ const DashboardScreen = () => {
       const fetchedOrders = response.data.orders || [];
       setOrders(fetchedOrders);
       
-      // Check if any order is in_delivery and start tracking
-      const inDeliveryOrder = fetchedOrders.find(o => o.status === 'in_delivery');
-      if (inDeliveryOrder && user?._id) {
-        if (!locationService.isTracking || locationService.currentOrderId !== inDeliveryOrder._id) {
-          const started = await locationService.startTracking(inDeliveryOrder._id, user._id);
+      // Check if any order needs GPS tracking (accepted_driver, preparing, ready, in_delivery)
+      const trackingStatuses = ['accepted_driver', 'preparing', 'ready', 'in_delivery'];
+      const activeOrder = fetchedOrders.find(o => trackingStatuses.includes(o.status));
+      
+      if (activeOrder && user?._id) {
+        if (!locationService.isTracking || locationService.currentOrderId !== activeOrder._id) {
+          const started = await locationService.startTracking(activeOrder._id, user._id);
           setIsTracking(started);
+          console.log(`📍 GPS tracking resumed for order ${activeOrder._id} (status: ${activeOrder.status})`);
         }
-      } else if (!inDeliveryOrder && locationService.isTracking) {
-        // No in_delivery orders, stop tracking
+      } else if (!activeOrder && locationService.isTracking) {
+        // No active orders, stop tracking
         await locationService.stopTracking();
         setIsTracking(false);
+        console.log('📍 GPS tracking stopped - no active orders');
       }
     } catch (err) {
     } finally {
@@ -159,7 +163,7 @@ const DashboardScreen = () => {
         Notifications.scheduleNotificationAsync({
           content: {
             title: '📦 Νέα Παραγγελία!',
-            body: `Ανατέθηκε νέα παραγγελία: ${data.orderNumber || ''}`,
+            body: 'Ανατέθηκε νέα παραγγελία. Ανοίξτε την εφαρμογή για λεπτομέρειες.',
             sound: true,
           },
           trigger: null,
@@ -179,7 +183,7 @@ const DashboardScreen = () => {
           Notifications.scheduleNotificationAsync({
             content: {
               title: '🏪 Έτοιμη για Παραλαβή!',
-              body: `Η παραγγελία ${data.orderNumber || ''} είναι έτοιμη. Πηγαίνετε στο κατάστημα.`,
+              body: 'Η παραγγελία είναι έτοιμη. Πηγαίνετε στο κατάστημα.',
               sound: true,
             },
             trigger: null,
@@ -257,6 +261,16 @@ const DashboardScreen = () => {
     try {
       setProcessingId(orderId);
       await driverService.acceptOrder(orderId, true);
+      
+      // Start location tracking when driver accepts order
+      if (user?._id) {
+        const started = await locationService.startTracking(orderId, user._id);
+        setIsTracking(started);
+        if (started) {
+          console.log('📍 GPS tracking started on order accept');
+        }
+      }
+      
       await fetchOrders();
     } catch (err) {
       showAlert('Σφάλμα', err.response?.data?.message || 'Σφάλμα αποδοχής', [], 'error');
@@ -295,16 +309,6 @@ const DashboardScreen = () => {
     try {
       setProcessingId(orderId);
       await driverService.updateStatus(orderId, 'in_delivery');
-      
-      // Start location tracking when pickup is confirmed
-      if (user?._id) {
-        const started = await locationService.startTracking(orderId, user._id);
-        setIsTracking(started);
-        if (started) {
-          showAlert('📍 GPS', 'Η τοποθεσία σας κοινοποιείται στον πελάτη', [], 'success');
-        }
-      }
-      
       await fetchOrders();
     } catch (err) {
       showAlert('Σφάλμα', err.response?.data?.message || 'Σφάλμα παραλαβής', [], 'error');

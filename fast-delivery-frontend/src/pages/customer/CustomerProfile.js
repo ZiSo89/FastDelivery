@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Alert, Spinner, Modal } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
@@ -10,7 +10,7 @@ const libraries = ['places'];
 
 const CustomerProfile = () => {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -22,6 +22,10 @@ const CustomerProfile = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const autocompleteRef = useRef(null);
+  
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -97,6 +101,25 @@ const CustomerProfile = () => {
       setMessage({ type: 'danger', text: err.response?.data?.message || 'Σφάλμα ενημέρωσης προφίλ' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await customerService.deleteAccount();
+      setShowDeleteModal(false);
+      setMessage({ type: 'success', text: 'Ο λογαριασμός σας διαγράφηκε επιτυχώς. Θα αποσυνδεθείτε...' });
+      setTimeout(() => {
+        logout();
+        navigate('/');
+      }, 2000);
+    } catch (err) {
+      console.error('Delete account error:', err);
+      setMessage({ type: 'danger', text: err.response?.data?.message || 'Σφάλμα διαγραφής λογαριασμού' });
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -220,11 +243,53 @@ const CustomerProfile = () => {
                     {loading ? <Spinner size="sm" animation="border" /> : 'Αποθήκευση Αλλαγών'}
                   </Button>
                 </div>
+
+                <hr className="my-4" />
+
+                <div className="d-grid">
+                  <Button 
+                    variant="outline-danger"
+                    onClick={() => setShowDeleteModal(true)}
+                  >
+                    <i className="fas fa-trash-alt me-2"></i>
+                    Διαγραφή Λογαριασμού
+                  </Button>
+                </div>
               </Form>
             </div>
           </Col>
         </Row>
       </Container>
+
+      {/* Delete Account Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+        <Modal.Header closeButton className="border-0">
+          <Modal.Title className="text-danger">
+            <i className="fas fa-exclamation-triangle me-2"></i>
+            Διαγραφή Λογαριασμού
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-3">
+            <strong>ΠΡΟΣΟΧΗ:</strong> Αυτή η ενέργεια είναι μη αναστρέψιμη!
+          </p>
+          <p className="text-muted">
+            Ο λογαριασμός σας θα διαγραφεί οριστικά. Θέλετε να συνεχίσετε;
+          </p>
+        </Modal.Body>
+        <Modal.Footer className="border-0">
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Ακύρωση
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+          >
+            {deleting ? <Spinner size="sm" animation="border" /> : 'Διαγραφή Λογαριασμού'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

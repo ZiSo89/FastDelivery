@@ -10,11 +10,26 @@
       content="Fast Delivery - Γρήγορη Παράδοση Παραγγελιών"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/assets/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    <!-- 
+      Δυναμικό manifest για ξεχωριστές PWA εγκαταστάσεις:
+      - /login → manifest-staff.json (για υπαλλήλους)
+      - / → manifest-customer.json (για πελάτες)
     -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link rel="manifest" id="dynamic-manifest" href="%PUBLIC_URL%/manifest-customer.json" />
+    <script>
+      (function() {
+        var path = window.location.pathname;
+        var manifestLink = document.getElementById('dynamic-manifest');
+        // Αν είναι στο /login ή admin/store/driver pages → Staff manifest
+        if (path.includes('/login') || path.includes('/admin') || path.includes('/store') || path.includes('/driver')) {
+          manifestLink.href = '/manifest-staff.json';
+          document.querySelector('meta[name="theme-color"]').content = '#198754';
+        } else {
+          // Πελάτες
+          manifestLink.href = '/manifest-customer.json';
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.

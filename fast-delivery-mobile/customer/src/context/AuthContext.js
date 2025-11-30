@@ -58,23 +58,42 @@ export const AuthProvider = ({ children }) => {
   const registerForPushNotificationsAsync = async () => {
     // Skip if Notifications not available
     if (!Notifications) {
+      console.log('📱 Push: Notifications module not available');
       return null;
     }
     
     let token;
     try {
-      if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        if (finalStatus !== 'granted') {
-          return null;
-        }
-        // Get push token - will fail in Expo Go, that's OK
-        token = (await Notifications.getExpoPushTokenAsync()).data;
+      // For emulator testing, we skip the isDevice check
+      // In production, Device.isDevice will be true on real phones
+      const isRealDevice = Device.isDevice;
+      console.log('📱 Push: Starting registration, isDevice:', isRealDevice);
+      
+      // Try to get permissions regardless of device type
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      console.log('📱 Push: Existing permission status:', existingStatus);
+      
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+        console.log('📱 Push: Requested permission, new status:', finalStatus);
+      }
+      if (finalStatus !== 'granted') {
+        console.log('📱 Push: Permission denied');
+        return null;
+      }
+      
+      // Get push token with projectId for standalone builds
+      console.log('📱 Push: Getting Expo push token...');
+      try {
+        token = (await Notifications.getExpoPushTokenAsync({
+          projectId: '7eec880b-7918-467c-96c8-7dad2d531d01'
+        })).data;
+        console.log('📱 Push: Got token:', token);
+      } catch (tokenError) {
+        console.log('📱 Push: Could not get token (emulator?):', tokenError.message);
+        // Continue without push token - app still works
       }
 
       if (Platform.OS === 'android' && Notifications.setNotificationChannelAsync) {
@@ -83,10 +102,12 @@ export const AuthProvider = ({ children }) => {
           importance: Notifications.AndroidImportance?.MAX || 4,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#FF231F7C',
+          sound: 'default',
         });
+        console.log('📱 Push: Android notification channel created');
       }
     } catch (error) {
-      // Push tokens don't work in Expo Go - this is expected
+      console.log('📱 Push: Error getting token:', error.message);
       return null;
     }
 

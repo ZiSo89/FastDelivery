@@ -40,6 +40,9 @@ const CustomerProfile = () => {
     address: ''
   });
   
+  // Delete account state
+  const [deleting, setDeleting] = useState(false);
+  
   // Location state
   const [markerPosition, setMarkerPosition] = useState(null);
   
@@ -360,6 +363,37 @@ const CustomerProfile = () => {
     );
   };
 
+  const handleDeleteAccount = () => {
+    showAlert(
+      'Διαγραφή Λογαριασμού',
+      'ΠΡΟΣΟΧΗ: Αυτή η ενέργεια είναι μη αναστρέψιμη! Ο λογαριασμός σας θα διαγραφεί οριστικά.\n\nΘέλετε να συνεχίσετε;',
+      'error',
+      [
+        { text: 'Ακύρωση', style: 'cancel' },
+        { text: 'Διαγραφή', style: 'destructive', onPress: confirmDeleteAccount }
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await customerService.deleteAccount();
+      showAlert(
+        'Επιτυχία',
+        'Ο λογαριασμός σας διαγράφηκε επιτυχώς.',
+        'success',
+        [{ text: 'OK', onPress: logout }]
+      );
+    } catch (error) {
+      console.error('Delete account error:', error);
+      const message = error.response?.data?.message || 'Σφάλμα διαγραφής λογαριασμού';
+      showAlert('Σφάλμα', message, 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (user?.isGuest) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
@@ -519,6 +553,21 @@ const CustomerProfile = () => {
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color="#e74c3c" style={styles.logoutIcon} />
             <Text style={styles.logoutText}>Αποσύνδεση</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.deleteButton} 
+            onPress={handleDeleteAccount}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator color="#dc3545" size="small" />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={20} color="#dc3545" style={styles.logoutIcon} />
+                <Text style={styles.deleteButtonText}>Διαγραφή Λογαριασμού</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -703,6 +752,22 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#e74c3c',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dc3545',
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    color: '#dc3545',
     fontSize: 16,
     fontWeight: '600',
   },

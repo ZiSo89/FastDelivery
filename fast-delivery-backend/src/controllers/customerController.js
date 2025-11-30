@@ -2,10 +2,45 @@ const Store = require('../models/Store');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Customer = require('../models/Customer'); // Import Customer model
+const Settings = require('../models/Settings'); // Import Settings model
 const multer = require('multer');
 const { uploadToFirebase } = require('../config/firebase');
 const { broadcastOrderEvent } = require('../utils/socketHelpers');
 const { geocodeAddress, toGeoJSONPoint } = require('../utils/geocoding');
+
+// Helper function to check if service is open
+const isServiceOpen = (settings) => {
+  if (!settings.serviceHoursEnabled) {
+    return { isOpen: true };
+  }
+  
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const currentTime = currentHour * 60 + currentMinute; // Convert to minutes
+  
+  const [startHour, startMinute] = settings.serviceHoursStart.split(':').map(Number);
+  const [endHour, endMinute] = settings.serviceHoursEnd.split(':').map(Number);
+  
+  const startTime = startHour * 60 + startMinute;
+  const endTime = endHour * 60 + endMinute;
+  
+  // Handle overnight hours (e.g., 22:00 - 02:00)
+  let isOpen;
+  if (endTime > startTime) {
+    // Normal hours (e.g., 09:00 - 23:00)
+    isOpen = currentTime >= startTime && currentTime < endTime;
+  } else {
+    // Overnight hours (e.g., 22:00 - 02:00)
+    isOpen = currentTime >= startTime || currentTime < endTime;
+  }
+  
+  return {
+    isOpen,
+    serviceHoursStart: settings.serviceHoursStart,
+    serviceHoursEnd: settings.serviceHoursEnd
+  };
+};
 
 // Multer config για voice files (in-memory storage)
 const storage = multer.memoryStorage();
@@ -72,12 +107,48 @@ exports.getStores = async (req, res) => {
   }
 };
 
+// @desc    Get service status (open/closed)
+// @route   GET /api/v1/orders/service-status
+// @access  Public
+exports.getServiceStatus = async (req, res) => {
+  try {
+    const settings = await Settings.getSettings();
+    const serviceStatus = isServiceOpen(settings);
+    
+    res.json({
+      success: true,
+      ...serviceStatus,
+      serviceHoursEnabled: settings.serviceHoursEnabled
+    });
+  } catch (error) {
+    console.error('Get service status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ελέγχου κατάστασης υπηρεσίας'
+    });
+  }
+};
+
 // @desc    Create order (guest checkout)
 // @route   POST /api/v1/orders
 // @access  Public
 exports.createOrder = async (req, res) => {
   try {
     let { customer, storeId, orderType, orderContent } = req.body;
+
+    // Check service hours first
+    const settings = await Settings.getSettings();
+    const serviceStatus = isServiceOpen(settings);
+    
+    if (!serviceStatus.isOpen) {
+      return res.status(403).json({
+        success: false,
+        message: `Η υπηρεσία είναι κλειστή. Ώρες λειτουργίας: ${serviceStatus.serviceHoursStart} - ${serviceStatus.serviceHoursEnd}`,
+        serviceHoursStart: serviceStatus.serviceHoursStart,
+        serviceHoursEnd: serviceStatus.serviceHoursEnd,
+        isServiceClosed: true
+      });
+    }
 
     // Parse customer if it's a string (from FormData)
     if (typeof customer === 'string') {
@@ -481,3 +552,46 @@ exports.updateProfile = async (req, res) => {
 };
 
 exports.uploadVoice = upload.single('voiceFile');
+
+// @desc    Delete customer account (soft delete)
+// @route   DELETE /api/v1/orders/profile
+// @access  Private (Customer)
+exports.deleteAccount = async (req, res) => {
+  try {
+    // Find customer
+    const customer = await Customer.findById(req.user._id);
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Ο χρήστης δεν βρέθηκε'
+      });
+    }
+
+    // Soft delete: anonymize personal data but keep record
+    const deletedId = customer._id.toString();
+    customer.email = `deleted_${deletedId}@deleted.local`;
+    customer.phone = '0000000000';
+    customer.name = 'Διαγραμμένος Χρήστης';
+    customer.address = 'Διαγραμμένη διεύθυνση';
+    customer.location = { type: 'Point', coordinates: [0, 0] };
+    customer.pushToken = null;
+    customer.isActive = false;
+    customer.isDeleted = true;
+    customer.deletedAt = new Date();
+    customer.password = await require('bcryptjs').hash(`deleted_${Date.now()}_${Math.random()}`, 10);
+
+    await customer.save();
+
+    res.json({
+      success: true,
+      message: 'Ο λογαριασμός σας διαγράφηκε επιτυχώς'
+    });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα διαγραφής λογαριασμού'
+    });
+  }
+};

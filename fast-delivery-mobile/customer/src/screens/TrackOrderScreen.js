@@ -1,12 +1,40 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking, Dimensions, Animated } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking, Dimensions, Animated, Vibration, BackHandler } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { useFocusEffect, CommonActions } from '@react-navigation/native';
 import { customerService } from '../services/api';
 import socketService from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+
+// Safe import for notifications
+let Notifications = null;
+try {
+  Notifications = require('expo-notifications');
+} catch (e) {
+  console.log('expo-notifications not available');
+}
+
+// Status labels for notifications
+// Note: pending_admin is internal step - no notification needed for customer
+const STATUS_NOTIFICATIONS = {
+  'pending_store': { title: '📋 Αναμονή', body: 'Η παραγγελία σας αναμένει απάντηση από το κατάστημα' },
+  'pricing': { title: '💰 Τιμολόγηση', body: 'Το κατάστημα ετοιμάζει την τιμή' },
+  'pending_customer_confirm': { title: '✅ Επιβεβαίωση', body: 'Η τιμή είναι έτοιμη! Επιβεβαιώστε την παραγγελία' },
+  'confirmed': { title: '🔍 Αναζήτηση Οδηγού', body: 'Αναζητούμε διαθέσιμο οδηγό για την παραγγελία σας' },
+  'assigned': { title: '🚴 Ανατέθηκε!', body: 'Έχει ανατεθεί διανομέας στην παραγγελία σας' },
+  'accepted_driver': { title: '✅ Αποδοχή Οδηγού!', body: 'Ο διανομέας αποδέχτηκε - μπορείτε να παρακολουθείτε την τοποθεσία του' },
+  'preparing': { title: '👨‍🍳 Ετοιμάζεται!', body: 'Η παραγγελία σας ετοιμάζεται' },
+  'ready': { title: '📦 Έτοιμη!', body: 'Η παραγγελία σας είναι έτοιμη για παράδοση' },
+  'in_delivery': { title: '🚴 Σε Παράδοση!', body: 'Ο διανομέας ξεκίνησε! Έρχεται κοντά σας' },
+  'completed': { title: '✅ Ολοκληρώθηκε!', body: 'Η παραγγελία σας παραδόθηκε. Καλή απόλαυση!' },
+  'cancelled': { title: '❌ Ακυρώθηκε', body: 'Η παραγγελία σας ακυρώθηκε' },
+  'rejected_store': { title: '❌ Απορρίφθηκε', body: 'Το κατάστημα δεν μπορεί να εκτελέσει την παραγγελία' },
+  'rejected_driver': { title: '🔍 Αναζήτηση Οδηγού', body: 'Αναζητούμε νέο διαθέσιμο οδηγό για την παραγγελία σας' },
+  // pending_admin: intentionally not included - internal step, no customer notification
+};
 
 const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.35; // 35% of screen height for map
@@ -116,6 +144,101 @@ const TrackOrderScreen = ({ route, navigation }) => {
   
   // Safely get orderNumber if passed
   const paramOrderNumber = route.params?.orderNumber;
+  
+  // Track last notified status to avoid duplicate notifications
+  const lastNotifiedStatusRef = useRef(null);
+
+  // Navigate back to Home - reset the stack
+  const goToHome = useCallback(() => {
+    console.log('🏠 Back pressed - navigating to Home');
+    // Reset the navigation stack and go to HomeTab
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'HomeTab' }],
+      })
+    );
+  }, [navigation]);
+
+  // Handle hardware back button - always go to Home
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        console.log('🔙 Hardware back button pressed');
+        goToHome();
+        return true; // Prevent default behavior
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => {
+        subscription.remove();
+      };
+    }, [goToHome])
+  );
+
+  // Set custom header with back button that goes to Home
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity onPress={goToHome} style={{ marginLeft: 8, padding: 8 }}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, goToHome]);
+
+  // Show local notification for status change
+  const showStatusNotification = async (newStatus) => {
+    console.log('🔔 Notification: Attempting for status:', newStatus);
+    
+    if (!Notifications) {
+      console.log('🔔 Notification: Module not available');
+      return;
+    }
+    if (lastNotifiedStatusRef.current === newStatus) {
+      console.log('🔔 Notification: Duplicate, skipping');
+      return;
+    }
+    
+    const notification = STATUS_NOTIFICATIONS[newStatus];
+    if (!notification) {
+      console.log('🔔 Notification: No notification config for status:', newStatus);
+      return;
+    }
+    
+    lastNotifiedStatusRef.current = newStatus;
+    
+    // Vibrate for important statuses
+    if (['in_delivery', 'completed', 'pending_customer_confirm'].includes(newStatus)) {
+      Vibration.vibrate([0, 500, 200, 500]);
+    }
+    
+    try {
+      // Ensure notification channel exists (Android)
+      if (Notifications.setNotificationChannelAsync) {
+        await Notifications.setNotificationChannelAsync('orders', {
+          name: 'Παραγγελίες',
+          importance: Notifications.AndroidImportance?.MAX || 4,
+          vibrationPattern: [0, 250, 250, 250],
+          sound: 'default',
+        });
+      }
+      
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notification.title,
+          body: notification.body,
+          sound: true,
+          channelId: 'orders',
+        },
+        trigger: null, // Show immediately
+      });
+      console.log('🔔 Notification: Shown successfully!', notification.title);
+    } catch (error) {
+      console.log('🔔 Notification: Error:', error.message);
+    }
+  };
 
   useEffect(() => {
     loadOrderData();
@@ -123,19 +246,30 @@ const TrackOrderScreen = ({ route, navigation }) => {
     // Connect socket
     socketService.connect();
     
-    // Listen for updates - just reload data, no toasts or local notifications
+    // Listen for updates - show local notifications for status changes
     const handleStatusChange = (data) => {
+      console.log('📱 Status change event received:', data?.newStatus, 'orderNumber:', data?.orderNumber);
+      
       if (paramOrderNumber) {
         if (data?.orderNumber === paramOrderNumber) {
+          // Show notification for status change
+          if (data?.newStatus) {
+            showStatusNotification(data.newStatus);
+          }
           loadOrderData();
         }
       } else {
+        // Show notification for status change
+        if (data?.newStatus) {
+          showStatusNotification(data.newStatus);
+        }
         loadOrderData();
       }
     };
 
     // Driver location tracking with throttling
     const handleDriverLocation = (data) => {
+      console.log('📍 Driver location event received:', data);
       const now = Date.now();
       // Throttle updates to prevent crashes
       if (now - lastDriverUpdateRef.current < DRIVER_UPDATE_THROTTLE) {
@@ -143,14 +277,13 @@ const TrackOrderScreen = ({ route, navigation }) => {
       }
       lastDriverUpdateRef.current = now;
       
-      // Only update if we're tracking this order
-      if (data?.orderId === order?._id || data?.orderNumber === paramOrderNumber) {
-        if (data?.location?.lat && data?.location?.lng) {
-          setDriverLocation({
-            latitude: data.location.lat,
-            longitude: data.location.lng,
-          });
-        }
+      // Update driver location - check by orderId or orderNumber
+      if (data?.location?.lat && data?.location?.lng) {
+        setDriverLocation({
+          latitude: data.location.lat,
+          longitude: data.location.lng,
+        });
+        console.log('📍 Driver location state updated:', data.location);
       }
     };
 
@@ -163,6 +296,8 @@ const TrackOrderScreen = ({ route, navigation }) => {
     socketService.on('order:price_ready', handleStatusChange);
     socketService.on('order:assigned', handleStatusChange);
     socketService.on('order:completed', handleStatusChange);
+    socketService.on('driver:accepted', handleStatusChange);  // Driver accepted order
+    socketService.on('driver:rejected', handleStatusChange);  // Driver rejected order
 
     return () => {
       socketService.off('driver:location', handleDriverLocation);
@@ -174,6 +309,8 @@ const TrackOrderScreen = ({ route, navigation }) => {
       socketService.off('order:price_ready', handleStatusChange);
       socketService.off('order:assigned', handleStatusChange);
       socketService.off('order:completed', handleStatusChange);
+      socketService.off('driver:accepted', handleStatusChange);
+      socketService.off('driver:rejected', handleStatusChange);
       if (sound) {
         sound.unloadAsync();
       }
@@ -182,8 +319,9 @@ const TrackOrderScreen = ({ route, navigation }) => {
 
   // Join customer room when order is loaded (crucial for guests)
   // Don't join if order is already completed or cancelled
+  // Note: rejected_driver is NOT final - admin can re-assign
   useEffect(() => {
-    const finalStatuses = ['completed', 'cancelled', 'rejected_store', 'rejected_driver'];
+    const finalStatuses = ['completed', 'cancelled', 'rejected_store'];
     if (order?.status && finalStatuses.includes(order.status)) {
       // Order is finished, no need for socket updates
       return;
@@ -191,11 +329,23 @@ const TrackOrderScreen = ({ route, navigation }) => {
     
     if (order?.customer?.phone) {
       socketService.joinRoom({ role: 'customer', userId: order.customer.phone });
+      console.log('🔌 Joined customer room:', order.customer.phone);
     }
     // Also join order-specific room for driver location updates
     if (order?._id) {
-      if (socketService.socket) {
+      if (socketService.socket && socketService.socket.connected) {
         socketService.socket.emit('join_order', order._id);
+        console.log('🔌 Joined order room:', order._id);
+      } else {
+        console.log('⚠️ Socket not connected, cannot join order room');
+        // Try to connect and then join
+        socketService.connect();
+        setTimeout(() => {
+          if (socketService.socket && socketService.socket.connected) {
+            socketService.socket.emit('join_order', order._id);
+            console.log('🔌 Joined order room after reconnect:', order._id);
+          }
+        }, 1000);
       }
     }
   }, [order?._id, order?.status]);
@@ -301,7 +451,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
       completed: '#27ae60',
       cancelled: '#d9534f',
       rejected_store: '#d9534f',
-      rejected_driver: '#d9534f'
+      rejected_driver: '#5cb85c' // Same as confirmed - searching for new driver
     };
     return colors[status] || '#777';
   };
@@ -311,8 +461,8 @@ const TrackOrderScreen = ({ route, navigation }) => {
       pending_store: 'Αναμονή Καταστήματος',
       pricing: 'Τιμολόγηση',
       pending_customer_confirm: 'Αναμονή Επιβεβαίωσης',
-      confirmed: 'Επιβεβαιωμένη',
-      pending_admin: 'Έλεγχος Admin',
+      confirmed: 'Αναζήτηση Οδηγού',
+      pending_admin: 'Ορισμός Μεταφορικών',
       assigned: 'Ανατέθηκε σε Οδηγό',
       accepted_driver: 'Αποδεκτή από Οδηγό',
       preparing: 'Ετοιμάζεται',
@@ -321,7 +471,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
       completed: 'Παραδόθηκε',
       cancelled: 'Ακυρώθηκε',
       rejected_store: 'Απορρίφθηκε από Κατάστημα',
-      rejected_driver: 'Απορρίφθηκε από Οδηγό'
+      rejected_driver: 'Αναζήτηση Οδηγού'
     };
     return texts[status] || status;
   };
@@ -524,8 +674,8 @@ const TrackOrderScreen = ({ route, navigation }) => {
               styles={styles} 
             />
 
-            {/* Driver Marker - Blue (only when in_delivery, Memoized) */}
-            {order.status === 'in_delivery' && (
+            {/* Driver Marker - Blue (show when driver accepted and has location) */}
+            {['accepted_driver', 'preparing', 'ready', 'in_delivery'].includes(order.status) && driverLocation && (
               <DriverMarkerMemo 
                 coordinate={driverLocation} 
                 title={order.driverName || 'Οδηγός'} 
@@ -540,13 +690,8 @@ const TrackOrderScreen = ({ route, navigation }) => {
             <Text style={styles.floatingStatusText}>{getStatusText(order.status)}</Text>
           </View>
 
-          {/* Order Number Badge */}
-          <View style={styles.orderBadge}>
-            <Text style={styles.orderBadgeText}>{order.orderNumber}</Text>
-          </View>
-
-          {/* Live Indicator - show when driver is on the way */}
-          {order.status === 'in_delivery' && (
+          {/* Live Indicator - show when driver location is being tracked */}
+          {['accepted_driver', 'preparing', 'ready', 'in_delivery'].includes(order.status) && driverLocation && (
             <View style={styles.liveIndicator}>
               <View style={styles.liveIndicatorDot} />
               <Text style={styles.liveIndicatorText}>LIVE</Text>
@@ -563,7 +708,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
               <View style={[styles.legendDotSmall, { backgroundColor: '#00C853' }]} />
               <Text style={styles.legendTextSmall}>Εσείς</Text>
             </View>
-            {order.status === 'in_delivery' && (
+            {['accepted_driver', 'preparing', 'ready', 'in_delivery'].includes(order.status) && driverLocation && (
               <View style={styles.legendItemFloating}>
                 <View style={[styles.legendDotSmall, { backgroundColor: '#00c1e8' }]} />
                 <Text style={styles.legendTextSmall}>Οδηγός</Text>
@@ -704,6 +849,11 @@ const TrackOrderScreen = ({ route, navigation }) => {
             </View>
           </View>
         )}
+
+        {/* Order Number at bottom */}
+        <View style={styles.orderNumberFooter}>
+          <Text style={styles.orderNumberFooterText}>{order.orderNumber}</Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -1169,6 +1319,19 @@ const styles = StyleSheet.create({
   },
   driverMarker: {
     backgroundColor: '#2196F3',
+  },
+  // Order number footer
+  orderNumberFooter: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingBottom: 24,
+    marginTop: 8,
+  },
+  orderNumberFooterText: {
+    fontSize: 12,
+    color: '#999',
+    fontWeight: '500',
+    letterSpacing: 0.5,
   },
 });
 

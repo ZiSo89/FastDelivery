@@ -174,7 +174,7 @@ const CustomerOrders = ({ navigation }) => {
       'pending_store': 'Αναμονή Καταστήματος',
       'pricing': 'Τιμολόγηση',
       'pending_customer_confirm': 'Αναμονή Επιβεβαίωσης',
-      'confirmed': 'Επιβεβαιωμένη',
+      'confirmed': 'Αναζήτηση Οδηγού',
       'pending_admin': 'Αναμονή Διαχειριστή',
       'assigned': 'Ανατέθηκε',
       'accepted_driver': 'Αποδεκτή από Οδηγό',
@@ -183,7 +183,7 @@ const CustomerOrders = ({ navigation }) => {
       'completed': 'Παραδόθηκε',
       'cancelled': 'Ακυρώθηκε',
       'rejected_store': 'Απορρίφθηκε από Κατάστημα',
-      'rejected_driver': 'Απορρίφθηκε από Οδηγό'
+      'rejected_driver': 'Αναζήτηση Οδηγού'
     };
     return statusMap[status] || status;
   };

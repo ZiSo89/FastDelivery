@@ -351,6 +351,12 @@ export const customerService = {
     return response.data;
   },
 
+  // Delete account (soft delete)
+  deleteAccount: async () => {
+    const response = await api.delete('/orders/profile');
+    return response.data;
+  },
+
   // Get active order by phone
   getActiveOrderByPhone: async (phone) => {
     const response = await api.get(`/orders/active-by-phone/${phone}`);
