@@ -1,15 +1,15 @@
 // Geocoding utility using Google Maps API
 const https = require('https');
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-
 /**
  * Geocode an address to coordinates
  * @param {string} address - The address to geocode
  * @returns {Promise<{lat: number, lng: number} | null>} - Coordinates or null if not found
  */
 async function geocodeAddress(address) {
-  if (!GOOGLE_MAPS_API_KEY) {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  
+  if (!apiKey) {
     console.warn('⚠️ GOOGLE_MAPS_API_KEY not set, skipping geocoding');
     return null;
   }
@@ -23,7 +23,9 @@ async function geocodeAddress(address) {
     // Add default region for better results (Greece/Alexandroupoli area)
     const fullAddress = `${address}, Αλεξανδρούπολη, Ελλάδα`;
     const encodedAddress = encodeURIComponent(fullAddress);
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${GOOGLE_MAPS_API_KEY}&region=gr&language=el`;
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}&region=gr&language=el`;
+
+    console.log('🗺️ Geocoding address:', address);
 
     const data = await new Promise((resolve, reject) => {
       https.get(url, (res) => {
@@ -41,6 +43,7 @@ async function geocodeAddress(address) {
 
     if (data.status === 'OK' && data.results && data.results.length > 0) {
       const location = data.results[0].geometry.location;
+      console.log('✅ Geocoding success:', location);
       return {
         lat: location.lat,
         lng: location.lng

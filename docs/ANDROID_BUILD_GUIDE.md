@@ -11,7 +11,7 @@
 - Τοποθεσία: `C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot`
 
 ### 2. Android SDK
-- Τοποθεσία: `C:\Users\<username>\AppData\Local\Android\Sdk`
+- Τοποθεσία: `C:\Users\zisog\AppData\Local\Android\Sdk`
 - Απαιτείται: Android Studio ή Android Command Line Tools
 
 ### 3. Node.js & npm
@@ -26,35 +26,69 @@
 $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
 ```
 
-### Προσθήκη ADB στο PATH
+### Προσθήκη ADB & Emulator στο PATH
 ```powershell
-$env:PATH = "$env:PATH;C:\Users\<username>\AppData\Local\Android\Sdk\platform-tools"
+$env:PATH = "$env:PATH;C:\Users\zisog\AppData\Local\Android\Sdk\platform-tools"
+$env:PATH = "$env:PATH;C:\Users\zisog\AppData\Local\Android\Sdk\emulator"
 ```
 
 ---
 
 ## 🏗️ Build Customer APK
 
-### Βήμα 1: Δημιουργία Junction (αποφυγή long path errors)
+### Βήμα 1: Δημιουργία φακέλου C:\A (αποφυγή long path errors)
 ```powershell
-# Δημιουργία junction για να αποφύγουμε Windows long path issues
-cmd /c "mklink /J C:\A C:\Users\<username>\Documents\Projects\FastDelivery"
+# Καθαρισμός και δημιουργία φακέλου
+if (Test-Path "C:\A") { Remove-Item -Path "C:\A" -Recurse -Force }
+New-Item -ItemType Directory -Path "C:\A\customer" -Force
 ```
 
-### Βήμα 2: Αντιγραφή και προετοιμασία
+### Βήμα 2: Αντιγραφή με robocopy (αποφυγή long path errors)
 ```powershell
-cd C:\A
+# Χρήση robocopy για αντιγραφή - εξαιρεί τους φακέλους cache/build
+robocopy "C:\Users\zisog\Documents\Projects\FastDelivery\fast-delivery-mobile\customer" "C:\A\customer" /E /XD ".expo" "android" "node_modules" ".git"
+```
 
-# Αντιγραφή customer app στο junction
-Copy-Item -Recurse ".\fast-delivery-mobile\customer" -Destination "C:\A\customer"
-
+### Βήμα 3: Εγκατάσταση dependencies
+```powershell
 cd C:\A\customer
-
-# Εγκατάσταση dependencies
 npm install
 ```
 
-### Βήμα 3: Prebuild (δημιουργία Android project)
+### Βήμα 4: Prebuild (δημιουργία Android project)
+```powershell
+npx expo prebuild --platform android --clean
+```
+
+### Βήμα 5: Build Release APK
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
+cd C:\A\customer\android
+.\gradlew.bat assembleRelease
+```
+
+### Βήμα 6: Το APK βρίσκεται εδώ
+```
+C:\A\customer\android\app\build\outputs\apk\release\app-release.apk
+```
+
+---
+
+## 🚗 Build Driver APK
+
+### Βήμα 1: Δημιουργία φακέλου και αντιγραφή
+```powershell
+New-Item -ItemType Directory -Path "C:\A\driver" -Force
+robocopy "C:\Users\zisog\Documents\Projects\FastDelivery\fast-delivery-mobile\driver" "C:\A\driver" /E /XD ".expo" "android" "node_modules" ".git"
+```
+
+### Βήμα 2: Εγκατάσταση dependencies
+```powershell
+cd C:\A\driver
+npm install
+```
+
+### Βήμα 3: Prebuild
 ```powershell
 npx expo prebuild --platform android --clean
 ```
@@ -62,51 +96,13 @@ npx expo prebuild --platform android --clean
 ### Βήμα 4: Build Release APK
 ```powershell
 $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
-cd C:\A\customer\android
-.\gradlew.bat assembleRelease
-```
-
-### Βήμα 5: Αντιγραφή APK
-```powershell
-# Το APK βρίσκεται εδώ:
-# C:\A\customer\android\app\build\outputs\apk\release\app-release.apk
-
-# Αντιγραφή με όνομα
-Copy-Item "C:\A\customer\android\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\<username>\Documents\Projects\FastDelivery\FastDelivery-Customer-v1.0.0.apk"
-```
-
----
-
-## 🚗 Build Driver APK
-
-### Βήμα 1: Αντιγραφή και προετοιμασία
-```powershell
-cd C:\A
-
-# Αντιγραφή driver app στο junction
-Copy-Item -Recurse ".\fast-delivery-mobile\driver" -Destination "C:\A\driver"
-
-cd C:\A\driver
-
-# Εγκατάσταση dependencies
-npm install
-```
-
-### Βήμα 2: Prebuild
-```powershell
-npx expo prebuild --platform android --clean
-```
-
-### Βήμα 3: Build Release APK
-```powershell
-$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
 cd C:\A\driver\android
 .\gradlew.bat assembleRelease
 ```
 
-### Βήμα 4: Αντιγραφή APK
-```powershell
-Copy-Item "C:\A\driver\android\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\<username>\Documents\Projects\FastDelivery\FastDelivery-Driver-v1.0.0.apk"
+### Βήμα 5: Το APK βρίσκεται εδώ
+```
+C:\A\driver\android\app\build\outputs\apk\release\app-release.apk
 ```
 
 ---
@@ -116,7 +112,7 @@ Copy-Item "C:\A\driver\android\app\build\outputs\apk\release\app-release.apk" -D
 ### Έναρξη Emulator
 ```powershell
 # Λίστα διαθέσιμων emulators
-$env:PATH = "$env:PATH;C:\Users\<username>\AppData\Local\Android\Sdk\emulator"
+$env:PATH = "$env:PATH;C:\Users\zisog\AppData\Local\Android\Sdk\emulator"
 emulator -list-avds
 
 # Εκκίνηση emulator (π.χ. Medium_Phone_API_36)
@@ -125,13 +121,13 @@ emulator -avd Medium_Phone_API_36
 
 ### Εγκατάσταση APK
 ```powershell
-$env:PATH = "$env:PATH;C:\Users\<username>\AppData\Local\Android\Sdk\platform-tools"
+$env:PATH = "$env:PATH;C:\Users\zisog\AppData\Local\Android\Sdk\platform-tools"
 
 # Customer App
-adb install "C:\Users\<username>\Documents\Projects\FastDelivery\FastDelivery-Customer-v1.0.0.apk"
+adb install "C:\A\customer\android\app\build\outputs\apk\release\app-release.apk"
 
 # Driver App
-adb install "C:\Users\<username>\Documents\Projects\FastDelivery\FastDelivery-Driver-v1.0.0.apk"
+adb install "C:\A\driver\android\app\build\outputs\apk\release\app-release.apk"
 ```
 
 ### Αν υπάρχει προηγούμενη έκδοση (signature mismatch)
@@ -141,7 +137,7 @@ adb uninstall com.fastdelivery.customer
 adb uninstall com.fastdelivery.driver
 
 # Μετά εγκατάσταση
-adb install "...\FastDelivery-Customer-v1.0.0.apk"
+adb install "C:\A\customer\android\app\build\outputs\apk\release\app-release.apk"
 ```
 
 ### Εκκίνηση εφαρμογής
@@ -207,32 +203,42 @@ try {
 
 ## 📁 Τελικά APK Files
 
-| App | Package Name | APK File |
-|-----|--------------|----------|
-| Customer | `com.fastdelivery.customer` | `FastDelivery-Customer-v1.0.0.apk` |
-| Driver | `com.fastdelivery.driver` | `FastDelivery-Driver-v1.0.0.apk` |
+| App | Package Name | APK Location |
+|-----|--------------|--------------|
+| Customer | `com.fastdelivery.customer` | `C:\A\customer\android\app\build\outputs\apk\release\app-release.apk` |
+| Driver | `com.fastdelivery.driver` | `C:\A\driver\android\app\build\outputs\apk\release\app-release.apk` |
 
 ---
 
 ## 🔄 Quick Build Script (όλα μαζί)
 
 ```powershell
-# === Customer APK ===
+# === Προετοιμασία ===
 $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
+if (Test-Path "C:\A") { Remove-Item -Path "C:\A" -Recurse -Force }
+
+# === Customer APK ===
+New-Item -ItemType Directory -Path "C:\A\customer" -Force
+robocopy "C:\Users\zisog\Documents\Projects\FastDelivery\fast-delivery-mobile\customer" "C:\A\customer" /E /XD ".expo" "android" "node_modules" ".git"
 cd C:\A\customer
 npm install
 npx expo prebuild --platform android --clean
 cd android
 .\gradlew.bat assembleRelease
-Copy-Item ".\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\<username>\Documents\Projects\FastDelivery\FastDelivery-Customer-v1.0.0.apk"
 
 # === Driver APK ===
+New-Item -ItemType Directory -Path "C:\A\driver" -Force
+robocopy "C:\Users\zisog\Documents\Projects\FastDelivery\fast-delivery-mobile\driver" "C:\A\driver" /E /XD ".expo" "android" "node_modules" ".git"
 cd C:\A\driver
 npm install
 npx expo prebuild --platform android --clean
 cd android
 .\gradlew.bat assembleRelease
-Copy-Item ".\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Users\<username>\Documents\Projects\FastDelivery\FastDelivery-Driver-v1.0.0.apk"
+
+# === Εγκατάσταση στον Emulator ===
+$env:PATH = "$env:PATH;C:\Users\zisog\AppData\Local\Android\Sdk\platform-tools"
+adb install "C:\A\customer\android\app\build\outputs\apk\release\app-release.apk"
+adb install "C:\A\driver\android\app\build\outputs\apk\release\app-release.apk"
 ```
 
 ---
@@ -247,4 +253,4 @@ Copy-Item ".\app\build\outputs\apk\release\app-release.apk" -Destination "C:\Use
 
 ---
 
-*Τελευταία ενημέρωση: 29 Νοεμβρίου 2025*
+*Τελευταία ενημέρωση: 1 Δεκεμβρίου 2025*

@@ -56,7 +56,8 @@ if (Notifications && Notifications.setNotificationHandler) {
         const shouldShow = ALLOWED_NOTIFICATION_STATUSES.includes(status);
         
         return {
-          shouldShowAlert: shouldShow,
+          shouldShowBanner: shouldShow,
+          shouldShowList: shouldShow,
           shouldPlaySound: shouldShow,
           shouldSetBadge: false,
         };

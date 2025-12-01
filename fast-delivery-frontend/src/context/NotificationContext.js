@@ -135,10 +135,6 @@ export const NotificationProvider = ({ children }) => {
         addNotification(`Απαιτείται ενέργεια: Ορισμός μεταφορικών.`, 'warning', '💰', data.orderNumber, true);
       };
 
-      const handleOrderConfirmed = (data) => {
-        addNotification(`Η παραγγελία επιβεβαιώθηκε. Αναζήτηση οδηγού.`, 'success', '✅', data.orderNumber, true);
-      };
-
       const handleDriverRejected = (data) => {
         addNotification(`Ο οδηγός απέρριψε την ανάθεση. Δοκιμάστε άλλον.`, 'danger', '❌', data.orderNumber, true);
       };
@@ -147,11 +143,18 @@ export const NotificationProvider = ({ children }) => {
         addNotification(`Η παραγγελία ολοκληρώθηκε επιτυχώς!`, 'success', '🎉', data.orderNumber, false);
       };
 
+      // Handle status changes - check for confirmed status
+      const handleStatusChanged = (data) => {
+        if (data.newStatus === 'confirmed') {
+          addNotification(`Η παραγγελία επιβεβαιώθηκε. Αναζήτηση οδηγού.`, 'success', '✅', data.orderNumber, true);
+        }
+      };
+
       socketService.on('order:new', handleNewOrder);
       socketService.on('store:registered', handleStoreRegistered);
       socketService.on('driver:registered', handleDriverRegistered);
       socketService.on('order:pending_admin', handleOrderPendingAdmin);
-      socketService.on('order:confirmed', handleOrderConfirmed);
+      socketService.on('order:status_changed', handleStatusChanged);
       socketService.on('driver:rejected', handleDriverRejected);
       socketService.on('order:completed', handleOrderCompleted);
 
@@ -160,7 +163,7 @@ export const NotificationProvider = ({ children }) => {
         socketService.off('store:registered', handleStoreRegistered);
         socketService.off('driver:registered', handleDriverRegistered);
         socketService.off('order:pending_admin', handleOrderPendingAdmin);
-        socketService.off('order:confirmed', handleOrderConfirmed);
+        socketService.off('order:status_changed', handleStatusChanged);
         socketService.off('driver:rejected', handleDriverRejected);
         socketService.off('order:completed', handleOrderCompleted);
       };

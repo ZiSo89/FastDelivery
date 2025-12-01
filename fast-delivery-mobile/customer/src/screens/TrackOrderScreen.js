@@ -518,13 +518,32 @@ const TrackOrderScreen = ({ route, navigation }) => {
       showMap: false,
     };
 
-    // Customer/Delivery location from order (deliveryLocation field)
+    // Customer/Delivery location - try multiple sources
+    // 1. First try deliveryLocation field
     if (order?.deliveryLocation?.coordinates && 
         order.deliveryLocation.coordinates[0] !== 0 && 
         order.deliveryLocation.coordinates[1] !== 0) {
       mapData.customerLocation = {
         latitude: order.deliveryLocation.coordinates[1],
         longitude: order.deliveryLocation.coordinates[0],
+      };
+    }
+    // 2. Fallback: try customer.location if deliveryLocation is empty
+    else if (order?.customer?.location?.coordinates && 
+             order.customer.location.coordinates[0] !== 0 && 
+             order.customer.location.coordinates[1] !== 0) {
+      mapData.customerLocation = {
+        latitude: order.customer.location.coordinates[1],
+        longitude: order.customer.location.coordinates[0],
+      };
+    }
+    // 3. Fallback: try user's saved location
+    else if (user?.location?.coordinates && 
+             user.location.coordinates[0] !== 0 && 
+             user.location.coordinates[1] !== 0) {
+      mapData.customerLocation = {
+        latitude: user.location.coordinates[1],
+        longitude: user.location.coordinates[0],
       };
     }
 
