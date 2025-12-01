@@ -1,58 +1,87 @@
 # Fast Delivery - Database Schema (MongoDB)
 
-**Συλλογές (Collections):**
-1. users (Πελάτες - Guest data)
-2. stores (Καταστήματα)
-3. drivers (Διανομείς)
-4. admins (Διαχειριστές)
-5. orders (Παραγγελίες)
-6. chats (Μηνύματα)
-7. notifications (Ειδοποιήσεις)
+**Database:** MongoDB Atlas  
+**ODM:** Mongoose  
+**Τελευταία ενημέρωση:** 01/12/2025
 
 ---
 
-## 1. Collection: `users`
-**Σκοπός:** Αποθήκευση στοιχείων πελατών (guest checkout)
+## Πίνακας Περιεχομένων
+
+1. [admins](#1-collection-admins)
+2. [stores](#2-collection-stores)
+3. [drivers](#3-collection-drivers)
+4. [customers](#4-collection-customers)
+5. [orders](#5-collection-orders)
+6. [settings](#6-collection-settings)
+7. [monthlyexpenses](#7-collection-monthlyexpenses)
+8. [users](#8-collection-users-legacy)
+9. [Relationships](#relationships)
+10. [Order Status Flow](#order-status-flow)
+
+---
+
+## 1. Collection: `admins`
+
+**Σκοπός:** Διαχειριστές συστήματος
 
 ```javascript
 {
   _id: ObjectId,
-  name: String,              // Πλήρες όνομα
-  phone: String,             // 10ψήφιο τηλέφωνο (unique per order)
-  isActive: Boolean,         // true/false (για απενεργοποίηση από Admin)
+  name: String,                    // Όνομα (required)
+  email: String,                   // Email (required, unique, lowercase)
+  password: String,                // Hashed bcrypt (required, min 6 chars, select: false)
+  role: String,                    // Default: 'admin'
   createdAt: Date,
   updatedAt: Date
 }
 ```
 
 **Indexes:**
-- `phone` (για γρήγορη αναζήτηση ιστορικού)
+- `email` (unique)
 
-**Σημείωση:** Κάθε παραγγελία δημιουργεί νέο user document (δεν υπάρχει authentication).
+**Validation:**
+- `email`: `/^\S+@\S+\.\S+$/`
+- `password`: min 6 χαρακτήρες
+
+**Methods:**
+- `comparePassword(candidatePassword)` → Boolean
 
 ---
 
 ## 2. Collection: `stores`
-**Σκοπός:** Πληροφορίες καταστημάτων
+
+**Σκοπός:** Καταστήματα/Επιχειρήσεις
 
 ```javascript
 {
   _id: ObjectId,
-  businessName: String,                 // Όνομα επιχείρησης
-  afm: String,                          // ΑΦΜ (9 ψηφία, unique)
-  email: String,                        // Email (unique)
-  password: String,                     // Hashed (bcrypt)
-  phone: String,                        // Τηλέφωνο επικοινωνίας
-  address: String,                      // Πλήρης διεύθυνση
-  location: {                           // Google Maps coordinates
-    type: "Point",
-    coordinates: [Number, Number]       // [longitude, latitude]
+  businessName: String,            // Όνομα επιχείρησης (required)
+  afm: String,                     // ΑΦΜ 9ψήφιο (required, unique)
+  email: String,                   // Email (required, unique, lowercase)
+  password: String,                // Hashed bcrypt (required, select: false)
+  phone: String,                   // Τηλέφωνο (required)
+  address: String,                 // Διεύθυνση (required)
+  location: {
+    type: "Point",                 // GeoJSON type
+    coordinates: [Number, Number]  // [longitude, latitude]
   },
-  storeType: String,                    // Enum: "Mini Market", "Φαρμακείο", "Ταβέρνα", "Καφετέρια", "Άλλο"
-  workingHours: String,                 // Ελεύθερο κείμενο (π.χ., "Δευ-Παρ: 08:00-22:00")
-  serviceAreas: String,                 // Ελεύθερο κείμενο (π.χ., "Κέντρο, Φλοίσβος")
-  status: String,                       // Enum: "pending", "approved", "rejected", "inactive"
-  isApproved: Boolean,                  // true μετά από έγκριση Admin
+  storeType: String,               // Τύπος καταστήματος (dynamic from Settings)
+  workingHours: String,            // Default: "Δευ-Παρ: 08:00-22:00"
+  description: String,             // Περιγραφή
+  serviceAreas: String,            // Περιοχές εξυπηρέτησης
+  status: String,                  // Enum: pending | approved | rejected | inactive
+  isApproved: Boolean,             // Default: false
+  
+  // Email Verification
+  isEmailVerified: Boolean,        // Default: false
+  emailVerificationToken: String,
+  emailVerificationExpires: Date,
+  
+  // Password Reset
+  passwordResetToken: String,
+  passwordResetExpires: Date,
+  
   createdAt: Date,
   updatedAt: Date
 }
@@ -61,30 +90,45 @@
 **Indexes:**
 - `email` (unique)
 - `afm` (unique)
-- `location` (geospatial index για maps)
+- `location` (2dsphere - geospatial)
 - `status`
 
 **Validation:**
-- `afm`: Regex `/^\d{9}$/` (9 ψηφία)
-- `email`: Valid email format
-- `storeType`: Μόνο από predefined list
+- `afm`: `/^\d{9}$/` (9 ψηφία)
+- `email`: `/^\S+@\S+\.\S+$/`
 
 ---
 
 ## 3. Collection: `drivers`
-**Σκοπός:** Πληροφορίες διανομέων
+
+**Σκοπός:** Διανομείς
 
 ```javascript
 {
   _id: ObjectId,
-  name: String,                         // Πλήρες όνομα
-  email: String,                        // Email (unique)
-  password: String,                     // Hashed (bcrypt)
-  phone: String,                        // Τηλέφωνο
-  status: String,                       // Enum: "pending", "approved", "rejected", "inactive"
-  isApproved: Boolean,                  // true μετά από έγκριση Admin
-  isOnline: Boolean,                    // true/false (availability toggle)
-  currentOrder: ObjectId,               // Reference to orders collection (null αν ελεύθερος)
+  name: String,                    // Όνομα (required)
+  email: String,                   // Email (required, unique, lowercase)
+  password: String,                // Hashed bcrypt (required, select: false)
+  phone: String,                   // Τηλέφωνο (required)
+  vehicle: String,                 // Τύπος οχήματος (default: "Μοτοσυκλέτα")
+  licensePlate: String,            // Πινακίδα
+  status: String,                  // Enum: pending | approved | rejected | inactive
+  isApproved: Boolean,             // Default: false
+  isOnline: Boolean,               // Διαθεσιμότητα (default: false)
+  currentOrder: ObjectId,          // Reference → Order (null αν ελεύθερος)
+  
+  // Email Verification
+  isEmailVerified: Boolean,
+  emailVerificationToken: String,
+  emailVerificationExpires: Date,
+  
+  // Password Reset
+  passwordResetToken: String,
+  passwordResetExpires: Date,
+  
+  // Push Notifications
+  pushToken: String,               // Expo push token
+  
   createdAt: Date,
   updatedAt: Date
 }
@@ -92,104 +136,133 @@
 
 **Indexes:**
 - `email` (unique)
-- `isOnline` (για γρήγορο φιλτράρισμα διαθέσιμων)
+- `isOnline`
 - `status`
 
 **Business Rule:**
-- `currentOrder` !== null → Διανομέας έχει ενεργή παραγγελία
-- Ένας διανομέας μπορεί να έχει μόνο 1 `currentOrder` τη φορά
+- Ένας driver μπορεί να έχει μόνο 1 `currentOrder` τη φορά
 
 ---
 
-## 4. Collection: `admins`
-**Σκοπός:** Διαχειριστές συστήματος
+## 4. Collection: `customers`
+
+**Σκοπός:** Εγγεγραμμένοι πελάτες (με login)
 
 ```javascript
 {
   _id: ObjectId,
-  name: String,                         // Όνομα διαχειριστή
-  email: String,                        // Email (unique)
-  password: String,                     // Hashed (bcrypt)
-  role: String,                         // "admin" (για μελλοντική επέκταση ρόλων)
+  name: String,                    // Όνομα (required)
+  email: String,                   // Email (required, unique, lowercase)
+  password: String,                // Hashed bcrypt (required, select: false)
+  phone: String,                   // 10ψήφιο (required)
+  address: String,                 // Διεύθυνση (required)
+  location: {
+    type: "Point",
+    coordinates: [Number, Number]  // [longitude, latitude]
+  },
+  role: String,                    // Default: 'customer'
+  isActive: Boolean,               // Default: true
+  
+  // Push Notifications
+  pushToken: String,
+  
+  // Email Verification
+  isEmailVerified: Boolean,
+  emailVerificationToken: String,
+  emailVerificationExpires: Date,
+  
+  // Password Reset
+  passwordResetToken: String,
+  passwordResetExpires: Date,
+  
+  // Soft Delete
+  isDeleted: Boolean,              // Default: false
+  deletedAt: Date,
+  
   createdAt: Date,
   updatedAt: Date
 }
 ```
 
-**Indexes:**
-- `email` (unique)
-
-**Σημείωση:** Για MVP, 1 admin hardcoded ή manual DB insert.
+**Validation:**
+- `phone`: `/^\d{10}$/` (10 ψηφία)
+- `email`: `/^\S+@\S+\.\S+$/`
 
 ---
 
 ## 5. Collection: `orders`
-**Σκοπός:** Κεντρική συλλογή παραγγελιών
+
+**Σκοπός:** Παραγγελίες
 
 ```javascript
 {
   _id: ObjectId,
-  orderNumber: String,                  // Μοναδικός αριθμός (π.χ., "ORD-20251118-0001")
+  orderNumber: String,             // Auto-generated: ORD-YYYYMMDD-XXXX (unique)
   
-  // Πελάτης
+  // Customer Info (embedded)
   customer: {
-    name: String,
-    phone: String,
-    address: String                     // Διεύθυνση παράδοσης
+    name: String,                  // Required
+    phone: String,                 // 10ψήφιο (required)
+    email: String,                 // Optional
+    address: String                // Διεύθυνση παράδοσης (required)
   },
   
-  // Παραγγελία
-  orderType: String,                    // Enum: "text", "voice"
-  orderContent: String,                 // Κείμενο παραγγελίας (αν text)
-  orderVoiceUrl: String,                // Firebase Storage URL (αν voice)
+  // Delivery Location (geocoded)
+  deliveryLocation: {
+    type: "Point",
+    coordinates: [Number, Number]  // [longitude, latitude]
+  },
   
-  // Κατάστημα
-  storeId: ObjectId,                    // Reference to stores
-  storeName: String,                    // Denormalized για ταχύτητα
+  // Order Content
+  orderType: String,               // Enum: text | voice
+  orderContent: String,            // Κείμενο παραγγελίας
+  orderVoiceUrl: String,           // Firebase Storage URL (για voice orders)
   
-  // Τιμολόγηση
-  productPrice: Number,                 // Τιμή προϊόντων (από κατάστημα)
-  deliveryFee: Number,                  // Κόστος αποστολής (από Admin)
-  totalPrice: Number,                   // productPrice + deliveryFee
+  // Store (denormalized)
+  storeId: ObjectId,               // Reference → Store
+  storeName: String,               // Denormalized για ταχύτητα
   
-  // Διανομέας
-  driverId: ObjectId,                   // Reference to drivers (null μέχρι ανάθεση)
-  driverName: String,                   // Denormalized
+  // Pricing
+  productPrice: Number,            // Τιμή προϊόντων (από Store)
+  deliveryFee: Number,             // Κόστος αποστολής (από Admin)
+  totalPrice: Number,              // productPrice + deliveryFee
   
-  // Κατάσταση
-  status: String,                       // Enum (βλέπε παρακάτω)
-  statusHistory: [                      // Ιστορικό αλλαγών
-    {
-      status: String,
-      updatedBy: String,                // "customer", "store", "driver", "admin"
-      timestamp: Date
-    }
-  ],
+  // Driver (denormalized)
+  driverId: ObjectId,              // Reference → Driver (null μέχρι ανάθεση)
+  driverName: String,              // Denormalized
+  
+  // Status
+  status: String,                  // Enum (βλέπε παρακάτω)
+  statusHistory: [{
+    status: String,
+    updatedBy: String,             // customer | store | driver | admin | system
+    timestamp: Date
+  }],
   
   // Timestamps
+  confirmedAt: Date,               // Πότε επιβεβαίωσε ο πελάτης
+  completedAt: Date,               // Πότε ολοκληρώθηκε
   createdAt: Date,
-  updatedAt: Date,
-  confirmedAt: Date,                    // Πότε επιβεβαιώθηκε από πελάτη
-  completedAt: Date                     // Πότε ολοκληρώθηκε
+  updatedAt: Date
 }
 ```
 
 **Status Enum:**
 ```javascript
 [
-  "pending_store",              // Αναμονή αποδοχής από κατάστημα
-  "pricing",                    // Κατάστημα προσθέτει τιμή
-  "pending_admin",              // Αναμονή Admin για delivery fee
-  "pending_customer_confirm",   // Αναμονή επιβεβαίωσης από πελάτη
-  "confirmed",                  // Πελάτης επιβεβαίωσε
-  "assigned",                   // Admin ανέθεσε σε διανομέα
-  "accepted_driver",            // Διανομέας αποδέχτηκε
-  "preparing",                  // Κατάστημα ετοιμάζει
-  "in_delivery",                // Διανομέας παραδίδει
-  "completed",                  // Ολοκληρώθηκε
-  "cancelled",                  // Ακυρώθηκε (από Admin ή πελάτη πριν τιμολόγηση)
-  "rejected_store",             // Απορρίφθηκε από κατάστημα
-  "rejected_driver"             // Απορρίφθηκε από διανομέα
+  'pending_store',           // Αναμονή αποδοχής από κατάστημα
+  'pricing',                 // Κατάστημα προσθέτει τιμή
+  'pending_admin',           // Αναμονή Admin για delivery fee
+  'pending_customer_confirm',// Αναμονή επιβεβαίωσης πελάτη
+  'confirmed',               // Πελάτης επιβεβαίωσε
+  'assigned',                // Admin ανέθεσε σε διανομέα
+  'accepted_driver',         // Διανομέας αποδέχτηκε
+  'preparing',               // Κατάστημα ετοιμάζει
+  'in_delivery',             // Σε παράδοση
+  'completed',               // Ολοκληρώθηκε
+  'cancelled',               // Ακυρώθηκε
+  'rejected_store',          // Απόρριψη από κατάστημα
+  'rejected_driver'          // Απόρριψη από διανομέα
 ]
 ```
 
@@ -198,153 +271,245 @@
 - `storeId`
 - `driverId`
 - `status`
-- `createdAt` (για ταξινόμηση)
+- `createdAt` (descending)
+- `customer.phone`
 
-**Validation:**
-- `customer.phone`: Regex `/^\d{10}$/` (10 ψηφία)
-- `totalPrice = productPrice + deliveryFee` (backend validation)
+**Auto-generated Order Number:**
+```
+ORD-20251201-0001  (format: ORD-YYYYMMDD-XXXX)
+```
 
 ---
 
-## 6. Collection: `chats`
-**Σκοπός:** Real-time messaging μεταξύ ρόλων
+## 6. Collection: `settings`
+
+**Σκοπός:** Ρυθμίσεις συστήματος (Singleton pattern)
 
 ```javascript
 {
   _id: ObjectId,
-  orderId: ObjectId,                    // Reference to orders (αν σχετίζεται με παραγγελία)
-  participants: [String],               // Array of roles: ["admin", "store:123", "driver:456"]
-  messages: [
-    {
-      _id: ObjectId,                    // Μοναδικό ID μηνύματος
-      senderId: ObjectId,               // User ID (admin/store/driver)
-      senderRole: String,               // "admin", "store", "driver", "customer"
-      messageType: String,              // "text", "voice"
-      content: String,                  // Text content (αν text)
-      voiceUrl: String,                 // Firebase Storage URL (αν voice)
-      timestamp: Date,
-      isRead: Boolean
-    }
-  ],
+  key: String,                     // Default: 'main' (unique)
+  
+  driverSalary: Number,            // Μισθός διανομέα (default: 800)
+  defaultDeliveryFee: Number,      // Προεπιλεγμένο κόστος (default: 3)
+  serviceArea: String,             // Περιοχή εξυπηρέτησης (default: "Αλεξανδρούπολη")
+  
+  // Store Types (dynamic with icons)
+  storeTypes: [{
+    name: String,                  // Όνομα τύπου
+    icon: String                   // Emoji icon (default: '🏪')
+  }],
+  
+  // Service Hours
+  serviceHoursEnabled: Boolean,    // Ενεργοποίηση ωραρίου
+  serviceHoursStart: String,       // "09:00"
+  serviceHoursEnd: String,         // "23:00"
+  
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+**Default Store Types:**
+```javascript
+[
+  { name: 'Mini Market', icon: '🛒' },
+  { name: 'Φαρμακείο', icon: '💊' },
+  { name: 'Ταβέρνα', icon: '🍔' },
+  { name: 'Καφετέρια', icon: '☕' },
+  { name: 'Γλυκά', icon: '🍰' },
+  { name: 'Πιτσαρία', icon: '🍕' },
+  { name: 'Σουβλατζίδικο', icon: '🥙' },
+  { name: 'Αρτοποιείο', icon: '🥖' },
+  { name: 'Κάβα', icon: '🍷' },
+  { name: 'Ανθοπωλείο', icon: '💐' },
+  { name: 'Άλλο', icon: '🏪' }
+]
+```
+
+**Static Methods:**
+- `getSettings()` → Settings (creates default if not exists)
+- `updateSettings(updates)` → Settings
+
+---
+
+## 7. Collection: `monthlyexpenses`
+
+**Σκοπός:** Μηνιαία έξοδα
+
+```javascript
+{
+  _id: ObjectId,
+  year: Number,                    // Έτος (required)
+  month: Number,                   // Μήνας 1-12 (required)
+  amount: Number,                  // Ποσό εξόδων (default: 0)
+  notes: String,                   // Σημειώσεις (max 500 chars)
+  updatedBy: ObjectId,             // Reference → Admin
   createdAt: Date,
   updatedAt: Date
 }
 ```
 
 **Indexes:**
-- `orderId`
-- `participants` (multikey index)
-- `messages.timestamp` (για ταξινόμηση)
+- `{ year, month }` (compound unique)
 
-**Σημείωση:** 
-- Ένα chat document ανά ζεύγος συμμετεχόντων ανά παραγγελία
-- Για general admin-store chat (χωρίς παραγγελία), `orderId = null`
+**Static Methods:**
+- `getOrCreateForMonth(year, month)` → MonthlyExpense
+- `updateForMonth(year, month, amount, notes, adminId)` → MonthlyExpense
 
 ---
 
-## 7. Collection: `notifications`
-**Σκοπός:** Ιστορικό in-app notifications
+## 8. Collection: `users` (Legacy)
+
+**Σκοπός:** Guest χρήστες (παλιό schema, για backward compatibility)
 
 ```javascript
 {
   _id: ObjectId,
-  recipientId: ObjectId,                // User ID (admin/store/driver/customer)
-  recipientRole: String,                // "admin", "store", "driver", "customer"
-  orderId: ObjectId,                    // Reference to orders (αν σχετίζεται)
-  type: String,                         // Enum: "order_created", "order_accepted", "price_ready", etc.
-  title: String,                        // Τίτλος ειδοποίησης
-  message: String,                      // Κείμενο
-  isRead: Boolean,                      // true/false
-  createdAt: Date
+  name: String,                    // Required
+  email: String,                   // Optional (sparse unique)
+  password: String,                // Optional
+  phone: String,                   // 10ψήφιο (required)
+  address: String,
+  isActive: Boolean,               // Default: true
+  pushToken: String,
+  createdAt: Date,
+  updatedAt: Date
 }
 ```
 
-**Notification Types (Enum):**
-```javascript
-[
-  "order_created",           // Νέα παραγγελία (→ Store)
-  "order_accepted",          // Αποδοχή από κατάστημα (→ Customer)
-  "order_rejected_store",    // Απόρριψη από κατάστημα (→ Customer)
-  "price_ready",             // Τιμή έτοιμη (→ Customer)
-  "order_confirmed",         // Πελάτης επιβεβαίωσε (→ Admin)
-  "order_cancelled",         // Ακύρωση (→ όλους)
-  "driver_assigned",         // Ανάθεση σε διανομέα (→ Driver)
-  "driver_accepted",         // Αποδοχή από διανομέα (→ Admin, Store)
-  "driver_rejected",         // Απόρριψη από διανομέα (→ Admin)
-  "order_preparing",         // Ετοιμάζεται (→ Customer, Driver)
-  "order_in_delivery",       // Σε παράδοση (→ Customer, Store)
-  "order_completed"          // Ολοκληρώθηκε (→ όλους)
-]
-```
-
 **Indexes:**
-- `recipientId + recipientRole` (composite)
-- `isRead`
-- `createdAt`
+- `phone`
+- `email` (unique, sparse - allows null)
+
+**Σημείωση:** Χρησιμοποιείται κυρίως για guest checkouts. Νέοι εγγεγραμμένοι πελάτες αποθηκεύονται στο `customers` collection.
 
 ---
 
-## Relationships (References)
+## Relationships
 
 ```
-orders.storeId → stores._id
-orders.driverId → drivers._id
-chats.orderId → orders._id
-notifications.orderId → orders._id
-drivers.currentOrder → orders._id
+┌─────────────┐     ┌─────────────┐
+│   admins    │     │  settings   │
+└─────────────┘     └─────────────┘
+       │                   │
+       │ updatedBy         │ storeTypes
+       ▼                   ▼
+┌─────────────────┐  ┌─────────────┐
+│ monthlyexpenses │  │   stores    │
+└─────────────────┘  └─────────────┘
+                           │
+                           │ storeId
+                           ▼
+┌─────────────┐     ┌─────────────┐
+│  customers  │────▶│   orders    │◀────┌─────────────┐
+└─────────────┘     └─────────────┘     │   drivers   │
+  (customer info        │               └─────────────┘
+   embedded)            │                     │
+                        │ driverId            │
+                        │◀────────────────────┘
+                        │ currentOrder
 ```
 
-**Denormalization Strategy:**
-- Αποθηκεύουμε `storeName`, `driverName` στο `orders` για ταχύτητα (αποφυγή joins)
-- Trade-off: Πρέπει να ενημερώνουμε denormalized data αν αλλάξει το store/driver name
+**References:**
+- `orders.storeId` → `stores._id`
+- `orders.driverId` → `drivers._id`
+- `drivers.currentOrder` → `orders._id`
+- `monthlyexpenses.updatedBy` → `admins._id`
+
+**Denormalization (για performance):**
+- `orders.storeName` (αντί για populate)
+- `orders.driverName` (αντί για populate)
 
 ---
 
-## Geospatial Queries (Maps)
+## Order Status Flow
 
-**Παράδειγμα:** Εύρεση καταστημάτων κοντά σε τοποθεσία πελάτη
-
-```javascript
-// Mongoose query (παράδειγμα)
-Store.find({
-  location: {
-    $near: {
-      $geometry: {
-        type: "Point",
-        coordinates: [25.8719, 40.8461] // [lng, lat] Αλεξανδρούπολη
-      },
-      $maxDistance: 5000 // 5km radius
-    }
-  },
-  isApproved: true
-})
+```
+                    ┌──────────────────┐
+                    │   ORDER CREATED  │
+                    │  pending_store   │
+                    └────────┬─────────┘
+                             │
+            ┌────────────────┼────────────────┐
+            │                │                │
+            ▼                ▼                │
+   ┌─────────────┐    ┌─────────────┐        │
+   │rejected_store│    │   pricing   │        │
+   └─────────────┘    └──────┬──────┘        │
+         END                 │               │
+                             ▼               │
+                    ┌─────────────────┐      │
+                    │  pending_admin  │      │
+                    └────────┬────────┘      │
+                             │               │
+                             ▼               │
+                ┌─────────────────────────┐  │
+                │ pending_customer_confirm │  │
+                └───────────┬─────────────┘  │
+                            │                │
+          ┌─────────────────┼───────┐        │
+          │                 │       │        │
+          ▼                 ▼       ▼        │
+  ┌──────────────┐   ┌──────────┐  ┌────────┴─┐
+  │rejected_customer│ │confirmed │  │cancelled │
+  └──────────────┘   └────┬─────┘  └──────────┘
+        END               │             END
+                          ▼
+                   ┌─────────────┐
+                   │  assigned   │
+                   └──────┬──────┘
+                          │
+          ┌───────────────┼───────────────┐
+          │               │               │
+          ▼               ▼               │
+  ┌───────────────┐ ┌──────────────┐      │
+  │rejected_driver│ │accepted_driver│      │
+  └───────────────┘ └──────┬───────┘      │
+     (back to admin)       │              │
+                           ▼              │
+                    ┌─────────────┐       │
+                    │  preparing  │       │
+                    └──────┬──────┘       │
+                           │              │
+                           ▼              │
+                    ┌─────────────┐       │
+                    │ in_delivery │       │
+                    └──────┬──────┘       │
+                           │              │
+                           ▼              │
+                    ┌─────────────┐       │
+                    │  completed  │◀──────┘
+                    └─────────────┘
+                         END
 ```
 
-**Σημείωση:** Για MVP, δεν χρησιμοποιούμε geospatial queries—φιλτράρουμε με `serviceAreas` (text matching).
+---
+
+## Seed Data Credentials
+
+Για testing (μετά από `node tests/seedData.js`):
+
+| Role     | Email                    | Password   |
+|----------|--------------------------|------------|
+| Admin    | admin@fastdelivery.gr    | admin123   |
+| Store    | store1@test.com          | store123   |
+| Driver   | driver1@test.com         | driver123  |
+| Customer | customer1@test.com       | customer123|
 
 ---
 
-## Data Retention Policy (Προτάσεις)
+## Backup & Data Retention
 
-| Collection | Retention | Λόγος |
-|------------|-----------|-------|
-| orders | 2 χρόνια | Νομικές υποχρεώσεις, analytics |
-| users | Διατήρηση με orders | GDPR compliance (anonymization μετά 2 χρόνια) |
-| chats | 6 μήνες | Αρχείο επικοινωνίας |
-| notifications | 30 ημέρες | Cleanup παλιών ειδοποιήσεων |
-
----
-
-## Backup Strategy
-
-**MongoDB Atlas (Free Tier):**
+**MongoDB Atlas Free Tier:**
 - Αυτόματα snapshots κάθε 24 ώρες
-- Retention: 2 ημέρες (free tier)
+- Retention: 2 ημέρες
 
-**Recommendation:**
-- Χειροκίνητα exports με `mongodump` εβδομαδιαίως
-- Αποθήκευση σε Google Drive/Dropbox
+**Προτεινόμενη πολιτική διατήρησης:**
 
----
-
-**Τελευταία ενημέρωση:** 18/11/2025
+| Collection      | Retention  | Λόγος                          |
+|-----------------|------------|--------------------------------|
+| orders          | 2 χρόνια   | Νομικές/φορολογικές υποχρεώσεις|
+| customers       | GDPR       | Anonymization μετά διαγραφή    |
+| monthlyexpenses | 5 χρόνια   | Λογιστικό αρχείο               |
+| settings        | Διαρκής    | Configuration                  |

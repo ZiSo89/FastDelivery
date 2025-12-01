@@ -1,0 +1,1014 @@
+{
+	"info": {
+		"_postman_id": "fast-delivery-api-collection",
+		"name": "Fast Delivery API",
+		"description": "Complete API collection for Fast Delivery platform",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5001/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"if (jsonData.token) {",
+									"    pm.collectionVariables.set('token', jsonData.token);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@fastdelivery.gr\",\n    \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Register Customer",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Customer\",\n    \"email\": \"newcustomer@test.com\",\n    \"password\": \"password123\",\n    \"phone\": \"6900000000\",\n    \"address\": \"Δημοκρατίας 50, Αλεξανδρούπολη\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/customer/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "customer", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register Store",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"businessName\": \"New Store\",\n    \"email\": \"newstore@test.com\",\n    \"password\": \"store123\",\n    \"phone\": \"2551000000\",\n    \"address\": \"Κύπρου 10, Αλεξανδρούπολη\",\n    \"storeType\": \"Καφετέρια\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/store/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "store", "register"]
+						}
+					}
+				},
+				{
+					"name": "Register Driver",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"New Driver\",\n    \"email\": \"newdriver@test.com\",\n    \"password\": \"driver123\",\n    \"phone\": \"6900000001\",\n    \"vehicleType\": \"motorcycle\",\n    \"vehiclePlate\": \"ABC-1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/driver/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "driver", "register"]
+						}
+					}
+				},
+				{
+					"name": "Get Store Types",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/store-types",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "store-types"]
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"customer@test.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "forgot-password"]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"token\": \"reset-token-here\",\n    \"password\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/reset-password",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "reset-password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/stats",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "stats"]
+						}
+					}
+				},
+				{
+					"name": "Get Extended Stats",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/stats/extended?month=12&year=2025",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "stats", "extended"],
+							"query": [
+								{"key": "month", "value": "12"},
+								{"key": "year", "value": "2025"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Stores",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/stores",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "stores"]
+						}
+					}
+				},
+				{
+					"name": "Approve/Reject Store",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isApproved\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/stores/:storeId/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "stores", ":storeId", "approve"],
+							"variable": [
+								{"key": "storeId", "value": "store_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Drivers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/drivers",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "drivers"]
+						}
+					}
+				},
+				{
+					"name": "Approve/Reject Driver",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isApproved\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/drivers/:driverId/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "drivers", ":driverId", "approve"],
+							"variable": [
+								{"key": "driverId", "value": "driver_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Customers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/customers",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "customers"]
+						}
+					}
+				},
+				{
+					"name": "Deactivate Customer",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isActive\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/customers/:customerId/deactivate",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "customers", ":customerId", "deactivate"],
+							"variable": [
+								{"key": "customerId", "value": "customer_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "orders"]
+						}
+					}
+				},
+				{
+					"name": "Add Delivery Fee",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"deliveryFee\": 2.50\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/orders/:orderId/delivery-fee",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "orders", ":orderId", "delivery-fee"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Assign Driver to Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"driverId\": \"driver_id_here\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/orders/:orderId/assign-driver",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "orders", ":orderId", "assign-driver"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Cancel Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Customer requested cancellation\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/orders/:orderId/cancel",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "orders", ":orderId", "cancel"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings"]
+						}
+					}
+				},
+				{
+					"name": "Update Settings",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"driverSalary\": 850,\n    \"defaultDeliveryFee\": 2.50,\n    \"serviceHoursEnabled\": true,\n    \"serviceHoursStart\": \"09:00\",\n    \"serviceHoursEnd\": \"23:00\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings"]
+						}
+					}
+				},
+				{
+					"name": "Add Store Type",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Νέος Τύπος\",\n    \"icon\": \"🏪\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings/store-types",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings", "store-types"]
+						}
+					}
+				},
+				{
+					"name": "Delete Store Type",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings/store-types/:storeType",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings", "store-types", ":storeType"],
+							"variable": [
+								{"key": "storeType", "value": "Νέος Τύπος"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Monthly Expenses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/expenses/:year/:month",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "expenses", ":year", ":month"],
+							"variable": [
+								{"key": "year", "value": "2025"},
+								{"key": "month", "value": "12"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Monthly Expenses",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 500,\n    \"notes\": \"Διαφήμιση, Συντήρηση\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/expenses/:year/:month",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "expenses", ":year", ":month"],
+							"variable": [
+								{"key": "year", "value": "2025"},
+								{"key": "month", "value": "12"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Admin Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Admin Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Admin Name\",\n    \"email\": \"admin@fastdelivery.gr\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Admin Password",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"currentPassword\": \"admin123\",\n    \"newPassword\": \"newadmin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/profile/password",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "profile", "password"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Customer (Orders)",
+			"item": [
+				{
+					"name": "Get Active Stores",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders/stores",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "stores"]
+						}
+					}
+				},
+				{
+					"name": "Get Service Status",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders/service-status",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "service-status"]
+						}
+					}
+				},
+				{
+					"name": "Create Order",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"store\": \"store_id_here\",\n    \"customerName\": \"Γιάννης Παπαδόπουλος\",\n    \"customerPhone\": \"6900000000\",\n    \"deliveryAddress\": \"Δημοκρατίας 50, Αλεξανδρούπολη\",\n    \"orderDetails\": \"1 καπουτσίνο μεσαίο, 1 κρουασάν σοκολάτα\",\n    \"paymentMethod\": \"cash\",\n    \"notes\": \"Κουδούνι: Παπαδόπουλος, 2ος όροφος\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders"]
+						}
+					}
+				},
+				{
+					"name": "Get Order Status",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders/:orderNumber/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", ":orderNumber", "status"],
+							"variable": [
+								{"key": "orderNumber", "value": "FD-123456"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Confirm Order Price",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"confirmed\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/:orderId/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", ":orderId", "confirm"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get My Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders/my-orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "my-orders"]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Name\",\n    \"phone\": \"6900000001\",\n    \"address\": \"New Address 123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Delete Account",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"password\": \"customer_password\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/orders/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["orders", "profile"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Store",
+			"item": [
+				{
+					"name": "Get Store Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/store/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["store", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Store Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"2551099999\",\n    \"address\": \"New Address\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/store/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["store", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Get Store Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/store/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["store", "orders"]
+						}
+					}
+				},
+				{
+					"name": "Accept/Reject Order",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accepted\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/store/orders/:orderId/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["store", "orders", ":orderId", "accept"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Add Order Price",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"productPrice\": 15.50\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/store/orders/:orderId/price",
+							"host": ["{{baseUrl}}"],
+							"path": ["store", "orders", ":orderId", "price"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Order Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"preparing\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/store/orders/:orderId/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["store", "orders", ":orderId", "status"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						},
+						"description": "Status options: preparing, ready_for_pickup"
+					}
+				}
+			]
+		},
+		{
+			"name": "Driver",
+			"item": [
+				{
+					"name": "Get Driver Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/driver/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["driver", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Driver Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"6900000002\",\n    \"vehicleType\": \"car\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/driver/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["driver", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Toggle Availability",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isAvailable\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/driver/availability",
+							"host": ["{{baseUrl}}"],
+							"path": ["driver", "availability"]
+						}
+					}
+				},
+				{
+					"name": "Get Driver Orders",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/driver/orders",
+							"host": ["{{baseUrl}}"],
+							"path": ["driver", "orders"]
+						}
+					}
+				},
+				{
+					"name": "Accept/Reject Assignment",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accepted\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/driver/orders/:orderId/accept",
+							"host": ["{{baseUrl}}"],
+							"path": ["driver", "orders", ":orderId", "accept"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Order Status",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"in_delivery\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/driver/orders/:orderId/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["driver", "orders", ":orderId", "status"],
+							"variable": [
+								{"key": "orderId", "value": "order_id_here"}
+							]
+						},
+						"description": "Status options: picked_up, in_delivery, completed"
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,94 +1,35 @@
-# Fast Delivery - REST API Endpoints
+# Fast Delivery - REST API Documentation
 
-**Base URL:** `https://your-backend.render.com/api/v1`
+**Base URL:** `https://fastdelivery-api.onrender.com/api/v1`
 
 **Authentication:** JWT Bearer Token (όπου απαιτείται)
 
-**Γενικές Conventions:**
-- Όλα τα responses σε JSON format
-- Status codes: 200 (OK), 201 (Created), 400 (Bad Request), 401 (Unauthorized), 403 (Forbidden), 404 (Not Found), 500 (Server Error)
-- Timestamps σε ISO 8601 format
+**Τελευταία ενημέρωση:** 01/12/2025
+
+---
+
+## Πίνακας Περιεχομένων
+
+1. [Authentication](#authentication-endpoints)
+2. [Customer/Orders](#customer--orders-endpoints)
+3. [Store Dashboard](#store-endpoints)
+4. [Driver App](#driver-endpoints)
+5. [Admin Dashboard](#admin-endpoints)
+6. [Error Responses](#error-responses)
 
 ---
 
 ## Authentication Endpoints
 
-### 1. POST `/auth/store/register`
-**Σκοπός:** Εγγραφή νέου καταστήματος (αναμονή έγκρισης)
+### POST `/auth/login`
+**Σκοπός:** Σύνδεση για Store/Driver/Admin/Customer
 
 **Request Body:**
 ```json
 {
-  "businessName": "Mini Market Κέντρο",
-  "afm": "123456789",
-  "email": "store@example.com",
-  "password": "securePassword123",
-  "phone": "2551012345",
-  "address": "Λεωφ. Δημοκρατίας 10, Αλεξανδρούπολη",
-  "location": {
-    "type": "Point",
-    "coordinates": [25.8719, 40.8461]
-  },
-  "storeType": "Mini Market",
-  "workingHours": "Δευ-Παρ: 08:00-22:00, Σαβ: 09:00-20:00",
-  "serviceAreas": "Κέντρο, Φλοίσβος"
-}
-```
-
-**Response (201):**
-```json
-{
-  "success": true,
-  "message": "Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση από διαχειριστή.",
-  "store": {
-    "_id": "64abc123def456...",
-    "businessName": "Mini Market Κέντρο",
-    "email": "store@example.com",
-    "status": "pending"
-  }
-}
-```
-
----
-
-### 2. POST `/auth/driver/register`
-**Σκοπός:** Εγγραφή νέου διανομέα (αναμονή έγκρισης)
-
-**Request Body:**
-```json
-{
-  "name": "Γιάννης Παπαδόπουλος",
-  "email": "driver@example.com",
-  "password": "securePassword123",
-  "phone": "6912345678"
-}
-```
-
-**Response (201):**
-```json
-{
-  "success": true,
-  "message": "Η αίτηση εγγραφής σας υποβλήθηκε. Αναμένετε έγκριση.",
-  "driver": {
-    "_id": "64abc789...",
-    "name": "Γιάννης Παπαδόπουλος",
-    "email": "driver@example.com",
-    "status": "pending"
-  }
-}
-```
-
----
-
-### 3. POST `/auth/login`
-**Σκοπός:** Σύνδεση για Store/Driver/Admin
-
-**Request Body:**
-```json
-{
-  "email": "store@example.com",
-  "password": "securePassword123",
-  "role": "store"  // "store", "driver", "admin"
+  "email": "user@example.com",
+  "password": "password123",
+  "role": "store"  // "store", "driver", "admin", "customer"
 }
 ```
 
@@ -107,81 +48,23 @@
 }
 ```
 
-**Error (401 - Μη εγκεκριμένος):**
-```json
-{
-  "success": false,
-  "message": "Ο λογαριασμός σας αναμένει έγκριση από διαχειριστή."
-}
-```
-
 ---
 
-## Customer (Guest) Endpoints
+### POST `/auth/store/register`
+**Σκοπός:** Εγγραφή νέου καταστήματος
 
-### 4. GET `/stores`
-**Σκοπός:** Λίστα διαθέσιμων καταστημάτων (φιλτραρισμένα)
-
-**Query Parameters:**
-- `serviceArea` (optional): Φίλτρο βάσει περιοχής (π.χ., "Κέντρο")
-- `storeType` (optional): Φίλτρο βάσει τύπου (π.χ., "Mini Market")
-
-**Request:**
-```
-GET /api/v1/stores?serviceArea=Κέντρο&storeType=Mini Market
-```
-
-**Response (200):**
+**Request Body:**
 ```json
 {
-  "success": true,
-  "count": 2,
-  "stores": [
-    {
-      "_id": "64abc123...",
-      "businessName": "Mini Market Κέντρο",
-      "storeType": "Mini Market",
-      "address": "Λεωφ. Δημοκρατίας 10",
-      "workingHours": "Δευ-Παρ: 08:00-22:00",
-      "serviceAreas": "Κέντρο, Φλοίσβος",
-      "location": {
-        "coordinates": [25.8719, 40.8461]
-      }
-    }
-  ]
-}
-```
-
----
-
-### 5. POST `/orders`
-**Σκοπός:** Δημιουργία νέας παραγγελίας (guest checkout)
-
-**Request Body (Text Order):**
-```json
-{
-  "customer": {
-    "name": "Μαρία Γεωργίου",
-    "phone": "6987654321",
-    "address": "Καραϊσκάκη 25, Αλεξανδρούπολη"
-  },
-  "storeId": "64abc123...",
-  "orderType": "text",
-  "orderContent": "2 πακέτα πάνες Pampers, 6 κόκα-κόλα 330ml, 1 ψωμί τοστ"
-}
-```
-
-**Request Body (Voice Order):**
-```json
-{
-  "customer": {
-    "name": "Μαρία Γεωργίου",
-    "phone": "6987654321",
-    "address": "Καραϊσκάκη 25"
-  },
-  "storeId": "64abc123...",
-  "orderType": "voice",
-  "orderVoiceFile": "<base64-encoded-audio>"  // ή multipart/form-data upload
+  "businessName": "Mini Market Κέντρο",
+  "afm": "123456789",
+  "email": "store@example.com",
+  "password": "securePassword123",
+  "phone": "2551012345",
+  "address": "Λεωφ. Δημοκρατίας 10, Αλεξανδρούπολη",
+  "storeType": "Mini Market",
+  "workingHours": "Δευ-Παρ: 08:00-22:00",
+  "serviceAreas": "Κέντρο, Φλοίσβος"
 }
 ```
 
@@ -189,126 +72,148 @@ GET /api/v1/stores?serviceArea=Κέντρο&storeType=Mini Market
 ```json
 {
   "success": true,
-  "message": "Η παραγγελία σας υποβλήθηκε επιτυχώς!",
-  "order": {
-    "_id": "64order123...",
-    "orderNumber": "ORD-20251118-0001",
-    "status": "pending_store",
-    "customer": {
-      "name": "Μαρία Γεωργίου",
-      "phone": "6987654321"
-    },
-    "storeName": "Mini Market Κέντρο",
-    "createdAt": "2025-11-18T10:30:00Z"
+  "message": "Η αίτηση εγγραφής σας υποβλήθηκε. Ελέγξτε το email σας για επιβεβαίωση.",
+  "store": {
+    "_id": "64abc123...",
+    "businessName": "Mini Market Κέντρο",
+    "email": "store@example.com",
+    "status": "pending"
   }
 }
 ```
 
 ---
 
-### 6. GET `/orders/:orderNumber/status`
-**Σκοπός:** Παρακολούθηση κατάστασης παραγγελίας (guest - με orderNumber)
-
-**Request:**
-```
-GET /api/v1/orders/ORD-20251118-0001/status
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "in_delivery",
-    "statusHistory": [
-      {
-        "status": "pending_store",
-        "timestamp": "2025-11-18T10:30:00Z"
-      },
-      {
-        "status": "pricing",
-        "updatedBy": "store",
-        "timestamp": "2025-11-18T10:35:00Z"
-      },
-      {
-        "status": "in_delivery",
-        "updatedBy": "driver",
-        "timestamp": "2025-11-18T11:00:00Z"
-      }
-    ],
-    "productPrice": 25.50,
-    "deliveryFee": 3.00,
-    "totalPrice": 28.50,
-    "driverName": "Γιάννης Παπαδόπουλος"
-  }
-}
-```
-
----
-
-### 7. PUT `/orders/:orderId/confirm`
-**Σκοπός:** Επιβεβαίωση τελικής τιμής από πελάτη
+### POST `/auth/driver/register`
+**Σκοπός:** Εγγραφή νέου διανομέα
 
 **Request Body:**
 ```json
 {
-  "phone": "6987654321",  // Verification
-  "confirm": true         // true = επιβεβαίωση, false = ακύρωση
+  "name": "Γιάννης Παπαδόπουλος",
+  "email": "driver@example.com",
+  "password": "securePassword123",
+  "phone": "6912345678"
 }
 ```
 
-**Response (200):**
+**Response (201):**
 ```json
 {
   "success": true,
-  "message": "Η παραγγελία σας επιβεβαιώθηκε!",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "confirmed",
-    "totalPrice": 28.50
+  "message": "Η αίτηση εγγραφής σας υποβλήθηκε.",
+  "driver": {
+    "_id": "64abc789...",
+    "name": "Γιάννης Παπαδόπουλος",
+    "email": "driver@example.com",
+    "status": "pending"
   }
 }
 ```
 
 ---
 
-## Store Endpoints (Protected - JWT Required)
+### POST `/auth/customer/register`
+**Σκοπός:** Εγγραφή νέου πελάτη
 
-**Headers:** `Authorization: Bearer <token>`
-
-### 8. GET `/store/orders`
-**Σκοπός:** Λίστα παραγγελιών του καταστήματος
-
-**Query Parameters:**
-- `status` (optional): Φίλτρο κατάστασης (π.χ., "pending_store")
-- `limit` (default: 20)
-- `page` (default: 1)
-
-**Request:**
+**Request Body:**
+```json
+{
+  "name": "Μαρία Γεωργίου",
+  "email": "customer@example.com",
+  "password": "securePassword123",
+  "phone": "6987654321"
+}
 ```
-GET /api/v1/store/orders?status=pending_store
-Headers: Authorization: Bearer <store-token>
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Εγγραφή επιτυχής! Ελέγξτε το email σας.",
+  "customer": {
+    "_id": "64cust123...",
+    "name": "Μαρία Γεωργίου",
+    "email": "customer@example.com"
+  }
+}
 ```
+
+---
+
+### GET `/auth/store-types`
+**Σκοπός:** Λίστα διαθέσιμων τύπων καταστημάτων (για registration form)
 
 **Response (200):**
 ```json
 {
   "success": true,
-  "count": 3,
-  "orders": [
+  "storeTypes": ["Mini Market", "Φαρμακείο", "Ταβέρνα", "Καφετέρια", "Γλυκά", "Άλλο"]
+}
+```
+
+---
+
+### GET `/auth/verify-email`
+**Σκοπός:** Επιβεβαίωση email
+
+**Query Parameters:**
+- `token`: Verification token
+- `type`: "customer", "store", "driver"
+
+---
+
+### POST `/auth/forgot-password`
+**Σκοπός:** Αίτημα επαναφοράς κωδικού
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "type": "customer"  // "customer", "store", "driver"
+}
+```
+
+---
+
+### POST `/auth/reset-password`
+**Σκοπός:** Επαναφορά κωδικού με token
+
+**Request Body:**
+```json
+{
+  "token": "reset-token...",
+  "type": "customer",
+  "password": "newPassword123"
+}
+```
+
+---
+
+## Customer / Orders Endpoints
+
+### GET `/orders/stores`
+**Σκοπός:** Λίστα διαθέσιμων καταστημάτων (Public)
+
+**Query Parameters:**
+- `serviceArea` (optional): Φίλτρο περιοχής
+- `storeType` (optional): Φίλτρο τύπου
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "count": 5,
+  "stores": [
     {
-      "_id": "64order123...",
-      "orderNumber": "ORD-20251118-0001",
-      "customer": {
-        "name": "Μαρία Γεωργίου",
-        "phone": "6987654321",
-        "address": "Καραϊσκάκη 25"
-      },
-      "orderType": "text",
-      "orderContent": "2 πακέτα πάνες Pampers...",
-      "status": "pending_store",
-      "createdAt": "2025-11-18T10:30:00Z"
+      "_id": "64abc123...",
+      "businessName": "Mini Market Κέντρο",
+      "storeType": "Mini Market",
+      "address": "Λεωφ. Δημοκρατίας 10",
+      "phone": "2551012345",
+      "workingHours": "Δευ-Παρ: 08:00-22:00",
+      "serviceAreas": "Κέντρο, Φλοίσβος",
+      "location": { "coordinates": [25.8719, 40.8461] }
     }
   ]
 }
@@ -316,8 +221,172 @@ Headers: Authorization: Bearer <store-token>
 
 ---
 
-### 9. PUT `/store/orders/:orderId/accept`
-**Σκοπός:** Αποδοχή παραγγελίας από κατάστημα
+### GET `/orders/service-status`
+**Σκοπός:** Κατάσταση υπηρεσίας (ανοιχτή/κλειστή)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "isOpen": true,
+  "serviceHoursStart": "09:00",
+  "serviceHoursEnd": "23:00",
+  "serviceHoursEnabled": true
+}
+```
+
+---
+
+### POST `/orders`
+**Σκοπός:** Δημιουργία νέας παραγγελίας (Guest ή Logged-in)
+
+**Request Body:**
+```json
+{
+  "customer": {
+    "name": "Μαρία Γεωργίου",
+    "phone": "6987654321",
+    "email": "maria@example.com"
+  },
+  "storeId": "64abc123...",
+  "orderType": "delivery",
+  "orderContent": {
+    "deliveryAddress": "Καραϊσκάκη 25, Αλεξανδρούπολη",
+    "orderDetails": "2 πακέτα πάνες Pampers, 6 κόκα-κόλα 330ml"
+  }
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Η παραγγελία σας καταχωρήθηκε!",
+  "order": {
+    "_id": "64order123...",
+    "orderNumber": "ORD-20251201-0001",
+    "status": "pending_store"
+  }
+}
+```
+
+---
+
+### GET `/orders/:orderNumber/status`
+**Σκοπός:** Παρακολούθηση κατάστασης παραγγελίας
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "order": {
+    "orderNumber": "ORD-20251201-0001",
+    "status": "in_delivery",
+    "productPrice": 25.50,
+    "deliveryFee": 3.00,
+    "totalPrice": 28.50,
+    "statusHistory": [
+      { "status": "pending_store", "timestamp": "2025-12-01T10:30:00Z" },
+      { "status": "in_delivery", "timestamp": "2025-12-01T11:00:00Z" }
+    ]
+  }
+}
+```
+
+---
+
+### PUT `/orders/:orderId/confirm`
+**Σκοπός:** Επιβεβαίωση/Ακύρωση τιμής από πελάτη
+
+**Request Body:**
+```json
+{
+  "phone": "6987654321",
+  "action": "confirm"  // ή "reject"
+}
+```
+
+---
+
+### GET `/orders/my-orders` 🔒
+**Σκοπός:** Ιστορικό παραγγελιών πελάτη (απαιτεί login)
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Query Parameters:**
+- `page` (default: 1)
+- `limit` (default: 10)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "count": 5,
+  "totalCount": 25,
+  "totalPages": 3,
+  "currentPage": 1,
+  "hasMore": true,
+  "orders": [...]
+}
+```
+
+---
+
+### GET `/orders/active-by-phone/:phone`
+**Σκοπός:** Ενεργή παραγγελία με βάση τηλέφωνο
+
+---
+
+### PUT `/orders/profile` 🔒
+**Σκοπός:** Ενημέρωση προφίλ πελάτη
+
+---
+
+### DELETE `/orders/profile` 🔒
+**Σκοπός:** Διαγραφή λογαριασμού πελάτη
+
+---
+
+## Store Endpoints 🔒
+
+**Όλα τα endpoints απαιτούν:** `Authorization: Bearer <store-token>`
+
+### GET `/store/orders`
+**Σκοπός:** Λίστα παραγγελιών καταστήματος
+
+**Query Parameters:**
+- `status`: Φίλτρο κατάστασης
+- `limit` (default: 20)
+- `page` (default: 1)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "count": 3,
+  "total": 50,
+  "page": 1,
+  "pages": 3,
+  "orders": [
+    {
+      "_id": "64order123...",
+      "orderNumber": "ORD-20251201-0001",
+      "customer": {
+        "name": "Μαρία Γεωργίου",
+        "phone": "6987654321",
+        "address": "Καραϊσκάκη 25"
+      },
+      "status": "pending_store",
+      "createdAt": "2025-12-01T10:30:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### PUT `/store/orders/:orderId/accept`
+**Σκοπός:** Αποδοχή/Απόρριψη παραγγελίας
 
 **Request Body:**
 ```json
@@ -326,33 +395,9 @@ Headers: Authorization: Bearer <store-token>
 }
 ```
 
-**Response (200 - Accept):**
-```json
-{
-  "success": true,
-  "message": "Η παραγγελία έγινε αποδεκτή. Προσθέστε την τιμή προϊόντων.",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "pricing"
-  }
-}
-```
-
-**Response (200 - Reject):**
-```json
-{
-  "success": true,
-  "message": "Η παραγγελία απορρίφθηκε.",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "rejected_store"
-  }
-}
-```
-
 ---
 
-### 10. PUT `/store/orders/:orderId/price`
+### PUT `/store/orders/:orderId/price`
 **Σκοπός:** Προσθήκη τιμής προϊόντων
 
 **Request Body:**
@@ -362,22 +407,9 @@ Headers: Authorization: Bearer <store-token>
 }
 ```
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Η τιμή καταχωρήθηκε. Αναμονή Admin για κόστος αποστολής.",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "pending_admin",
-    "productPrice": 25.50
-  }
-}
-```
-
 ---
 
-### 11. PUT `/store/orders/:orderId/status`
+### PUT `/store/orders/:orderId/status`
 **Σκοπός:** Ενημέρωση κατάστασης σε "preparing"
 
 **Request Body:**
@@ -387,21 +419,10 @@ Headers: Authorization: Bearer <store-token>
 }
 ```
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "preparing"
-  }
-}
-```
-
 ---
 
-### 12. GET `/store/profile`
-**Σκοπός:** Προβολή προφίλ καταστήματος
+### GET `/store/profile`
+**Σκοπός:** Προφίλ καταστήματος
 
 **Response (200):**
 ```json
@@ -410,46 +431,38 @@ Headers: Authorization: Bearer <store-token>
   "store": {
     "_id": "64abc123...",
     "businessName": "Mini Market Κέντρο",
-    "afm": "123456789",
     "email": "store@example.com",
     "phone": "2551012345",
     "address": "Λεωφ. Δημοκρατίας 10",
     "storeType": "Mini Market",
     "workingHours": "Δευ-Παρ: 08:00-22:00",
-    "serviceAreas": "Κέντρο, Φλοίσβος",
-    "isApproved": true
+    "status": "approved"
   }
 }
 ```
 
 ---
 
-### 13. PUT `/store/profile`
-**Σκοπός:** Επεξεργασία προφίλ
+### PUT `/store/profile`
+**Σκοπός:** Ενημέρωση προφίλ
 
 **Request Body:**
 ```json
 {
-  "workingHours": "Δευ-Παρ: 07:00-23:00",
+  "phone": "2551098765",
+  "workingHours": "Δευ-Κυρ: 07:00-23:00",
   "serviceAreas": "Κέντρο, Φλοίσβος, Μάκρη"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Το προφίλ ενημερώθηκε.",
-  "store": { /* updated data */ }
 }
 ```
 
 ---
 
-## Driver Endpoints (Protected - JWT Required)
+## Driver Endpoints 🔒
 
-### 14. GET `/driver/profile`
-**Σκοπός:** Προβολή προφίλ διανομέα
+**Όλα τα endpoints απαιτούν:** `Authorization: Bearer <driver-token>`
+
+### GET `/driver/profile`
+**Σκοπός:** Προφίλ διανομέα
 
 **Response (200):**
 ```json
@@ -461,21 +474,34 @@ Headers: Authorization: Bearer <store-token>
     "email": "driver@example.com",
     "phone": "6912345678",
     "isOnline": true,
-    "currentOrder": "64order123...",
-    "isApproved": true
+    "currentOrder": null,
+    "status": "approved"
   }
 }
 ```
 
 ---
 
-### 15. PUT `/driver/availability`
-**Σκοπός:** Toggle online/offline status
+### PUT `/driver/profile`
+**Σκοπός:** Ενημέρωση προφίλ διανομέα
 
 **Request Body:**
 ```json
 {
-  "isOnline": true  // true = online, false = offline
+  "phone": "6900000001",
+  "pushToken": "ExponentPushToken[...]"
+}
+```
+
+---
+
+### PUT `/driver/availability`
+**Σκοπός:** Toggle online/offline
+
+**Request Body:**
+```json
+{
+  "isOnline": true
 }
 ```
 
@@ -484,16 +510,14 @@ Headers: Authorization: Bearer <store-token>
 {
   "success": true,
   "message": "Κατάσταση ενημερώθηκε σε: online",
-  "driver": {
-    "isOnline": true
-  }
+  "driver": { "isOnline": true }
 }
 ```
 
 ---
 
-### 16. GET `/driver/orders`
-**Σκοπός:** Προβολή ανατεθειμένων παραγγελιών
+### GET `/driver/orders`
+**Σκοπός:** Ανατεθειμένες παραγγελίες
 
 **Response (200):**
 ```json
@@ -502,17 +526,15 @@ Headers: Authorization: Bearer <store-token>
   "orders": [
     {
       "_id": "64order123...",
-      "orderNumber": "ORD-20251118-0001",
+      "orderNumber": "ORD-20251201-0001",
       "status": "assigned",
-      "customer": {
-        "name": "Μαρία Γεωργίου",
-        "phone": "6987654321",
-        "address": "Καραϊσκάκη 25"
-      },
-      "storeName": "Mini Market Κέντρο",
-      "storeAddress": "Λεωφ. Δημοκρατίας 10",
-      "totalPrice": 28.50,
-      "deliveryFee": 3.00
+      "customer": {...},
+      "storeId": {
+        "businessName": "Mini Market Κέντρο",
+        "address": "...",
+        "phone": "...",
+        "location": {...}
+      }
     }
   ]
 }
@@ -520,7 +542,7 @@ Headers: Authorization: Bearer <store-token>
 
 ---
 
-### 17. PUT `/driver/orders/:orderId/accept`
+### PUT `/driver/orders/:orderId/accept`
 **Σκοπός:** Αποδοχή/Απόρριψη ανάθεσης
 
 **Request Body:**
@@ -530,33 +552,10 @@ Headers: Authorization: Bearer <store-token>
 }
 ```
 
-**Response (200 - Accept):**
-```json
-{
-  "success": true,
-  "message": "Η ανάθεση έγινε αποδεκτή.",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "accepted_driver"
-  }
-}
-```
-
-**Response (200 - Reject):**
-```json
-{
-  "success": true,
-  "message": "Η ανάθεση απορρίφθηκε. Επιστρέφει στον Admin.",
-  "order": {
-    "status": "rejected_driver"
-  }
-}
-```
-
 ---
 
-### 18. PUT `/driver/orders/:orderId/status`
-**Σκοπός:** Ενημέρωση κατάστασης (in_delivery, completed)
+### PUT `/driver/orders/:orderId/status`
+**Σκοπός:** Ενημέρωση κατάστασης
 
 **Request Body:**
 ```json
@@ -565,273 +564,13 @@ Headers: Authorization: Bearer <store-token>
 }
 ```
 
-**Response (200):**
-```json
-{
-  "success": true,
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "in_delivery"
-  }
-}
-```
-
 ---
 
-## Admin Endpoints (Protected - JWT Required)
+## Admin Endpoints 🔒
 
-### 19. GET `/admin/stores`
-**Σκοπός:** Λίστα όλων των καταστημάτων
+**Όλα τα endpoints απαιτούν:** `Authorization: Bearer <admin-token>`
 
-**Query Parameters:**
-- `status`: "pending", "approved", "rejected"
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "count": 5,
-  "stores": [
-    {
-      "_id": "64abc123...",
-      "businessName": "Mini Market Κέντρο",
-      "email": "store@example.com",
-      "status": "pending",
-      "createdAt": "2025-11-15T09:00:00Z"
-    }
-  ]
-}
-```
-
----
-
-### 20. PUT `/admin/stores/:storeId/approve`
-**Σκοπός:** Έγκριση/Απόρριψη καταστήματος
-
-**Request Body:**
-```json
-{
-  "action": "approve"  // ή "reject"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Το κατάστημα εγκρίθηκε.",
-  "store": {
-    "_id": "64abc123...",
-    "status": "approved",
-    "isApproved": true
-  }
-}
-```
-
----
-
-### 21. GET `/admin/drivers`
-**Σκοπός:** Λίστα όλων των διανομέων
-
-**Query Parameters:**
-- `status`: "pending", "approved", "rejected"
-- `isOnline`: true/false
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "count": 3,
-  "drivers": [
-    {
-      "_id": "64abc789...",
-      "name": "Γιάννης Παπαδόπουλος",
-      "email": "driver@example.com",
-      "status": "approved",
-      "isOnline": true,
-      "currentOrder": null
-    }
-  ]
-}
-```
-
----
-
-### 22. PUT `/admin/drivers/:driverId/approve`
-**Σκοπός:** Έγκριση/Απόρριψη διανομέα
-
-**Request Body:**
-```json
-{
-  "action": "approve"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Ο διανομέας εγκρίθηκε.",
-  "driver": {
-    "_id": "64abc789...",
-    "status": "approved",
-    "isApproved": true
-  }
-}
-```
-
----
-
-### 23. GET `/admin/orders`
-**Σκοπός:** Λίστα όλων των παραγγελιών
-
-**Query Parameters:**
-- `status`: Any order status
-- `limit`, `page`
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "count": 10,
-  "orders": [
-    {
-      "_id": "64order123...",
-      "orderNumber": "ORD-20251118-0001",
-      "customer": {
-        "name": "Μαρία Γεωργίου",
-        "phone": "6987654321"
-      },
-      "storeName": "Mini Market Κέντρο",
-      "status": "pending_admin",
-      "productPrice": 25.50,
-      "deliveryFee": null,
-      "createdAt": "2025-11-18T10:30:00Z"
-    }
-  ]
-}
-```
-
----
-
-### 24. PUT `/admin/orders/:orderId/delivery-fee`
-**Σκοπός:** Προσθήκη κόστους αποστολής
-
-**Request Body:**
-```json
-{
-  "deliveryFee": 3.00
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Το κόστος αποστολής προστέθηκε. Αναμονή επιβεβαίωσης πελάτη.",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "pending_customer_confirm",
-    "productPrice": 25.50,
-    "deliveryFee": 3.00,
-    "totalPrice": 28.50
-  }
-}
-```
-
----
-
-### 25. PUT `/admin/orders/:orderId/assign-driver`
-**Σκοπός:** Ανάθεση παραγγελίας σε διανομέα
-
-**Request Body:**
-```json
-{
-  "driverId": "64abc789..."
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Η παραγγελία ανατέθηκε στον Γιάννης Παπαδόπουλος.",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "assigned",
-    "driverId": "64abc789...",
-    "driverName": "Γιάννης Παπαδόπουλος"
-  }
-}
-```
-
----
-
-### 26. PUT `/admin/orders/:orderId/cancel`
-**Σκοπός:** Ακύρωση παραγγελίας (οποτεδήποτε)
-
-**Request Body:**
-```json
-{
-  "reason": "Αίτημα πελάτη"  // optional
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Η παραγγελία ακυρώθηκε.",
-  "order": {
-    "orderNumber": "ORD-20251118-0001",
-    "status": "cancelled"
-  }
-}
-```
-
----
-
-### 27. GET `/admin/customers`
-**Σκοπός:** Λίστα όλων των πελατών (guest users)
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "count": 50,
-  "customers": [
-    {
-      "_id": "64user123...",
-      "name": "Μαρία Γεωργίου",
-      "phone": "6987654321",
-      "isActive": true,
-      "totalOrders": 5,
-      "createdAt": "2025-11-10T12:00:00Z"
-    }
-  ]
-}
-```
-
----
-
-### 28. PUT `/admin/customers/:customerId/deactivate`
-**Σκοπός:** Απενεργοποίηση πελάτη (όχι διαγραφή)
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "message": "Ο πελάτης απενεργοποιήθηκε.",
-  "customer": {
-    "_id": "64user123...",
-    "isActive": false
-  }
-}
-```
-
----
-
-### 29. GET `/admin/stats`
+### GET `/admin/stats`
 **Σκοπός:** Dashboard στατιστικά
 
 **Query Parameters:**
@@ -846,10 +585,9 @@ Headers: Authorization: Bearer <store-token>
     "ordersByStatus": {
       "pending_store": 5,
       "in_delivery": 3,
-      "completed": 120,
-      "cancelled": 10
+      "completed": 120
     },
-    "totalRevenue": 4500.00,        // Άθροισμα delivery fees
+    "totalRevenue": 4500.00,
     "activeStores": 12,
     "activeDrivers": 5,
     "ordersToday": 8,
@@ -861,160 +599,218 @@ Headers: Authorization: Bearer <store-token>
 
 ---
 
-## Chat & Notifications Endpoints
-
-### 30. GET `/chats/:orderId`
-**Σκοπός:** Λήψη μηνυμάτων για συγκεκριμένη παραγγελία
-
-**Headers:** Authorization (Store/Driver/Admin)
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "chat": {
-    "_id": "64chat123...",
-    "orderId": "64order123...",
-    "participants": ["admin", "store:64abc123", "driver:64abc789"],
-    "messages": [
-      {
-        "_id": "64msg1...",
-        "senderRole": "admin",
-        "messageType": "text",
-        "content": "Παρακαλώ ετοιμάστε την παραγγελία το συντομότερο.",
-        "timestamp": "2025-11-18T11:00:00Z",
-        "isRead": true
-      },
-      {
-        "_id": "64msg2...",
-        "senderRole": "store",
-        "messageType": "voice",
-        "voiceUrl": "https://firebasestorage.googleapis.com/...",
-        "timestamp": "2025-11-18T11:05:00Z",
-        "isRead": false
-      }
-    ]
-  }
-}
-```
+### GET `/admin/stats/extended`
+**Σκοπός:** Εκτεταμένα στατιστικά
 
 ---
 
-### 31. POST `/chats/:orderId/message`
-**Σκοπός:** Αποστολή νέου μηνύματος
-
-**Request Body (Text):**
-```json
-{
-  "messageType": "text",
-  "content": "Η παραγγελία είναι έτοιμη!"
-}
-```
-
-**Request Body (Voice):**
-```json
-{
-  "messageType": "voice",
-  "voiceFile": "<base64-encoded-audio>"
-}
-```
-
-**Response (201):**
-```json
-{
-  "success": true,
-  "message": {
-    "_id": "64msg3...",
-    "senderRole": "store",
-    "messageType": "text",
-    "content": "Η παραγγελία είναι έτοιμη!",
-    "timestamp": "2025-11-18T11:10:00Z"
-  }
-}
-```
-
----
-
-### 32. GET `/notifications`
-**Σκοπός:** Λήψη ειδοποιήσεων χρήστη
-
-**Headers:** Authorization (Store/Driver/Admin)
+### GET `/admin/stores`
+**Σκοπός:** Λίστα καταστημάτων
 
 **Query Parameters:**
-- `isRead`: true/false
-- `limit`: default 20
+- `status`: "pending", "approved", "rejected"
+- `showUnverified`: true/false
+- `page`, `limit`
 
 **Response (200):**
 ```json
 {
   "success": true,
-  "count": 3,
-  "notifications": [
-    {
-      "_id": "64notif1...",
-      "type": "order_created",
-      "title": "Νέα Παραγγελία",
-      "message": "Νέα παραγγελία από Μαρία Γεωργίου",
-      "orderId": "64order123...",
-      "isRead": false,
-      "createdAt": "2025-11-18T10:30:00Z"
-    }
-  ]
+  "count": 5,
+  "totalCount": 20,
+  "totalPages": 4,
+  "currentPage": 1,
+  "stores": [...]
 }
 ```
 
 ---
 
-### 33. PUT `/notifications/:notificationId/read`
-**Σκοπός:** Σημείωση ειδοποίησης ως αναγνωσμένης
+### PUT `/admin/stores/:storeId/approve`
+**Σκοπός:** Έγκριση/Απόρριψη καταστήματος
+
+**Request Body:**
+```json
+{
+  "action": "approve"  // "approve", "reject", "pending"
+}
+```
+
+---
+
+### GET `/admin/drivers`
+**Σκοπός:** Λίστα διανομέων
+
+---
+
+### PUT `/admin/drivers/:driverId/approve`
+**Σκοπός:** Έγκριση/Απόρριψη διανομέα
+
+---
+
+### GET `/admin/orders`
+**Σκοπός:** Λίστα παραγγελιών
+
+**Query Parameters:**
+- `status`, `storeId`, `driverId`
+- `page`, `limit`
 
 **Response (200):**
 ```json
 {
   "success": true,
-  "notification": {
-    "_id": "64notif1...",
-    "isRead": true
+  "count": 10,
+  "total": 150,
+  "page": 1,
+  "pages": 15,
+  "orders": [...]
+}
+```
+
+---
+
+### PUT `/admin/orders/:orderId/delivery-fee`
+**Σκοπός:** Προσθήκη κόστους αποστολής
+
+**Request Body:**
+```json
+{
+  "deliveryFee": 3.00
+}
+```
+
+---
+
+### PUT `/admin/orders/:orderId/assign-driver`
+**Σκοπός:** Ανάθεση σε διανομέα
+
+**Request Body:**
+```json
+{
+  "driverId": "64abc789..."
+}
+```
+
+---
+
+### PUT `/admin/orders/:orderId/cancel`
+**Σκοπός:** Ακύρωση παραγγελίας
+
+**Request Body:**
+```json
+{
+  "reason": "Αίτημα πελάτη"
+}
+```
+
+---
+
+### GET `/admin/customers`
+**Σκοπός:** Λίστα πελατών
+
+---
+
+### PUT `/admin/customers/:customerId/deactivate`
+**Σκοπός:** Απενεργοποίηση πελάτη
+
+---
+
+### GET `/admin/settings`
+**Σκοπός:** Ρυθμίσεις συστήματος
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "settings": {
+    "driverSalary": 800,
+    "defaultDeliveryFee": 2.5,
+    "storeTypes": ["Mini Market", "Φαρμακείο", ...],
+    "serviceHoursEnabled": true,
+    "serviceHoursStart": "09:00",
+    "serviceHoursEnd": "23:00"
   }
 }
 ```
 
 ---
 
-## File Upload Endpoints
+### PUT `/admin/settings`
+**Σκοπός:** Ενημέρωση ρυθμίσεων
 
-### 34. POST `/upload/voice`
-**Σκοπός:** Upload voice file σε Firebase Storage
+---
 
-**Request:** multipart/form-data
-```
-Content-Type: multipart/form-data
-file: <audio-file.webm>
-```
+### POST `/admin/settings/store-types`
+**Σκοπός:** Προσθήκη τύπου καταστήματος
+
+---
+
+### PUT `/admin/settings/store-types/:storeType`
+**Σκοπός:** Ενημέρωση τύπου καταστήματος
+
+---
+
+### DELETE `/admin/settings/store-types/:storeType`
+**Σκοπός:** Διαγραφή τύπου καταστήματος
+
+---
+
+### GET `/admin/expenses/:year/:month`
+**Σκοπός:** Μηνιαία έξοδα
+
+---
+
+### PUT `/admin/expenses/:year/:month`
+**Σκοπός:** Ενημέρωση μηνιαίων εξόδων
+
+---
+
+### GET `/admin/profile`
+**Σκοπός:** Προφίλ admin
 
 **Response (200):**
 ```json
 {
   "success": true,
-  "voiceUrl": "https://firebasestorage.googleapis.com/v0/b/fast-delivery.../voice_123.webm"
+  "admin": {
+    "_id": "...",
+    "name": "Admin",
+    "email": "admin@fastdelivery.gr"
+  }
 }
 ```
 
 ---
 
-## Error Responses (Γενικό Format)
+### PUT `/admin/profile`
+**Σκοπός:** Ενημέρωση προφίλ admin
+
+---
+
+### PUT `/admin/profile/password`
+**Σκοπός:** Αλλαγή κωδικού admin
+
+---
+
+## Order Status Flow
+
+```
+pending_store → pricing → pending_admin → pending_customer_confirm → confirmed → assigned → accepted_driver → preparing → in_delivery → completed
+                    ↓                              ↓                                    ↓
+              rejected_store              rejected_customer                    rejected_driver → (back to admin)
+                                                                                         ↓
+                                                                                    cancelled
+```
+
+---
+
+## Error Responses
 
 **400 Bad Request:**
 ```json
 {
   "success": false,
-  "message": "Validation errors",
-  "errors": [
-    {
-      "field": "phone",
-      "message": "Το τηλέφωνο πρέπει να είναι 10ψήφιο"
-    }
-  ]
+  "message": "Email, password και role είναι απαραίτητα"
 }
 ```
 
@@ -1030,7 +826,7 @@ file: <audio-file.webm>
 ```json
 {
   "success": false,
-  "message": "Δεν έχετε δικαίωμα πρόσβασης σε αυτόν τον πόρο."
+  "message": "Δεν έχετε δικαίωμα πρόσβασης."
 }
 ```
 
@@ -1046,15 +842,28 @@ file: <audio-file.webm>
 ```json
 {
   "success": false,
-  "message": "Εσωτερικό σφάλμα διακομιστή. Παρακαλώ δοκιμάστε ξανά."
+  "message": "Εσωτερικό σφάλμα διακομιστή."
 }
 ```
 
 ---
 
-**Σημαντικό:** Όλα τα protected endpoints απαιτούν JWT token στο header:
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
+## WebSocket Events (Socket.IO)
 
-**Τελευταία ενημέρωση:** 18/11/2025
+**Connection:** `wss://fastdelivery-api.onrender.com`
+
+### Rooms
+- `admin` - Admin dashboard
+- `store:{storeId}` - Specific store
+- `driver:{driverId}` - Specific driver
+- `customer:{phone}` - Customer by phone
+
+### Events
+- `order:created` - Νέα παραγγελία
+- `order:status_changed` - Αλλαγή κατάστασης
+- `order:assigned` - Ανάθεση σε διανομέα
+- `driver:availability_changed` - Διαθεσιμότητα διανομέα
+
+---
+
+**🔒 = Απαιτεί Authentication**

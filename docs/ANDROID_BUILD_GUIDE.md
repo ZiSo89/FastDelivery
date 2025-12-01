@@ -117,6 +117,7 @@ emulator -list-avds
 
 # Εκκίνηση emulator (π.χ. Medium_Phone_API_36)
 emulator -avd Medium_Phone_API_36
+emulator -avd Small_Phone
 ```
 
 ### Εγκατάσταση APK

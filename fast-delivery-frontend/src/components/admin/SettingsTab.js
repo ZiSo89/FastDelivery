@@ -26,7 +26,14 @@ import {
   FaLock,
   FaEnvelope,
   FaEdit,
-  FaClock
+  FaClock,
+  FaDownload,
+  FaUpload,
+  FaServer,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaSync,
+  FaHistory
 } from 'react-icons/fa';
 import api from '../../services/api';
 
@@ -80,6 +87,16 @@ const SettingsTab = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [typeToDelete, setTypeToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Database Backup state
+  const [dbToolsStatus, setDbToolsStatus] = useState(null);
+  const [checkingTools, setCheckingTools] = useState(false);
+  const [installingTools, setInstallingTools] = useState(false);
+  const [creatingDbBackup, setCreatingDbBackup] = useState(false);
+  const [showDbRestoreModal, setShowDbRestoreModal] = useState(false);
+  const [restoringDb, setRestoringDb] = useState(false);
+  const [dbBackupFile, setDbBackupFile] = useState(null);
+  const [dbBackupProgress, setDbBackupProgress] = useState('');
 
   // Fetch settings on mount
   const fetchSettings = useCallback(async () => {
@@ -297,6 +314,136 @@ const SettingsTab = () => {
       setTypeToDelete(null);
     }
   };
+
+  // Check database tools status
+  const checkDbToolsStatus = async () => {
+    // Έλεγχος αν είναι Windows - το database backup δουλεύει μόνο σε Windows
+    const isWindows = navigator.userAgent.includes('Windows');
+    if (!isWindows) {
+      setDbToolsStatus({ installed: false, notSupported: true, message: 'Το Database Backup διαθέσιμο μόνο σε Windows' });
+      return;
+    }
+    
+    try {
+      setCheckingTools(true);
+      setError(null);
+      const res = await api.get('/admin/database/tools-status');
+      setDbToolsStatus(res.data);
+    } catch (err) {
+      console.error('Error checking tools status:', err);
+      setError('Σφάλμα ελέγχου εργαλείων βάσης δεδομένων');
+    } finally {
+      setCheckingTools(false);
+    }
+  };
+
+  // Install database tools
+  const handleInstallDbTools = async () => {
+    try {
+      setInstallingTools(true);
+      setError(null);
+      setDbBackupProgress('Εγκατάσταση εργαλείων MongoDB... Αυτό μπορεί να πάρει μερικά λεπτά.');
+      
+      const res = await api.post('/admin/database/install-tools');
+      
+      if (res.data.success) {
+        setSuccess('Τα εργαλεία MongoDB εγκαταστάθηκαν επιτυχώς!');
+        setDbToolsStatus({ installed: true, message: res.data.message });
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error installing tools:', err);
+      setError(err.response?.data?.message || 'Σφάλμα εγκατάστασης εργαλείων');
+    } finally {
+      setInstallingTools(false);
+      setDbBackupProgress('');
+    }
+  };
+
+  // Create database backup
+  const handleCreateDbBackup = async () => {
+    try {
+      setCreatingDbBackup(true);
+      setError(null);
+      setDbBackupProgress('Δημιουργία αντιγράφου ασφαλείας...');
+      
+      const res = await api.post('/admin/database/backup', {}, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const blob = new Blob([res.data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mongodb-backup-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      setSuccess('Το αντίγραφο ασφαλείας δημιουργήθηκε και κατέβηκε επιτυχώς!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Error creating backup:', err);
+      setError(err.response?.data?.message || 'Σφάλμα δημιουργίας αντιγράφου');
+    } finally {
+      setCreatingDbBackup(false);
+      setDbBackupProgress('');
+    }
+  };
+
+  // Handle database backup file selection
+  const handleDbBackupFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.zip')) {
+      setError('Παρακαλώ επιλέξτε αρχείο .zip');
+      return;
+    }
+    
+    setDbBackupFile(file);
+  };
+
+  // Restore database from backup
+  const handleRestoreDatabase = async () => {
+    if (!dbBackupFile) return;
+    
+    try {
+      setRestoringDb(true);
+      setError(null);
+      setDbBackupProgress('Επαναφορά βάσης δεδομένων... Παρακαλώ περιμένετε.');
+      
+      const formData = new FormData();
+      formData.append('backup', dbBackupFile);
+      
+      const res = await api.post('/admin/database/restore', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (res.data.success) {
+        setSuccess(`Η βάση δεδομένων επαναφέρθηκε επιτυχώς! ${res.data.message}`);
+        setShowDbRestoreModal(false);
+        setDbBackupFile(null);
+        fetchSettings(); // Refresh settings
+        setTimeout(() => setSuccess(null), 5000);
+      }
+    } catch (err) {
+      console.error('Error restoring database:', err);
+      setError(err.response?.data?.message || 'Σφάλμα επαναφοράς βάσης δεδομένων');
+    } finally {
+      setRestoringDb(false);
+      setDbBackupProgress('');
+    }
+  };
+
+  // Check tools status on mount
+  useEffect(() => {
+    checkDbToolsStatus();
+  }, []);
 
   if (loading) {
     return (
@@ -668,6 +815,121 @@ const SettingsTab = () => {
             </Card.Body>
           </Card>
         </Col>
+
+        {/* Database Full Backup Card */}
+        <Col lg={6}>
+          <Card className="shadow-sm border-success mb-4">
+            <Card.Header className="bg-success text-white">
+              <FaServer className="me-2" />
+              Backup Βάσης Δεδομένων
+            </Card.Header>
+            <Card.Body>
+              <p className="text-muted small mb-3">
+                Πλήρες αντίγραφο της MongoDB με όλα τα δεδομένα.
+              </p>
+
+              {/* Tools Status */}
+              <div className="mb-3">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <strong className="small">Κατάσταση Εργαλείων MongoDB:</strong>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    onClick={checkDbToolsStatus}
+                    disabled={checkingTools}
+                  >
+                    <FaSync className={checkingTools ? 'fa-spin' : ''} />
+                  </Button>
+                </div>
+                
+                {checkingTools ? (
+                  <div className="d-flex align-items-center text-muted small">
+                    <Spinner size="sm" animation="border" className="me-2" />
+                    Έλεγχος...
+                  </div>
+                ) : dbToolsStatus?.notSupported ? (
+                  <Badge bg="secondary" className="d-flex align-items-center gap-1 py-2 px-3">
+                    <FaExclamationTriangle /> Διαθέσιμο μόνο σε Windows
+                  </Badge>
+                ) : dbToolsStatus?.installed ? (
+                  <Badge bg="success" className="d-flex align-items-center gap-1 py-2 px-3">
+                    <FaCheckCircle /> Εγκατεστημένα
+                  </Badge>
+                ) : (
+                  <div>
+                    <Badge bg="warning" className="d-flex align-items-center gap-1 py-2 px-3 mb-2">
+                      <FaExclamationTriangle /> Δεν είναι εγκατεστημένα
+                    </Badge>
+                    <Button 
+                      variant="warning" 
+                      size="sm"
+                      onClick={handleInstallDbTools}
+                      disabled={installingTools}
+                      className="w-100"
+                    >
+                      {installingTools ? (
+                        <>
+                          <Spinner size="sm" animation="border" className="me-2" />
+                          Εγκατάσταση...
+                        </>
+                      ) : (
+                        <>
+                          <FaDownload className="me-2" />
+                          Εγκατάσταση MongoDB Tools
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {dbBackupProgress && (
+                <Alert variant="info" className="small py-2">
+                  <Spinner size="sm" animation="border" className="me-2" />
+                  {dbBackupProgress}
+                </Alert>
+              )}
+
+              <div className="d-grid gap-2">
+                <Button 
+                  variant="success" 
+                  onClick={handleCreateDbBackup}
+                  disabled={creatingDbBackup || !dbToolsStatus?.installed}
+                >
+                  {creatingDbBackup ? (
+                    <>
+                      <Spinner size="sm" animation="border" className="me-2" />
+                      Δημιουργία Backup...
+                    </>
+                  ) : (
+                    <>
+                      <FaDownload className="me-2" />
+                      Δημιουργία & Λήψη Backup
+                    </>
+                  )}
+                </Button>
+                
+                <Button 
+                  variant="outline-success" 
+                  onClick={() => setShowDbRestoreModal(true)}
+                  disabled={!dbToolsStatus?.installed}
+                >
+                  <FaHistory className="me-2" />
+                  Επαναφορά από Backup
+                </Button>
+              </div>
+              
+              <Alert variant="success" className="mt-3 mb-0 small">
+                <strong>📂 Πλεονεκτήματα πλήρους backup:</strong>
+                <ul className="mb-0 mt-1">
+                  <li>Πλήρης επαναφορά βάσης δεδομένων</li>
+                  <li>Συμπεριλαμβάνει indexes & metadata</li>
+                  <li>Γρήγορη αποκατάσταση σε περίπτωση ανάγκης</li>
+                </ul>
+              </Alert>
+            </Card.Body>
+          </Card>
+        </Col>
       </Row>
 
       {/* Delete Confirmation Modal */}
@@ -843,6 +1105,83 @@ const SettingsTab = () => {
               <>
                 <FaSave className="me-2" />
                 Αποθήκευση
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Database Restore Modal */}
+      <Modal show={showDbRestoreModal} onHide={() => {
+        setShowDbRestoreModal(false);
+        setDbBackupFile(null);
+      }} centered>
+        <Modal.Header closeButton className="bg-success text-white">
+          <Modal.Title>
+            <FaHistory className="me-2" />
+            Επαναφορά Βάσης Δεδομένων
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="danger">
+            <strong>⚠️ ΠΡΟΣΟΧΗ!</strong>
+            <p className="mb-0 mt-2">
+              Η επαναφορά θα <strong>αντικαταστήσει ΟΛΟΚΛΗΡΗ</strong> την τρέχουσα βάση δεδομένων!
+              Όλα τα υπάρχοντα δεδομένα θα διαγραφούν και θα αντικατασταθούν με αυτά του backup.
+            </p>
+          </Alert>
+
+          <Form.Group className="mb-4">
+            <Form.Label>Επιλέξτε αρχείο backup (.zip)</Form.Label>
+            <Form.Control
+              type="file"
+              accept=".zip"
+              onChange={handleDbBackupFileSelect}
+            />
+            {dbBackupFile && (
+              <Form.Text className="text-success">
+                ✓ Επιλεγμένο αρχείο: {dbBackupFile.name} ({(dbBackupFile.size / 1024 / 1024).toFixed(2)} MB)
+              </Form.Text>
+            )}
+          </Form.Group>
+
+          {dbBackupProgress && (
+            <Alert variant="info" className="small">
+              <Spinner size="sm" animation="border" className="me-2" />
+              {dbBackupProgress}
+            </Alert>
+          )}
+
+          <Alert variant="warning" className="small mb-0">
+            <strong>Συστάσεις πριν την επαναφορά:</strong>
+            <ul className="mb-0 mt-1">
+              <li>Δημιουργήστε backup της τρέχουσας βάσης</li>
+              <li>Ενημερώστε τους χρήστες για τη διακοπή λειτουργίας</li>
+              <li>Μην κλείσετε το παράθυρο κατά τη διάρκεια της επαναφοράς</li>
+            </ul>
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => {
+            setShowDbRestoreModal(false);
+            setDbBackupFile(null);
+          }}>
+            Ακύρωση
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleRestoreDatabase}
+            disabled={restoringDb || !dbBackupFile}
+          >
+            {restoringDb ? (
+              <>
+                <Spinner size="sm" animation="border" className="me-2" />
+                Επαναφορά...
+              </>
+            ) : (
+              <>
+                <FaHistory className="me-2" />
+                Επαναφορά Βάσης Δεδομένων
               </>
             )}
           </Button>
