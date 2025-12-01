@@ -24,6 +24,40 @@ exports.getDriverProfile = async (req, res) => {
   }
 };
 
+// @desc    Update driver profile (including push token)
+// @route   PUT /api/v1/driver/profile
+// @access  Private (Driver)
+exports.updateDriverProfile = async (req, res) => {
+  try {
+    const { pushToken, name, phone, vehicle, licensePlate } = req.body;
+    
+    const updateData = {};
+    if (pushToken !== undefined) updateData.pushToken = pushToken;
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    if (vehicle) updateData.vehicle = vehicle;
+    if (licensePlate) updateData.licensePlate = licensePlate;
+
+    const driver = await Driver.findByIdAndUpdate(
+      req.user._id,
+      updateData,
+      { new: true }
+    ).select('-password');
+
+    res.json({
+      success: true,
+      message: 'Το προφίλ ενημερώθηκε',
+      driver
+    });
+  } catch (error) {
+    console.error('Update driver profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ενημέρωσης προφίλ'
+    });
+  }
+};
+
 // @desc    Toggle driver availability (online/offline)
 // @route   PUT /api/v1/driver/availability
 // @access  Private (Driver)

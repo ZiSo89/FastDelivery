@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const {
   getDriverProfile,
+  updateDriverProfile,
   toggleAvailability,
   getDriverOrders,
   acceptRejectAssignment,
@@ -15,6 +16,9 @@ router.use(authorize('driver'));
 
 // @route   GET /api/v1/driver/profile
 router.get('/profile', getDriverProfile);
+
+// @route   PUT /api/v1/driver/profile
+router.put('/profile', updateDriverProfile);
 
 // @route   PUT /api/v1/driver/availability
 router.put('/availability', toggleAvailability);

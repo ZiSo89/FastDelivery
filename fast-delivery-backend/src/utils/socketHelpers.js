@@ -1,4 +1,5 @@
 const Customer = require('../models/Customer');
+const Driver = require('../models/Driver');
 const { sendPushNotification } = require('./pushNotifications');
 
 /**
@@ -41,6 +42,28 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
   // Send to the specific driver if assigned
   if (order.driverId) {
     io.to(`driver:${order.driverId}`).emit(eventName, data);
+
+    // Send Push Notification to Driver for important events
+    try {
+      const driver = await Driver.findById(order.driverId);
+      if (driver && driver.pushToken) {
+        const driverMessages = {
+          'assigned': 'Νέα ανάθεση παραγγελίας! Πατήστε για λεπτομέρειες.',
+          'preparing': `Η παραγγελία #${order.orderNumber} είναι έτοιμη για παραλαβή!`
+        };
+        const message = driverMessages[data.newStatus];
+        if (message) {
+          await sendPushNotification(
+            driver.pushToken,
+            data.newStatus === 'assigned' ? '🚗 Νέα Παραγγελία!' : '📦 Έτοιμη για Παραλαβή',
+            message,
+            { orderId: order._id?.toString(), orderNumber: order.orderNumber, status: data.newStatus }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error sending push notification to driver:', error);
+    }
   }
 
   // Send to order room (for customers watching this specific order)

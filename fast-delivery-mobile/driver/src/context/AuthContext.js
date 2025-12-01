@@ -121,6 +121,12 @@ export const AuthProvider = ({ children }) => {
         const pushToken = await registerForPushNotificationsAsync();
         if (pushToken) {
           setExpoPushToken(pushToken);
+          // Send push token to backend
+          try {
+            await driverService.updatePushToken(pushToken);
+          } catch (e) {
+            console.log('Failed to update push token on server');
+          }
         }
       }
     } catch (error) {
@@ -148,6 +154,12 @@ export const AuthProvider = ({ children }) => {
       const pushToken = await registerForPushNotificationsAsync();
       if (pushToken) {
         setExpoPushToken(pushToken);
+        // Send push token to backend
+        try {
+          await driverService.updatePushToken(pushToken);
+        } catch (e) {
+          console.log('Failed to update push token on server');
+        }
       }
 
       return { success: true };

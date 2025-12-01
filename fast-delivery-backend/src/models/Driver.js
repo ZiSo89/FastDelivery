@@ -69,6 +69,10 @@ const driverSchema = new mongoose.Schema({
   passwordResetExpires: {
     type: Date,
     default: null
+  },
+  pushToken: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true
