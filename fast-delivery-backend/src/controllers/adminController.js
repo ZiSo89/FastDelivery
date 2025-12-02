@@ -289,6 +289,37 @@ exports.getOrders = async (req, res) => {
   }
 };
 
+// @desc    Get single order by ID
+// @route   GET /api/v1/admin/orders/:orderId
+// @access  Private (Admin)
+exports.getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId)
+      .populate('storeId', 'businessName phone address')
+      .populate('driverId', 'name phone isOnline');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Η παραγγελία δεν βρέθηκε'
+      });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    console.error('Get order by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ανάκτησης παραγγελίας'
+    });
+  }
+};
+
 // @desc    Add delivery fee to order
 // @route   PUT /api/v1/admin/orders/:orderId/delivery-fee
 // @access  Private (Admin)
@@ -1101,6 +1132,79 @@ exports.getExtendedStats = async (req, res) => {
     const avgOrderValue = averages[0]?.avgOrderValue || 0;
     const avgDeliveryFee = averages[0]?.avgDeliveryFee || 0;
     
+    // Driver collections for selected date (default: today)
+    // collectionsDate format: YYYY-MM-DD
+    const collectionsDateParam = req.query.collectionsDate;
+    let collectionsStart, collectionsEnd;
+    
+    if (collectionsDateParam) {
+      // Parse the date parameter
+      const [year, month, day] = collectionsDateParam.split('-').map(Number);
+      collectionsStart = new Date(year, month - 1, day, 0, 0, 0, 0);
+      collectionsEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+    } else {
+      // Default to today
+      collectionsStart = new Date(todayStart);
+      collectionsEnd = new Date(todayEnd);
+    }
+    
+    // Driver collections (deliveryFee collected by each driver on selected date)
+    const driverCollectionsData = await Order.aggregate([
+      {
+        $match: {
+          status: 'completed',
+          completedAt: { $gte: collectionsStart, $lte: collectionsEnd },
+          driverId: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: '$driverId',
+          totalCollected: { $sum: '$deliveryFee' },
+          deliveries: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'drivers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'driver'
+        }
+      },
+      { $unwind: '$driver' },
+      {
+        $project: {
+          driverName: '$driver.name',
+          driverPhone: '$driver.phone',
+          totalCollected: 1,
+          deliveries: 1
+        }
+      },
+      { $sort: { totalCollected: -1 } }
+    ]);
+    
+    // Get all approved drivers to show even those with 0 deliveries
+    const allApprovedDrivers = await Driver.find({ status: 'approved', isApproved: true })
+      .select('name phone')
+      .lean();
+    
+    // Merge: show all drivers, with their collections (or 0 if none)
+    const driverCollectionsMap = new Map(
+      driverCollectionsData.map(d => [d._id.toString(), d])
+    );
+    
+    const allDriversWithCollections = allApprovedDrivers.map(driver => {
+      const collection = driverCollectionsMap.get(driver._id.toString());
+      return {
+        driverId: driver._id,
+        driverName: driver.name,
+        driverPhone: driver.phone,
+        totalCollected: collection?.totalCollected || 0,
+        deliveries: collection?.deliveries || 0
+      };
+    }).sort((a, b) => b.totalCollected - a.totalCollected);
+    
     res.json({
       success: true,
       stats: {
@@ -1136,7 +1240,9 @@ exports.getExtendedStats = async (req, res) => {
         averages: {
           orderValue: parseFloat(avgOrderValue.toFixed(2)),
           deliveryFee: parseFloat(avgDeliveryFee.toFixed(2))
-        }
+        },
+        // Today's driver collections
+        driverCollections: allDriversWithCollections
       }
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 {
-  "short_name": "FD Staff",
+  "short_name": "Συνεργάτες Fast Delivery",
   "name": "Fast Delivery - Συνεργάτες",
   "description": "Διαχείριση για καταστήματα, οδηγούς και admin",
   "icons": [
@@ -7,19 +7,31 @@
       "src": "assets/icon-staff-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "assets/icon-staff-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-staff-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icon-staff-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#198754",
+  "theme_color": "#ffffff",
   "background_color": "#ffffff",
   "orientation": "portrait"
 }

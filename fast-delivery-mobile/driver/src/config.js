@@ -9,7 +9,7 @@ import Constants from 'expo-constants';
 
 // 🔧 DEBUG FLAG - Ενεργοποίηση logs στο production build
 // Άλλαξέ το σε false πριν το τελικό production release
-export const ENABLE_DEBUG_LOGS = true;
+export const ENABLE_DEBUG_LOGS = false;
 
 // URLs για κάθε περιβάλλον
 const ENV = {

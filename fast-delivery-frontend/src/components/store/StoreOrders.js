@@ -93,57 +93,106 @@ const StoreOrders = () => {
     fetchOrders(filter, page);
   };
 
+  // Helper function to update a single order in state (optimized - no full refetch)
+  const updateOrderInState = useCallback(async (orderId) => {
+    if (!orderId) return;
+    try {
+      const response = await storeService.getOrderById(orderId);
+      const updatedOrder = response.order || response.data?.order || response;
+      if (updatedOrder) {
+        setOrders(prev => {
+          const exists = prev.find(o => o._id === updatedOrder._id);
+          if (exists) {
+            // Update existing order
+            return prev.map(o => o._id === updatedOrder._id ? updatedOrder : o);
+          } else {
+            // New order - add to beginning if viewing in_progress
+            if (filterRef.current === 'in_progress') {
+              return [updatedOrder, ...prev];
+            }
+            return prev;
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update single order:', err);
+      // Fallback to full refresh on error
+      fetchOrders();
+    }
+  }, [fetchOrders]);
+
+  // Helper to remove order from state (for completed/cancelled when viewing in_progress)
+  const removeOrderFromState = useCallback((orderId) => {
+    if (!orderId) return;
+    setOrders(prev => prev.filter(o => o._id !== orderId && o._id?.toString() !== orderId));
+  }, []);
+
   // Socket.IO listeners (setup once, never recreate)
   useEffect(() => {
     // Helper function to check if event is for this store
     const isMyOrder = (data) => {
       const match = data.storeId && user?._id && data.storeId.toString() === user._id.toString();
-      // Debug logging:
-      // console.log('🔍 StoreOrders event filter:', { 
-      //   eventStoreId: data.storeId?.toString(), 
-      //   myId: user?._id?.toString(), 
-      //   match,
-      //   orderNumber: data.orderNumber,
-      //   eventName: 'checking'
-      // });
       return match;
     };
     
-    // Socket.IO real-time listeners for store
+    // Socket.IO real-time listeners for store - optimized to update single order
     const handleNewOrder = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) {
+        // For new orders, add to list if viewing in_progress
+        if (filterRef.current === 'in_progress') {
+          updateOrderInState(data.orderId);
+        }
+      }
     };
 
     const handleOrderCancelled = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) {
+        if (filterRef.current === 'in_progress') {
+          removeOrderFromState(data.orderId);
+        } else {
+          updateOrderInState(data.orderId);
+        }
+      }
     };
 
     const handleDriverAccepted = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) updateOrderInState(data.orderId);
     };
 
     const handleOrderStatusChanged = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) {
+        if (filterRef.current === 'in_progress' && data.newStatus === 'completed') {
+          removeOrderFromState(data.orderId);
+        } else {
+          updateOrderInState(data.orderId);
+        }
+      }
     };
 
     const handleOrderPendingAdmin = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) updateOrderInState(data.orderId);
     };
 
     const handleOrderPriceReady = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) updateOrderInState(data.orderId);
     };
 
     const handleOrderAssigned = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) updateOrderInState(data.orderId);
     };
 
     const handleOrderCompleted = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) {
+        if (filterRef.current === 'in_progress') {
+          removeOrderFromState(data.orderId);
+        } else {
+          updateOrderInState(data.orderId);
+        }
+      }
     };
 
     const handleOrderConfirmed = (data) => {
-      if (isMyOrder(data)) fetchOrders(); // Refresh list only for my orders
+      if (isMyOrder(data)) updateOrderInState(data.orderId);
     };
 
     // Subscribe to events
@@ -170,7 +219,7 @@ const StoreOrders = () => {
       socketService.off('order:confirmed', handleOrderConfirmed);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // Only re-attach listeners when user changes
+  }, [user, updateOrderInState, removeOrderFromState]); // Re-attach listeners when user or helpers change
 
   const handleAccept = async (orderId) => {
     try {
@@ -180,8 +229,8 @@ const StoreOrders = () => {
       const order = orders.find(o => o._id === orderId);
       if (order) removeNotificationsByRelatedId(order.orderNumber);
       
-      await fetchOrders();
-      // Success - real-time update will show the change
+      // Update only this order instead of fetching all
+      await updateOrderInState(orderId);
     } catch (err) {
       setAlertModal({
         show: true,
@@ -218,8 +267,8 @@ const StoreOrders = () => {
       if (order) removeNotificationsByRelatedId(order.orderNumber);
 
       setShowRejectModal(false);
-      await fetchOrders();
-      // Success - real-time update will show the change
+      // Update only this order instead of fetching all
+      await updateOrderInState(rejectOrderId);
     } catch (err) {
       setAlertModal({
         show: true,
@@ -251,8 +300,8 @@ const StoreOrders = () => {
       await storeService.setPrice(selectedOrder._id, parseFloat(productPrice));
       removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowModal(false);
-      await fetchOrders();
-      // Success - real-time update will show the change
+      // Update only this order instead of fetching all
+      await updateOrderInState(selectedOrder._id);
     } catch (err) {
       setAlertModal({
         show: true,
@@ -271,8 +320,8 @@ const StoreOrders = () => {
       const order = orders.find(o => o._id === orderId);
       if (order) removeNotificationsByRelatedId(order.orderNumber);
 
-      await fetchOrders();
-      // Success - real-time update will show the change
+      // Update only this order instead of fetching all
+      await updateOrderInState(orderId);
     } catch (err) {
       setAlertModal({
         show: true,

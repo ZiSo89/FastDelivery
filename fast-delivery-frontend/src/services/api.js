@@ -3,6 +3,82 @@ import axios from 'axios';
 // Βασικό URL από environment variables
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/v1';
 
+// ==================== STORAGE HELPERS ====================
+// Customers use sessionStorage (per-tab isolation)
+// Other roles (store, driver, admin) use localStorage (persistent)
+
+const getStorageForRole = (role) => {
+  return role === 'customer' ? sessionStorage : localStorage;
+};
+
+const getCurrentUserRole = () => {
+  // Check sessionStorage first (customers)
+  const sessionUser = sessionStorage.getItem('user');
+  if (sessionUser && sessionUser !== 'undefined' && sessionUser !== 'null') {
+    try {
+      const parsed = JSON.parse(sessionUser);
+      if (parsed?.role === 'customer') return 'customer';
+    } catch (e) {}
+  }
+  // Then check localStorage (staff)
+  const localUser = localStorage.getItem('user');
+  if (localUser && localUser !== 'undefined' && localUser !== 'null') {
+    try {
+      const parsed = JSON.parse(localUser);
+      return parsed?.role || null;
+    } catch (e) {}
+  }
+  return null;
+};
+
+export const getToken = () => {
+  // Check sessionStorage first (customers)
+  const sessionToken = sessionStorage.getItem('token');
+  if (sessionToken) return sessionToken;
+  // Then check localStorage (staff)
+  return localStorage.getItem('token');
+};
+
+export const getUser = () => {
+  // Check sessionStorage first (customers)
+  const sessionUser = sessionStorage.getItem('user');
+  if (sessionUser && sessionUser !== 'undefined' && sessionUser !== 'null') {
+    try {
+      return JSON.parse(sessionUser);
+    } catch (e) {}
+  }
+  // Then check localStorage (staff)
+  const localUser = localStorage.getItem('user');
+  if (localUser && localUser !== 'undefined' && localUser !== 'null') {
+    try {
+      return JSON.parse(localUser);
+    } catch (e) {}
+  }
+  return null;
+};
+
+export const setAuthData = (token, user, role) => {
+  const storage = getStorageForRole(role);
+  storage.setItem('token', token);
+  storage.setItem('user', JSON.stringify(user));
+};
+
+export const clearAuthData = () => {
+  // Clear from both storages to be safe
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('user');
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+};
+
+export const clearAuthDataForRole = (role) => {
+  const storage = getStorageForRole(role);
+  storage.removeItem('token');
+  storage.removeItem('user');
+};
+
+// ==================== AXIOS SETUP ====================
+
 // Δημιουργία axios instance
 const api = axios.create({
   baseURL: API_URL,
@@ -14,7 +90,7 @@ const api = axios.create({
 // Request interceptor - προσθέτει JWT token αν υπάρχει
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,15 +107,31 @@ api.interceptors.response.use(
   (error) => {
     // Don't redirect if it's a login attempt that failed
     if (error.response?.status === 401 && !error.config.url.includes('/login')) {
+      console.warn('🔒 401 Unauthorized:', error.config.url, 'Path:', window.location.pathname);
+      
       // Αν το token έληξε, διαγραφή και redirect στο login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      // Only redirect to partner login if we are not in customer portal
-      if (!window.location.pathname.startsWith('/order') && window.location.pathname !== '/') {
-          window.location.href = '/login';
+      clearAuthData();
+      
+      // Check if we are in customer portal (any customer-related URL)
+      const customerPaths = ['/order', '/new-order', '/my-orders', '/profile', '/register'];
+      const isCustomerPortal = customerPaths.some(path => 
+        window.location.pathname === path || window.location.pathname.startsWith('/order-status')
+      );
+      
+      // Also check if on root path but coming from customer context
+      const isRootCustomer = window.location.pathname === '/' || window.location.pathname === '';
+      
+      console.warn('🔒 isCustomerPortal:', isCustomerPortal, 'isRootCustomer:', isRootCustomer);
+      
+      if (isCustomerPortal) {
+        // For customer portal pages, redirect to customer home (not login)
+        window.location.href = '/order';
+      } else if (isRootCustomer) {
+        // Already on login page, don't redirect
+        return Promise.reject(error);
       } else {
-          // For customer portal, maybe redirect to home?
-          window.location.href = '/';
+        // For partner portal (admin, store, driver), redirect to login
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
@@ -53,33 +145,23 @@ export const authService = {
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials);
     if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
       // Backend επιστρέφει: { success: true, token: "...", user: {...} }
       const userData = response.data.user || response.data.data;
-      localStorage.setItem('user', JSON.stringify(userData));
+      const role = userData?.role || credentials.role;
+      // Use role-based storage: customers → sessionStorage, others → localStorage
+      setAuthData(response.data.token, userData, role);
     }
     return response.data;
   },
 
   // Logout
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuthData();
   },
 
   // Get current user
   getCurrentUser: () => {
-    const user = localStorage.getItem('user');
-    if (!user || user === 'undefined' || user === 'null') {
-      return null;
-    }
-    try {
-      return JSON.parse(user);
-    } catch (error) {
-      console.error('Error parsing user from localStorage:', error);
-      localStorage.removeItem('user');
-      return null;
-    }
+    return getUser();
   },
 
   // Store Registration
@@ -98,11 +180,16 @@ export const authService = {
   registerCustomer: async (customerData) => {
     const response = await api.post('/auth/customer/register', customerData);
     if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
       const userData = response.data.user;
-      localStorage.setItem('user', JSON.stringify(userData));
+      // Customers always use sessionStorage
+      setAuthData(response.data.token, userData, 'customer');
     }
     return response.data;
+  },
+
+  // Get token (for external use)
+  getToken: () => {
+    return getToken();
   }
 };
 
@@ -168,6 +255,12 @@ export const adminService = {
     return response.data;
   },
 
+  // Get single order by ID
+  getOrderById: async (orderId) => {
+    const response = await api.get(`/admin/orders/${orderId}`);
+    return response.data;
+  },
+
   // Add delivery fee
   addDeliveryFee: async (orderId, deliveryFee) => {
     const response = await api.put(`/admin/orders/${orderId}/delivery-fee`, { deliveryFee });
@@ -223,6 +316,12 @@ export const storeService = {
       url += `&status=${status}`;
     }
     const response = await api.get(url);
+    return response.data;
+  },
+
+  // Get single order by ID
+  getOrderById: async (orderId) => {
+    const response = await api.get(`/store/orders/${orderId}`);
     return response.data;
   },
 

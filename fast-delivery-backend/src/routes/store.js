@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const {
   getStoreOrders,
+  getOrderById,
   acceptRejectOrder,
   addProductPrice,
   updateOrderStatus,
@@ -16,6 +17,9 @@ router.use(authorize('store'));
 
 // @route   GET /api/v1/store/orders
 router.get('/orders', getStoreOrders);
+
+// @route   GET /api/v1/store/orders/:orderId
+router.get('/orders/:orderId', getOrderById);
 
 // @route   PUT /api/v1/store/orders/:orderId/accept
 router.put('/orders/:orderId/accept', acceptRejectOrder);

@@ -1,14 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Toast, ToastContainer } from 'react-bootstrap';
 import { useNotification } from '../context/NotificationContext';
 
 const NotificationToast = () => {
   const { notifications, removeNotification } = useNotification();
 
+  // Close sticky notifications when user clicks anywhere else on the page
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      // Check if click is outside of toast container
+      const toastContainer = e.target.closest('.toast-container');
+      if (!toastContainer) {
+        // Remove all sticky notifications when clicking outside
+        notifications.forEach(notification => {
+          if (notification.sticky) {
+            removeNotification(notification.id);
+          }
+        });
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, [notifications, removeNotification]);
+
   return (
     <ToastContainer 
       position="top-end" 
-      className="p-3" 
+      className="p-3 toast-container" 
       style={{ zIndex: 9999 }}
     >
       {notifications.map((notification) => (

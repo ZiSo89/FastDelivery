@@ -68,6 +68,10 @@ const StatisticsTab = () => {
   const [expenseAmount, setExpenseAmount] = useState(0);
   const [expenseNotes, setExpenseNotes] = useState('');
   const [savingExpenses, setSavingExpenses] = useState(false);
+  
+  // Driver collections date
+  const [collectionsDate, setCollectionsDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loadingCollections, setLoadingCollections] = useState(false);
 
   // Fetch stats
   const fetchStats = useCallback(async () => {
@@ -75,7 +79,7 @@ const StatisticsTab = () => {
       setLoading(true);
       setError(null);
       
-      const res = await api.get(`/admin/stats/extended?year=${selectedYear}&month=${selectedMonth}`);
+      const res = await api.get(`/admin/stats/extended?year=${selectedYear}&month=${selectedMonth}&collectionsDate=${collectionsDate}`);
       
       if (res.data.success) {
         setStats(res.data.stats);
@@ -88,11 +92,35 @@ const StatisticsTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, collectionsDate]);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+  
+  // Fetch only driver collections when date changes
+  const fetchDriverCollections = useCallback(async (date) => {
+    try {
+      setLoadingCollections(true);
+      const res = await api.get(`/admin/stats/extended?year=${selectedYear}&month=${selectedMonth}&collectionsDate=${date}`);
+      if (res.data.success) {
+        setStats(prev => ({
+          ...prev,
+          driverCollections: res.data.stats.driverCollections
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching driver collections:', err);
+    } finally {
+      setLoadingCollections(false);
+    }
+  }, [selectedYear, selectedMonth]);
+  
+  const handleCollectionsDateChange = (e) => {
+    const newDate = e.target.value;
+    setCollectionsDate(newDate);
+    fetchDriverCollections(newDate);
+  };
 
   // Save monthly expenses
   const handleSaveExpenses = async () => {
@@ -137,11 +165,21 @@ const StatisticsTab = () => {
   const prepareMonthlyData = () => {
     if (!stats?.charts?.revenuePerMonth) return [];
     
-    return stats.charts.revenuePerMonth.map(item => ({
-      month: MONTHS_GR[item._id - 1]?.substring(0, 3) || item._id,
-      revenue: item.revenue,
-      orders: item.orders
-    }));
+    // Create a map of existing data
+    const dataMap = new Map(
+      stats.charts.revenuePerMonth.map(item => [item._id, item])
+    );
+    
+    // Generate all 12 months with 0 as default
+    return MONTHS_GR.map((monthName, index) => {
+      const monthNum = index + 1;
+      const existing = dataMap.get(monthNum);
+      return {
+        month: monthName.substring(0, 3),
+        revenue: existing?.revenue || 0,
+        orders: existing?.orders || 0
+      };
+    });
   };
 
   const prepareDailyData = () => {
@@ -412,6 +450,77 @@ const StatisticsTab = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Today's Driver Collections */}
+      <Card className="shadow-sm mb-4 border-warning">
+        <Card.Header className="bg-warning text-dark d-flex justify-content-between align-items-center">
+          <span>
+            <FaMotorcycle className="me-2" />
+            Εισπράξεις Οδηγών (Μεταφορικά)
+          </span>
+          <Form.Group className="mb-0 d-flex align-items-center">
+            <Form.Label className="mb-0 me-2 small">Ημερομηνία:</Form.Label>
+            <Form.Control
+              type="date"
+              size="sm"
+              value={collectionsDate}
+              onChange={handleCollectionsDateChange}
+              max={new Date().toISOString().split('T')[0]}
+              style={{ width: 'auto' }}
+            />
+            {loadingCollections && <Spinner size="sm" animation="border" className="ms-2" />}
+          </Form.Group>
+        </Card.Header>
+        <Card.Body>
+          {stats?.driverCollections?.length > 0 ? (
+            <Table striped hover responsive>
+              <thead>
+                <tr>
+                  <th>Οδηγός</th>
+                  <th>Τηλέφωνο</th>
+                  <th className="text-center">Παραδόσεις</th>
+                  <th className="text-end">Προς Απόδοση</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.driverCollections.map((driver, index) => (
+                  <tr key={index}>
+                    <td>
+                      <FaMotorcycle className="me-2 text-warning" />
+                      {driver.driverName}
+                    </td>
+                    <td>{driver.driverPhone}</td>
+                    <td className="text-center">
+                      <Badge bg={driver.deliveries > 0 ? 'success' : 'secondary'}>
+                        {driver.deliveries}
+                      </Badge>
+                    </td>
+                    <td className="text-end">
+                      <strong className={driver.totalCollected > 0 ? 'text-danger' : 'text-muted'}>
+                        {formatCurrency(driver.totalCollected)}
+                      </strong>
+                    </td>
+                  </tr>
+                ))}
+                {/* Total Row */}
+                <tr className="table-dark">
+                  <td colSpan={2}><strong>ΣΥΝΟΛΟ</strong></td>
+                  <td className="text-center">
+                    <strong>{stats.driverCollections.reduce((sum, d) => sum + d.deliveries, 0)}</strong>
+                  </td>
+                  <td className="text-end">
+                    <strong className="text-danger">
+                      {formatCurrency(stats.driverCollections.reduce((sum, d) => sum + d.totalCollected, 0))}
+                    </strong>
+                  </td>
+                </tr>
+              </tbody>
+            </Table>
+          ) : (
+            <p className="text-muted text-center mb-0">Δεν υπάρχουν εγκεκριμένοι οδηγοί</p>
+          )}
+        </Card.Body>
+      </Card>
 
       {/* Top Performers */}
       <Row>

@@ -2,6 +2,36 @@ const Order = require('../models/Order');
 const Store = require('../models/Store');
 const { broadcastOrderEvent } = require('../utils/socketHelpers');
 
+// @desc    Get single order by ID
+// @route   GET /api/v1/store/orders/:orderId
+// @access  Private (Store)
+exports.getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const storeId = req.user._id;
+
+    const order = await Order.findOne({ _id: orderId, storeId });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Η παραγγελία δεν βρέθηκε'
+      });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    console.error('Get order by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα ανάκτησης παραγγελίας'
+    });
+  }
+};
+
 // @desc    Get store orders
 // @route   GET /api/v1/store/orders
 // @access  Private (Store)

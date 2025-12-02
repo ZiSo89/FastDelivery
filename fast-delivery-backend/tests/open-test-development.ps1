@@ -105,8 +105,8 @@ if ($avdList) {
             Write-Host "   Starting emulator 1: $emulator1 (Customer)" -ForegroundColor Magenta
             Start-Process $emulatorPath -ArgumentList "-avd", $emulator1, "-no-snapshot-load"
             
-            Write-Host "   Waiting 5 seconds before starting second emulator..." -ForegroundColor Gray
-            Start-Sleep -Seconds 5
+            Write-Host "   Waiting 10 seconds before starting second emulator..." -ForegroundColor Gray
+            Start-Sleep -Seconds 10
         }
         
         # Start second emulator (for Driver app)
@@ -149,6 +149,7 @@ if (-not $skipBackend) {
     Write-Host "Starting Backend Server (nodemon)..." -ForegroundColor Green
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; npm run dev" -WindowStyle Minimized
     $startedSomething = $true
+    Start-Sleep -Seconds 3
 } else {
     Write-Host "Backend already running, skipping..." -ForegroundColor Gray
 }
@@ -157,13 +158,21 @@ if (-not $skipFrontend) {
     Write-Host "Starting Frontend Server..." -ForegroundColor Green
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendPath'; npm start" -WindowStyle Minimized
     $startedSomething = $true
+    Start-Sleep -Seconds 3
 } else {
     Write-Host "Frontend already running, skipping..." -ForegroundColor Gray
 }
 
+# Get screen dimensions for positioning mobile app windows
+Add-Type -AssemblyName System.Windows.Forms
+$screen = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+$halfWidth = [int]($screen.Width / 2)
+$windowHeight = $screen.Height
+
 if (-not $skipCustomerMobile) {
     Write-Host "Starting Customer Mobile App (port 8081)..." -ForegroundColor Magenta
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$customerMobilePath'; npx expo start -c --port 8081"
+    # Start Customer Mobile - will be positioned on LEFT side
+    $customerProcess = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$customerMobilePath'; npx expo start -c --port 8081" -PassThru
     $startedSomething = $true
 } else {
     Write-Host "Customer Mobile already running, skipping..." -ForegroundColor Gray
@@ -171,10 +180,40 @@ if (-not $skipCustomerMobile) {
 
 if (-not $skipDriverMobile) {
     Write-Host "Starting Driver Mobile App (port 8082)..." -ForegroundColor Yellow
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$driverMobilePath'; npx expo start -c --port 8082"
+    # Start Driver Mobile - will be positioned on RIGHT side
+    $driverProcess = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$driverMobilePath'; npx expo start -c --port 8082" -PassThru
     $startedSomething = $true
 } else {
     Write-Host "Driver Mobile already running, skipping..." -ForegroundColor Gray
+}
+
+# Position the mobile app windows after a short delay
+if ($customerProcess -or $driverProcess) {
+    Start-Sleep -Seconds 2
+    
+    # Use Windows API to position windows
+    Add-Type @"
+    using System;
+    using System.Runtime.InteropServices;
+    public class WindowHelper {
+        [DllImport("user32.dll")]
+        public static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+        [DllImport("user32.dll")]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+    }
+"@
+    
+    if ($customerProcess -and $customerProcess.MainWindowHandle -ne [IntPtr]::Zero) {
+        # Position Customer window on LEFT half
+        [WindowHelper]::MoveWindow($customerProcess.MainWindowHandle, 0, 0, $halfWidth, $windowHeight, $true)
+        Write-Host "   Customer Mobile positioned on LEFT side" -ForegroundColor Gray
+    }
+    
+    if ($driverProcess -and $driverProcess.MainWindowHandle -ne [IntPtr]::Zero) {
+        # Position Driver window on RIGHT half
+        [WindowHelper]::MoveWindow($driverProcess.MainWindowHandle, $halfWidth, 0, $halfWidth, $windowHeight, $true)
+        Write-Host "   Driver Mobile positioned on RIGHT side" -ForegroundColor Gray
+    }
 }
 
 if ($startedSomething) {
@@ -333,30 +372,88 @@ Write-Host "   Environment Status Summary" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Re-check ports to confirm
-Start-Sleep -Seconds 1
-$finalBackend = Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue
-$finalFrontend = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue
-$finalCustomer = Get-NetTCPConnection -LocalPort 8081 -ErrorAction SilentlyContinue
-$finalDriver = Get-NetTCPConnection -LocalPort 8082 -ErrorAction SilentlyContinue
+# Function to check if a port is listening
+function Test-PortListening {
+    param([int]$Port)
+    $connection = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+    return ($null -ne $connection)
+}
 
-if ($finalBackend) { Write-Host "   Backend (5000):        RUNNING" -ForegroundColor Green }
-else { Write-Host "   Backend (5000):        Starting..." -ForegroundColor Yellow }
+# Wait and retry for servers to be ready
+$maxRetries = 10
+$retryInterval = 3
 
-if ($finalFrontend) { Write-Host "   Frontend (3000):       RUNNING" -ForegroundColor Green }
-else { Write-Host "   Frontend (3000):       Starting..." -ForegroundColor Yellow }
+Write-Host "Checking servers status..." -ForegroundColor Yellow
 
-if ($finalCustomer) { Write-Host "   Customer Mobile (8081): RUNNING" -ForegroundColor Green }
-else { Write-Host "   Customer Mobile (8081): Starting..." -ForegroundColor Yellow }
+# Check Backend
+$backendReady = $false
+for ($i = 1; $i -le $maxRetries; $i++) {
+    if (Test-PortListening -Port 5000) {
+        $backendReady = $true
+        break
+    }
+    if ($i -lt $maxRetries) {
+        Write-Host "   Backend (5000): Waiting... (attempt $i/$maxRetries)" -ForegroundColor Gray
+        Start-Sleep -Seconds $retryInterval
+    }
+}
 
-if ($finalDriver) { Write-Host "   Driver Mobile (8082):  RUNNING" -ForegroundColor Green }
-else { Write-Host "   Driver Mobile (8082):  Starting..." -ForegroundColor Yellow }
+# Check Frontend
+$frontendReady = $false
+for ($i = 1; $i -le $maxRetries; $i++) {
+    if (Test-PortListening -Port 3000) {
+        $frontendReady = $true
+        break
+    }
+    if ($i -lt $maxRetries) {
+        Write-Host "   Frontend (3000): Waiting... (attempt $i/$maxRetries)" -ForegroundColor Gray
+        Start-Sleep -Seconds $retryInterval
+    }
+}
+
+# Check Mobile Apps (less retries since they start faster)
+$customerReady = Test-PortListening -Port 8081
+$driverReady = Test-PortListening -Port 8082
+
+Write-Host ""
+Write-Host "Final Status:" -ForegroundColor Cyan
+
+if ($backendReady) { 
+    Write-Host "   Backend (5000):         RUNNING" -ForegroundColor Green 
+} else { 
+    Write-Host "   Backend (5000):         NOT RUNNING - Check for errors!" -ForegroundColor Red
+}
+
+if ($frontendReady) { 
+    Write-Host "   Frontend (3000):        RUNNING" -ForegroundColor Green 
+} else { 
+    Write-Host "   Frontend (3000):        NOT RUNNING - Check for errors!" -ForegroundColor Red
+}
+
+if ($customerReady) { 
+    Write-Host "   Customer Mobile (8081): RUNNING" -ForegroundColor Green 
+} else { 
+    Write-Host "   Customer Mobile (8081): NOT RUNNING" -ForegroundColor Yellow
+}
+
+if ($driverReady) { 
+    Write-Host "   Driver Mobile (8082):   RUNNING" -ForegroundColor Green 
+} else { 
+    Write-Host "   Driver Mobile (8082):   NOT RUNNING" -ForegroundColor Yellow
+}
 
 $finalEmulators = & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" devices 2>$null | Select-String "emulator-"
 $emulatorCount = ($finalEmulators | Measure-Object).Count
-Write-Host "   Android Emulators:     $emulatorCount running" -ForegroundColor $(if ($emulatorCount -ge 2) { "Green" } else { "Yellow" })
+Write-Host "   Android Emulators:      $emulatorCount running" -ForegroundColor $(if ($emulatorCount -ge 2) { "Green" } else { "Yellow" })
 
 Write-Host ""
+
+# Show warning if critical services are not running
+if (-not $backendReady -or -not $frontendReady) {
+    Write-Host "WARNING: Some critical services are not running!" -ForegroundColor Red
+    Write-Host "Check the minimized PowerShell windows for error messages." -ForegroundColor Yellow
+    Write-Host ""
+}
 
 if ($useExisting) {
     Write-Host "Using your existing profiles - you should be logged in!" -ForegroundColor Cyan

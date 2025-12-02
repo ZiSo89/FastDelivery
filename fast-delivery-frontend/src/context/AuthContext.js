@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authService } from '../services/api';
+import { authService, getToken, getUser, setAuthData } from '../services/api';
 import socketService from '../services/socket';
 
 const AuthContext = createContext();
@@ -17,11 +17,12 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Έλεγχος αν υπάρχει user στο localStorage κατά την αρχική φόρτωση
+    // Έλεγχος αν υπάρχει user στο storage κατά την αρχική φόρτωση
+    // (sessionStorage για customers, localStorage για staff)
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
       setUser(currentUser);
-      // Connect socket when user is restored from localStorage
+      // Connect socket when user is restored from storage
       socketService.connect(currentUser);
     }
     setLoading(false);
@@ -73,10 +74,10 @@ export const AuthProvider = ({ children }) => {
 
     try {
       // Get fresh user data from API
-      const token = localStorage.getItem('token');
+      const token = getToken();
       if (!token) return false;
 
-      // Just reconnect socket with current user (token is still valid in localStorage)
+      // Just reconnect socket with current user (token is still valid in storage)
       socketService.disconnect();
       socketService.connect(currentUser);
       
@@ -105,9 +106,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (updatedUserData) => {
-    // Update user in state and localStorage
+    // Update user in state and storage
     setUser(updatedUserData);
-    localStorage.setItem('user', JSON.stringify(updatedUserData));
+    const role = updatedUserData?.role || 'customer';
+    const token = getToken();
+    if (token) {
+      setAuthData(token, updatedUserData, role);
+    }
     // Reconnect socket with updated user data
     socketService.disconnect();
     socketService.connect(updatedUserData);

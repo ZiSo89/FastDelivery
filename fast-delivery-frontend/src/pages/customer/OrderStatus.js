@@ -141,7 +141,8 @@ const OrderStatus = () => {
         try {
           // Καλούμε το backend να ακυρώσει την παραγγελία
           await customerService.cancelOrder(order._id, phone);
-          navigate('/');
+          // Navigate to order home, not login page
+          navigate('/order');
         } catch (err) {
           setAlertModal({
             show: true,

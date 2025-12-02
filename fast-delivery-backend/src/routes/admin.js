@@ -33,6 +33,7 @@ const {
   getDrivers,
   approveRejectDriver,
   getOrders,
+  getOrderById,
   addDeliveryFee,
   assignDriver,
   cancelOrder,
@@ -76,6 +77,7 @@ router.put('/drivers/:driverId/approve', approveRejectDriver);
 
 // Order management
 router.get('/orders', getOrders);
+router.get('/orders/:orderId', getOrderById);
 router.put('/orders/:orderId/delivery-fee', addDeliveryFee);
 router.put('/orders/:orderId/assign-driver', assignDriver);
 router.put('/orders/:orderId/cancel', cancelOrder);

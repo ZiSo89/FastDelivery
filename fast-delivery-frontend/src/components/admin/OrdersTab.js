@@ -98,48 +98,98 @@ const OrdersTab = () => {
     setCurrentPage(1);
   }, [filter]);
 
+  // Helper function to update a single order in state (optimized - no full refetch)
+  const updateOrderInState = useCallback(async (orderId) => {
+    if (!orderId) return;
+    try {
+      const response = await adminService.getOrderById(orderId);
+      const updatedOrder = response.order || response.data?.order || response;
+      if (updatedOrder) {
+        setOrders(prev => {
+          const exists = prev.find(o => o._id === updatedOrder._id);
+          if (exists) {
+            // Update existing order
+            return prev.map(o => o._id === updatedOrder._id ? updatedOrder : o);
+          } else {
+            // New order - add to beginning if it matches current filter
+            if (filter === 'in_progress' || filter === 'all') {
+              return [updatedOrder, ...prev];
+            }
+            return prev;
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to update single order:', err);
+      // Fallback to full refresh on error
+      fetchOrders();
+    }
+  }, [filter, fetchOrders]);
+
+  // Helper to remove order from state (for completed/cancelled when viewing in_progress)
+  const removeOrderFromState = useCallback((orderId) => {
+    if (!orderId) return;
+    setOrders(prev => prev.filter(o => o._id !== orderId && o._id?.toString() !== orderId));
+  }, []);
+
   useEffect(() => {
     fetchOrders(currentPage);
     
-    // Socket.IO real-time listeners
+    // Socket.IO real-time listeners - optimized to update single order
     const handleNewOrder = (data) => {
-      fetchOrders(); // Refresh list
+      // For new orders, add to list if viewing in_progress or all
+      if (filter === 'in_progress' || filter === 'all') {
+        updateOrderInState(data.orderId);
+      }
     };
 
     const handleOrderStatusChanged = (data) => {
-      fetchOrders(); // Refresh list
+      // If viewing in_progress and order is now completed/cancelled, remove it
+      if (filter === 'in_progress' && (data.newStatus === 'completed' || data.newStatus === 'cancelled')) {
+        removeOrderFromState(data.orderId);
+      } else {
+        updateOrderInState(data.orderId);
+      }
     };
 
     const handleDriverAccepted = (data) => {
-      fetchOrders(); // Refresh list
+      updateOrderInState(data.orderId);
     };
 
     const handleDriverRejected = (data) => {
-      fetchOrders(); // Refresh list
+      updateOrderInState(data.orderId);
     };
 
     const handleOrderCompleted = (data) => {
-      fetchOrders(); // Refresh list
+      if (filter === 'in_progress') {
+        removeOrderFromState(data.orderId);
+      } else {
+        updateOrderInState(data.orderId);
+      }
     };
 
     const handleOrderPendingAdmin = (data) => {
-      fetchOrders(); // Refresh list
+      updateOrderInState(data.orderId);
     };
 
     const handleOrderPriceReady = (data) => {
-      fetchOrders(); // Refresh list
+      updateOrderInState(data.orderId);
     };
 
     const handleOrderAssigned = (data) => {
-      fetchOrders(); // Refresh list
+      updateOrderInState(data.orderId);
     };
 
     const handleOrderRejectedStore = (data) => {
-      fetchOrders(); // Refresh list
+      updateOrderInState(data.orderId);
     };
 
     const handleOrderCancelled = (data) => {
-      fetchOrders(); // Refresh list
+      if (filter === 'in_progress') {
+        removeOrderFromState(data.orderId);
+      } else {
+        updateOrderInState(data.orderId);
+      }
     };
 
     // Subscribe to events
@@ -169,7 +219,7 @@ const OrdersTab = () => {
       socketService.off('driver:rejected', handleDriverRejected);
       socketService.off('order:completed', handleOrderCompleted);
     };
-  }, [fetchOrders]);
+  }, [fetchOrders, updateOrderInState, removeOrderFromState, filter, currentPage]);
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -228,8 +278,8 @@ const OrdersTab = () => {
       await adminService.addDeliveryFee(selectedOrder._id, parseFloat(deliveryFee));
       removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowDeliveryFeeModal(false);
-      fetchOrders(); // Refresh list
-      // Success - real-time update will show the change
+      // Update only this order instead of fetching all
+      updateOrderInState(selectedOrder._id);
     } catch (err) {
       setAlertModal({
         show: true,
@@ -256,8 +306,8 @@ const OrdersTab = () => {
       await adminService.assignDriver(selectedOrder._id, selectedDriver);
       removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowAssignDriverModal(false);
-      fetchOrders(); // Refresh list
-      // Success - real-time update will show the change
+      // Update only this order instead of fetching all
+      updateOrderInState(selectedOrder._id);
     } catch (err) {
       setAlertModal({
         show: true,
@@ -291,8 +341,12 @@ const OrdersTab = () => {
       await adminService.cancelOrder(selectedOrder._id, cancelReason.trim());
       removeNotificationsByRelatedId(selectedOrder.orderNumber);
       setShowCancelModal(false);
-      fetchOrders(); // Refresh list
-      // Success - real-time update will show the change
+      // If viewing in_progress, remove the order; otherwise update it
+      if (filter === 'in_progress') {
+        removeOrderFromState(selectedOrder._id);
+      } else {
+        updateOrderInState(selectedOrder._id);
+      }
     } catch (err) {
       setAlertModal({
         show: true,

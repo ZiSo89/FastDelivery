@@ -1,5 +1,5 @@
 {
-  "short_name": "FD Πελάτες",
+  "short_name": "Fast Delivery",
   "name": "Fast Delivery",
   "description": "Παραγγείλτε από τα αγαπημένα σας καταστήματα",
   "icons": [
@@ -7,19 +7,31 @@
       "src": "assets/icon-customer-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "assets/icon-customer-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon-customer-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icon-customer-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#00c2e8",
+  "theme_color": "#ffffff",
   "background_color": "#ffffff",
   "orientation": "portrait"
 }
