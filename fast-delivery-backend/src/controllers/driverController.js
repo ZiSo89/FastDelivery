@@ -284,7 +284,8 @@ exports.updateOrderStatus = async (req, res) => {
         orderId: order._id,
         orderNumber: order.orderNumber,
         storeId: order.storeId,
-        driverId: order.driverId
+        driverId: order.driverId,
+        newStatus: 'completed'
       });
     }
 

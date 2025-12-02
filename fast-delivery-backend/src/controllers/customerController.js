@@ -387,7 +387,8 @@ exports.confirmOrderPrice = async (req, res) => {
         orderId: order._id,
         orderNumber: order.orderNumber,
         storeId: order.storeId?.toString(),
-        driverId: order.driverId?.toString()
+        driverId: order.driverId?.toString(),
+        newStatus: 'cancelled'
       });
 
       res.json({

@@ -42,61 +42,50 @@ app.set('io', io);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log(`✅ Socket connected: ${socket.id}`);
+  // console.log(`✅ Socket connected: ${socket.id}`);
 
   // Join room based on user role and ID
   socket.on('join', (data) => {
-    // Handle both formats: string "admin" or object {role, userId}
     let room;
     let roleRoom;
     
     if (typeof data === 'string') {
-      // Old format: just room name
       room = data;
-      roleRoom = data; // For admin
+      roleRoom = data;
     } else if (data && data.role && data.userId) {
-      // New format: {role, userId}
       room = `${data.role}:${data.userId}`;
-      roleRoom = data.role; // Generic role room for admins
+      roleRoom = data.role;
     } else {
-      console.log('⚠️ Invalid join data:', data);
       return;
     }
     
     socket.join(room);
-    console.log(`👤 Socket ${socket.id} joined room: ${room}`);
+    // console.log(`👤 Socket ${socket.id} joined room: ${room}`);
     
-    // Also join the generic role room (especially for admins)
     if (roleRoom === 'admin') {
       socket.join('admin');
-      console.log(`👤 Socket ${socket.id} also joined: admin`);
+      // console.log(`👤 Socket ${socket.id} also joined: admin`);
     }
   });
 
   // Join order room
   socket.on('join_order', (orderId) => {
     socket.join(`order:${orderId}`);
-    // console.log(`📦 Joined order room: ${orderId}`);
   });
 
   // Driver location update - broadcast to order watchers
   socket.on('driver:location_update', (data) => {
-    // data = { orderId, driverId, location: { lat, lng }, timestamp }
     if (data && data.orderId) {
-      // Broadcast to everyone watching this order (customer, store, admin)
       io.to(`order:${data.orderId}`).emit('driver:location', {
         orderId: data.orderId,
         driverId: data.driverId,
         location: data.location,
         timestamp: data.timestamp || Date.now()
       });
-      // console.log(`📍 Driver location update for order ${data.orderId}:`, data.location);
     }
   });
 
-  socket.on('disconnect', () => {
-    // console.log(`❌ Client disconnected: ${socket.id}`);
-  });
+  socket.on('disconnect', () => {});
 });
 
 // Health check

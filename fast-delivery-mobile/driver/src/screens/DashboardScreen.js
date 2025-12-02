@@ -89,8 +89,6 @@ const DashboardScreen = () => {
           }
         );
       } catch (error) {
-        // Use default location on error (emulator without location set)
-        console.log('Location error, using default:', error.message);
         setDriverLocation(DEFAULT_LOCATION);
       }
     })();
@@ -117,13 +115,10 @@ const DashboardScreen = () => {
         if (!locationService.isTracking || locationService.currentOrderId !== activeOrder._id) {
           const started = await locationService.startTracking(activeOrder._id, user._id);
           setIsTracking(started);
-          console.log(`📍 GPS tracking resumed for order ${activeOrder._id} (status: ${activeOrder.status})`);
         }
       } else if (!activeOrder && locationService.isTracking) {
-        // No active orders, stop tracking
         await locationService.stopTracking();
         setIsTracking(false);
-        console.log('📍 GPS tracking stopped - no active orders');
       }
     } catch (err) {
     } finally {
@@ -152,7 +147,6 @@ const DashboardScreen = () => {
   // Refresh on screen focus (when switching back to this screen)
   useFocusEffect(
     useCallback(() => {
-      console.log('📱 Dashboard focused, refreshing orders...');
       fetchOrders();
     }, [fetchOrders])
   );
@@ -161,7 +155,6 @@ const DashboardScreen = () => {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') {
-        console.log('📱 App became active, refreshing orders...');
         fetchOrders();
       }
     });
@@ -271,9 +264,6 @@ const DashboardScreen = () => {
       if (user?._id) {
         const started = await locationService.startTracking(orderId, user._id);
         setIsTracking(started);
-        if (started) {
-          console.log('📍 GPS tracking started on order accept');
-        }
       }
       
       await fetchOrders();

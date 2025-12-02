@@ -111,6 +111,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const [order, setOrder] = useState(null);
+  const orderRef = useRef(null); // Keep track of latest order for socket handlers
   const [loading, setLoading] = useState(true);
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -122,6 +123,11 @@ const TrackOrderScreen = ({ route, navigation }) => {
   
   // Safely get orderNumber if passed
   const paramOrderNumber = route.params?.orderNumber;
+  
+  // Update orderRef whenever order changes
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
   
   // Track last notified status to avoid duplicate notifications
   // NOTE: Not needed anymore - local notifications removed
@@ -177,13 +183,31 @@ const TrackOrderScreen = ({ route, navigation }) => {
     // Connect socket
     socketService.connect();
     
-    // Listen for updates - just reload order data, no local notifications
-    // Push notifications from server will handle user alerts
+    // Optimized: Update only the status field without full reload
+    // This prevents map flickering on status updates
     const handleStatusChange = (data) => {
-      console.log('📱 Status change event received:', data?.newStatus, 'orderNumber:', data?.orderNumber);
-      
+      // Check if this event is for our order
+      const currentOrder = orderRef.current;
+      let isOurOrder = false;
       if (paramOrderNumber) {
-        if (data?.orderNumber === paramOrderNumber) {
+        isOurOrder = data?.orderNumber === paramOrderNumber;
+      } else if (currentOrder?._id) {
+        isOurOrder = data?.orderId === currentOrder._id || data?.orderNumber === currentOrder?.orderNumber;
+      } else {
+        isOurOrder = true;
+      }
+      
+      if (!isOurOrder) return;
+      
+      // Update status directly in state (avoids full reload)
+      if (data?.newStatus) {
+        setOrder(prev => {
+          if (!prev || prev.status === data.newStatus) return prev;
+          return { ...prev, status: data.newStatus };
+        });
+        
+        // Only accepted_driver needs full reload for driver info
+        if (data.newStatus === 'accepted_driver') {
           loadOrderData();
         }
       } else {
@@ -193,44 +217,67 @@ const TrackOrderScreen = ({ route, navigation }) => {
 
     // Driver location tracking with throttling
     const handleDriverLocation = (data) => {
-      console.log('📍 Driver location event received:', data);
       const now = Date.now();
-      // Throttle updates to prevent crashes
-      if (now - lastDriverUpdateRef.current < DRIVER_UPDATE_THROTTLE) {
-        return;
-      }
+      if (now - lastDriverUpdateRef.current < DRIVER_UPDATE_THROTTLE) return;
       lastDriverUpdateRef.current = now;
       
-      // Update driver location - check by orderId or orderNumber
       if (data?.location?.lat && data?.location?.lng) {
         setDriverLocation({
           latitude: data.location.lat,
           longitude: data.location.lng,
         });
-        console.log('📍 Driver location state updated:', data.location);
+      }
+    };
+
+    // Price ready needs full reload
+    const handlePriceReady = (data) => {
+      const isOurOrder = paramOrderNumber 
+        ? data?.orderNumber === paramOrderNumber 
+        : true;
+      if (isOurOrder) {
+        loadOrderData();
+      }
+    };
+
+    // Cancelled/rejected update status directly
+    const handleOrderCancelled = (data) => {
+      const isOurOrder = paramOrderNumber 
+        ? data?.orderNumber === paramOrderNumber 
+        : true;
+      if (isOurOrder) {
+        setOrder(prev => prev ? { ...prev, status: 'cancelled' } : prev);
+      }
+    };
+
+    const handleOrderRejectedStore = (data) => {
+      const isOurOrder = paramOrderNumber 
+        ? data?.orderNumber === paramOrderNumber 
+        : true;
+      if (isOurOrder) {
+        setOrder(prev => prev ? { ...prev, status: 'rejected_store' } : prev);
       }
     };
 
     socketService.on('driver:location', handleDriverLocation);
     socketService.on('order:status_changed', handleStatusChange);
     socketService.on('order:confirmed', handleStatusChange);
-    socketService.on('order:cancelled', handleStatusChange);
-    socketService.on('order:rejected_store', handleStatusChange);
+    socketService.on('order:cancelled', handleOrderCancelled);
+    socketService.on('order:rejected_store', handleOrderRejectedStore);
     socketService.on('order:pending_admin', handleStatusChange);
-    socketService.on('order:price_ready', handleStatusChange);
+    socketService.on('order:price_ready', handlePriceReady);
     socketService.on('order:assigned', handleStatusChange);
     socketService.on('order:completed', handleStatusChange);
-    socketService.on('driver:accepted', handleStatusChange);  // Driver accepted order
-    socketService.on('driver:rejected', handleStatusChange);  // Driver rejected order
+    socketService.on('driver:accepted', handleStatusChange);
+    socketService.on('driver:rejected', handleStatusChange);
 
     return () => {
       socketService.off('driver:location', handleDriverLocation);
       socketService.off('order:status_changed', handleStatusChange);
       socketService.off('order:confirmed', handleStatusChange);
-      socketService.off('order:cancelled', handleStatusChange);
-      socketService.off('order:rejected_store', handleStatusChange);
+      socketService.off('order:cancelled', handleOrderCancelled);
+      socketService.off('order:rejected_store', handleOrderRejectedStore);
       socketService.off('order:pending_admin', handleStatusChange);
-      socketService.off('order:price_ready', handleStatusChange);
+      socketService.off('order:price_ready', handlePriceReady);
       socketService.off('order:assigned', handleStatusChange);
       socketService.off('order:completed', handleStatusChange);
       socketService.off('driver:accepted', handleStatusChange);
@@ -239,35 +286,33 @@ const TrackOrderScreen = ({ route, navigation }) => {
         sound.unloadAsync();
       }
     };
-  }, [paramOrderNumber, order?._id]);
+  }, [paramOrderNumber]); // Only depend on paramOrderNumber - orderRef handles order state
 
-  // Join customer room when order is loaded (crucial for guests)
-  // Don't join if order is already completed or cancelled
-  // Note: rejected_driver is NOT final - admin can re-assign
+  // Join customer room when order is loaded - only once per order
+  // Use a ref to track if we've already joined
+  const hasJoinedRef = useRef(null);
+  
   useEffect(() => {
     const finalStatuses = ['completed', 'cancelled', 'rejected_store'];
     if (order?.status && finalStatuses.includes(order.status)) {
-      // Order is finished, no need for socket updates
       return;
     }
     
-    if (order?.customer?.phone) {
-      socketService.joinRoom({ role: 'customer', userId: order.customer.phone });
-      console.log('🔌 Joined customer room:', order.customer.phone);
-    }
-    // Also join order-specific room for driver location updates
-    if (order?._id) {
+    // Only join if we haven't joined for this order yet
+    if (order?._id && hasJoinedRef.current !== order._id) {
+      hasJoinedRef.current = order._id;
+      
+      if (order?.customer?.phone) {
+        socketService.joinRoom({ role: 'customer', userId: order.customer.phone });
+      }
+      
       if (socketService.socket && socketService.socket.connected) {
         socketService.socket.emit('join_order', order._id);
-        console.log('🔌 Joined order room:', order._id);
       } else {
-        console.log('⚠️ Socket not connected, cannot join order room');
-        // Try to connect and then join
         socketService.connect();
         setTimeout(() => {
           if (socketService.socket && socketService.socket.connected) {
             socketService.socket.emit('join_order', order._id);
-            console.log('🔌 Joined order room after reconnect:', order._id);
           }
         }, 1000);
       }

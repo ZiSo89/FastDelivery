@@ -520,7 +520,8 @@ exports.cancelOrder = async (req, res) => {
     broadcastOrderEvent(io, order, 'order:cancelled', {
       orderId: order._id,
       orderNumber: order.orderNumber,
-      reason
+      reason,
+      newStatus: 'cancelled'
     });
 
     res.json({
