@@ -42,9 +42,9 @@ import CustomerProfile from './src/screens/CustomerProfile';
 // These are the important ones that customer needs to see even when app is in background
 // pending_customer_confirm = needs action (confirm price)
 // in_delivery = driver picked up order
-// completed = order delivered
 // rejected_store, cancelled = problems
-const ALLOWED_NOTIFICATION_STATUSES = ['pending_customer_confirm', 'in_delivery', 'completed', 'rejected_store', 'cancelled'];
+// NOTE: completed removed - customer sees delivery happen in real-time
+const ALLOWED_NOTIFICATION_STATUSES = ['pending_customer_confirm', 'in_delivery', 'rejected_store', 'cancelled'];
 
 // Configure notification handler - FILTER notifications here
 if (Notifications && Notifications.setNotificationHandler) {

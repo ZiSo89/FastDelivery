@@ -46,6 +46,8 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
     // Send Push Notification to Driver for important events
     try {
       const driver = await Driver.findById(order.driverId);
+      console.log(`📱 Driver push check: driverId=${order.driverId}, status=${data.newStatus}, pushToken=${driver?.pushToken ? 'EXISTS' : 'MISSING'}`);
+      
       if (driver && driver.pushToken) {
         const driverMessages = {
           'assigned': 'Νέα ανάθεση παραγγελίας! Πατήστε για λεπτομέρειες.',
@@ -53,13 +55,19 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
         };
         const message = driverMessages[data.newStatus];
         if (message) {
+          console.log(`📱 Sending push to driver: ${driver.pushToken.substring(0, 30)}...`);
           await sendPushNotification(
             driver.pushToken,
             data.newStatus === 'assigned' ? '🚗 Νέα Παραγγελία!' : '📦 Έτοιμη για Παραλαβή',
             message,
             { orderId: order._id?.toString(), orderNumber: order.orderNumber, status: data.newStatus }
           );
+          console.log(`✅ Push notification sent to driver for status: ${data.newStatus}`);
+        } else {
+          console.log(`📱 No driver message configured for status: ${data.newStatus}`);
         }
+      } else {
+        console.log(`❌ Driver push skipped: driver=${driver ? 'found' : 'not found'}, pushToken=${driver?.pushToken ? 'yes' : 'no'}`);
       }
     } catch (error) {
       console.error('❌ Error sending push notification to driver:', error);
@@ -77,7 +85,8 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
 
     // Send Push Notification to Customer - ONLY for important statuses
     // These are the statuses that customer NEEDS to know about even when app is closed
-    const CUSTOMER_PUSH_STATUSES = ['pending_customer_confirm', 'in_delivery', 'completed', 'rejected_store', 'cancelled'];
+    // NOTE: completed removed - customer sees it in app, no need for push
+    const CUSTOMER_PUSH_STATUSES = ['pending_customer_confirm', 'in_delivery', 'rejected_store', 'cancelled'];
     
     try {
       // Only send push for important statuses
@@ -92,7 +101,6 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
             const pushTitles = {
               'pending_customer_confirm': '💰 Επιβεβαίωση Τιμής',
               'in_delivery': '🚴 Σε Παράδοση!',
-              'completed': '✅ Ολοκληρώθηκε!',
               'rejected_store': '❌ Απορρίφθηκε',
               'cancelled': '❌ Ακυρώθηκε'
             };
