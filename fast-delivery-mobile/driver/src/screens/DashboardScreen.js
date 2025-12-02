@@ -10,13 +10,14 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
-  Vibration
+  Vibration,
+  AppState
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useAlert } from '../context/AlertContext';
 import { driverService } from '../services/api';
@@ -147,6 +148,28 @@ const DashboardScreen = () => {
   useEffect(() => {
     fetchProfile();
     fetchOrders();
+  }, [fetchOrders]);
+
+  // Refresh on screen focus (when switching back to this screen)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📱 Dashboard focused, refreshing orders...');
+      fetchOrders();
+    }, [fetchOrders])
+  );
+
+  // Refresh when app becomes active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        console.log('📱 App became active, refreshing orders...');
+        fetchOrders();
+      }
+    });
+
+    return () => {
+      subscription?.remove();
+    };
   }, [fetchOrders]);
 
   // Socket listeners
@@ -564,6 +587,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    zIndex: 1000,
+    elevation: 10,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -597,9 +622,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 20,
     minWidth: 160,
-    zIndex: 1000,
+    zIndex: 2000,
   },
   menuItem: {
     flexDirection: 'row',

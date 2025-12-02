@@ -7,11 +7,15 @@ import Constants from 'expo-constants';
 // - Για PREVIEW/PRODUCTION build: χρησιμοποιεί Render.com
 // =============================================================================
 
+// 🔧 DEBUG FLAG - Ενεργοποίηση logs στο production build
+// Άλλαξέ το σε false πριν το τελικό production release
+export const ENABLE_DEBUG_LOGS = true;
+
 // URLs για κάθε περιβάλλον
 const ENV = {
   development: {
-    apiUrl: 'http://192.168.31.160:5000',  //http://192.168.31.160:5000 Τοπικό IP (άλλαξέ το αν χρειαστεί)
-    //apiUrl: 'https://fastdelivery-hvff.onrender.com',
+    //apiUrl: 'http://192.168.31.160:5000',  //http://192.168.31.160:5000 Τοπικό IP (άλλαξέ το αν χρειαστεί)
+    apiUrl: 'https://fastdelivery-hvff.onrender.com',
   },
   production: {
     apiUrl: 'https://fastdelivery-hvff.onrender.com',

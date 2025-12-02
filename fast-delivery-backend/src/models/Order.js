@@ -135,7 +135,7 @@ orderSchema.index({ status: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'customer.phone': 1 });
 
-// Auto-generate order number
+// Auto-generate order number with retry logic for race conditions
 orderSchema.pre('save', async function(next) {
   if (this.isNew && !this.orderNumber) {
     const now = new Date();
@@ -145,15 +145,11 @@ orderSchema.pre('save', async function(next) {
     const day = String(now.getDate()).padStart(2, '0');
     const dateStr = `${year}${month}${day}`;
     
-    // Get today's start and end (local timezone)
-    const todayStart = new Date(year, now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const todayEnd = new Date(year, now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    
-    // Find the last order number for today
+    // Find the highest order number for today (by regex, not by date range)
+    // This is more reliable as it checks actual orderNumber values
     const lastOrder = await mongoose.model('Order')
       .findOne({
-        orderNumber: new RegExp(`^ORD-${dateStr}-`),
-        createdAt: { $gte: todayStart, $lt: todayEnd }
+        orderNumber: new RegExp(`^ORD-${dateStr}-`)
       })
       .sort({ orderNumber: -1 })
       .select('orderNumber');
@@ -161,7 +157,9 @@ orderSchema.pre('save', async function(next) {
     let nextNumber = 1;
     if (lastOrder && lastOrder.orderNumber) {
       const lastNum = parseInt(lastOrder.orderNumber.split('-')[2]);
-      nextNumber = lastNum + 1;
+      if (!isNaN(lastNum)) {
+        nextNumber = lastNum + 1;
+      }
     }
     
     this.orderNumber = `ORD-${dateStr}-${String(nextNumber).padStart(4, '0')}`;

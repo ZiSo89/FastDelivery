@@ -38,11 +38,17 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     loadUser();
-    
-    // Handle app state changes for reconnection
+  }, []);
+
+  // Handle app state changes for reconnection - separate effect
+  useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active' && user) {
-        socketService.connect();
+        console.log('📱 App became active, reconnecting socket...');
+        // Force reconnect when app becomes active
+        if (!socketService.isConnected()) {
+          socketService.connect();
+        }
         socketService.joinRoom({ role: 'driver', userId: user._id });
       }
     });
@@ -50,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       subscription?.remove();
     };
-  }, []);
+  }, [user]);
 
   const registerForPushNotificationsAsync = async () => {
     let token = null;
