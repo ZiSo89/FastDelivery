@@ -75,20 +75,36 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
   if (order.customer?.phone) {
     io.to(`customer:${order.customer.phone}`).emit(eventName, data);
 
-    // Send Push Notification to Customer
+    // Send Push Notification to Customer - ONLY for important statuses
+    // These are the statuses that customer NEEDS to know about even when app is closed
+    const CUSTOMER_PUSH_STATUSES = ['pending_customer_confirm', 'in_delivery', 'completed', 'rejected_store', 'cancelled'];
+    
     try {
-      // Find customer by phone to get push token
-      const customer = await Customer.findOne({ phone: order.customer.phone });
-      
-      if (customer && customer.pushToken) {
-        const message = STATUS_MESSAGES[data.newStatus];
-        if (message) {
-          await sendPushNotification(
-            customer.pushToken,
-            'Ενημέρωση Παραγγελίας',
-            message,
-            { orderId: order._id, orderNumber: order.orderNumber, status: data.newStatus }
-          );
+      // Only send push for important statuses
+      if (CUSTOMER_PUSH_STATUSES.includes(data.newStatus)) {
+        // Find customer by phone to get push token
+        const customer = await Customer.findOne({ phone: order.customer.phone });
+        
+        if (customer && customer.pushToken) {
+          const message = STATUS_MESSAGES[data.newStatus];
+          if (message) {
+            // Custom titles for important notifications
+            const pushTitles = {
+              'pending_customer_confirm': '💰 Επιβεβαίωση Τιμής',
+              'in_delivery': '🚴 Σε Παράδοση!',
+              'completed': '✅ Ολοκληρώθηκε!',
+              'rejected_store': '❌ Απορρίφθηκε',
+              'cancelled': '❌ Ακυρώθηκε'
+            };
+            
+            await sendPushNotification(
+              customer.pushToken,
+              pushTitles[data.newStatus] || 'Ενημέρωση Παραγγελίας',
+              message,
+              { orderId: order._id, orderNumber: order.orderNumber, status: data.newStatus }
+            );
+            console.log(`📱 Push notification sent to customer for status: ${data.newStatus}`);
+          }
         }
       }
     } catch (error) {

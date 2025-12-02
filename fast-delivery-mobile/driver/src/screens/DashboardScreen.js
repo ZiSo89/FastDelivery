@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import * as Location from 'expo-location';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
@@ -174,43 +173,26 @@ const DashboardScreen = () => {
 
   // Socket listeners
   useEffect(() => {
-    // Handler for NEW order assignments - shows notification
+    // Handler for NEW order assignments - just refresh + vibrate
     const handleNewAssignment = (data) => {
       fetchOrders();
       
-      // Only vibrate and notify for new assignments to THIS driver
+      // Only vibrate for new assignments to THIS driver
+      // Push notification is sent by server - no local notification needed
       if (data.driverId && user?._id && data.driverId.toString() === user._id.toString()) {
         Vibration.vibrate([0, 500, 200, 500]);
-        
-        // Show local notification
-        Notifications.scheduleNotificationAsync({
-          content: {
-            title: '📦 Νέα Παραγγελία!',
-            body: 'Ανατέθηκε νέα παραγγελία. Ανοίξτε την εφαρμογή για λεπτομέρειες.',
-            sound: true,
-          },
-          trigger: null,
-        }).catch(() => {});
       }
     };
 
-    // Handler for status changes - notify when PREPARING (ready for pickup)
+    // Handler for status changes - vibrate when PREPARING (ready for pickup)
     const handleStatusChange = (data) => {
       fetchOrders();
       
-      // Notify driver when order is PREPARING (store finished, ready for pickup)
+      // Vibrate when order is PREPARING (store finished, ready for pickup)
+      // Push notification is sent by server - no local notification needed
       if (data.newStatus === 'preparing') {
         if (data.driverId && user?._id && data.driverId.toString() === user._id.toString()) {
           Vibration.vibrate([0, 500, 200, 500]);
-          
-          Notifications.scheduleNotificationAsync({
-            content: {
-              title: '🏪 Έτοιμη για Παραλαβή!',
-              body: 'Η παραγγελία είναι έτοιμη. Πηγαίνετε στο κατάστημα.',
-              sound: true,
-            },
-            trigger: null,
-          }).catch(() => {});
         }
       }
     };

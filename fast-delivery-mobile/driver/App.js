@@ -26,16 +26,34 @@ LogBox.ignoreLogs([
   '`expo-notifications` functionality is not fully supported',
 ]);
 
+// IMPORTANT: Only show push notifications for important driver statuses
+// These match the statuses sent by the server in socketHelpers.js
+// Server only sends: assigned (new order), preparing (ready for pickup)
+const ALLOWED_NOTIFICATION_STATUSES = ['assigned', 'preparing'];
+
 // Configure notification handler for foreground (only if available)
 if (Notifications && Notifications.setNotificationHandler) {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
-  });
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        // Get the status from notification data
+        const data = notification.request.content.data;
+        const status = data?.status;
+        
+        // Only show notification for allowed statuses
+        const shouldShow = ALLOWED_NOTIFICATION_STATUSES.includes(status);
+        
+        return {
+          shouldShowBanner: shouldShow,
+          shouldShowList: shouldShow,
+          shouldPlaySound: shouldShow,
+          shouldSetBadge: false,
+        };
+      },
+    });
+  } catch (e) {
+    console.log('Failed to set notification handler:', e);
+  }
 }
 
 const Stack = createNativeStackNavigator();

@@ -38,10 +38,13 @@ import VerifyEmailScreen from './src/screens/VerifyEmailScreen';
 import CustomerOrders from './src/screens/CustomerOrders';
 import CustomerProfile from './src/screens/CustomerProfile';
 
-// Statuses that should show notifications to customer
+// Statuses that should show PUSH notifications to customer (from server)
+// These are the important ones that customer needs to see even when app is in background
 // pending_customer_confirm = needs action (confirm price)
 // in_delivery = driver picked up order
-const ALLOWED_NOTIFICATION_STATUSES = ['pending_customer_confirm', 'in_delivery'];
+// completed = order delivered
+// rejected_store, cancelled = problems
+const ALLOWED_NOTIFICATION_STATUSES = ['pending_customer_confirm', 'in_delivery', 'completed', 'rejected_store', 'cancelled'];
 
 // Configure notification handler - FILTER notifications here
 if (Notifications && Notifications.setNotificationHandler) {

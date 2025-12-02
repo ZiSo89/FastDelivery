@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking, Dimensions, Animated, Vibration, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Linking, Dimensions, BackHandler } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useFocusEffect, CommonActions } from '@react-navigation/native';
 import { customerService } from '../services/api';
@@ -9,32 +9,10 @@ import { useAlert } from '../context/AlertContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 
-// Safe import for notifications
-let Notifications = null;
-try {
-  Notifications = require('expo-notifications');
-} catch (e) {
-  console.log('expo-notifications not available');
-}
-
-// Status labels for notifications
-// Note: pending_admin is internal step - no notification needed for customer
-const STATUS_NOTIFICATIONS = {
-  'pending_store': { title: '📋 Αναμονή', body: 'Η παραγγελία σας αναμένει απάντηση από το κατάστημα' },
-  'pricing': { title: '💰 Τιμολόγηση', body: 'Το κατάστημα ετοιμάζει την τιμή' },
-  'pending_customer_confirm': { title: '✅ Επιβεβαίωση', body: 'Η τιμή είναι έτοιμη! Επιβεβαιώστε την παραγγελία' },
-  'confirmed': { title: '🔍 Αναζήτηση Οδηγού', body: 'Αναζητούμε διαθέσιμο οδηγό για την παραγγελία σας' },
-  'assigned': { title: '🚴 Ανατέθηκε!', body: 'Έχει ανατεθεί διανομέας στην παραγγελία σας' },
-  'accepted_driver': { title: '✅ Αποδοχή Οδηγού!', body: 'Ο διανομέας αποδέχτηκε - μπορείτε να παρακολουθείτε την τοποθεσία του' },
-  'preparing': { title: '👨‍🍳 Ετοιμάζεται!', body: 'Η παραγγελία σας ετοιμάζεται' },
-  'ready': { title: '📦 Έτοιμη!', body: 'Η παραγγελία σας είναι έτοιμη για παράδοση' },
-  'in_delivery': { title: '🚴 Σε Παράδοση!', body: 'Ο διανομέας ξεκίνησε! Έρχεται κοντά σας' },
-  'completed': { title: '✅ Ολοκληρώθηκε!', body: 'Η παραγγελία σας παραδόθηκε. Καλή απόλαυση!' },
-  'cancelled': { title: '❌ Ακυρώθηκε', body: 'Η παραγγελία σας ακυρώθηκε' },
-  'rejected_store': { title: '❌ Απορρίφθηκε', body: 'Το κατάστημα δεν μπορεί να εκτελέσει την παραγγελία' },
-  'rejected_driver': { title: '🔍 Αναζήτηση Οδηγού', body: 'Αναζητούμε νέο διαθέσιμο οδηγό για την παραγγελία σας' },
-  // pending_admin: intentionally not included - internal step, no customer notification
-};
+// NOTE: Local notifications have been REMOVED from TrackOrderScreen
+// All notifications are now handled by push notifications from the server
+// This prevents duplicate notifications when the app is in foreground
+// Push notifications are filtered in App.js by ALLOWED_NOTIFICATION_STATUSES
 
 const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.35; // 35% of screen height for map
@@ -146,7 +124,8 @@ const TrackOrderScreen = ({ route, navigation }) => {
   const paramOrderNumber = route.params?.orderNumber;
   
   // Track last notified status to avoid duplicate notifications
-  const lastNotifiedStatusRef = useRef(null);
+  // NOTE: Not needed anymore - local notifications removed
+  // const lastNotifiedStatusRef = useRef(null);
 
   // Navigate back to Home - reset the stack
   const goToHome = useCallback(() => {
@@ -188,57 +167,9 @@ const TrackOrderScreen = ({ route, navigation }) => {
     });
   }, [navigation, goToHome]);
 
-  // Show local notification for status change
-  const showStatusNotification = async (newStatus) => {
-    console.log('🔔 Notification: Attempting for status:', newStatus);
-    
-    if (!Notifications) {
-      console.log('🔔 Notification: Module not available');
-      return;
-    }
-    if (lastNotifiedStatusRef.current === newStatus) {
-      console.log('🔔 Notification: Duplicate, skipping');
-      return;
-    }
-    
-    const notification = STATUS_NOTIFICATIONS[newStatus];
-    if (!notification) {
-      console.log('🔔 Notification: No notification config for status:', newStatus);
-      return;
-    }
-    
-    lastNotifiedStatusRef.current = newStatus;
-    
-    // Vibrate for important statuses
-    if (['in_delivery', 'completed', 'pending_customer_confirm'].includes(newStatus)) {
-      Vibration.vibrate([0, 500, 200, 500]);
-    }
-    
-    try {
-      // Ensure notification channel exists (Android)
-      if (Notifications.setNotificationChannelAsync) {
-        await Notifications.setNotificationChannelAsync('orders', {
-          name: 'Παραγγελίες',
-          importance: Notifications.AndroidImportance?.MAX || 4,
-          vibrationPattern: [0, 250, 250, 250],
-          sound: 'default',
-        });
-      }
-      
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: notification.title,
-          body: notification.body,
-          sound: true,
-          channelId: 'orders',
-        },
-        trigger: null, // Show immediately
-      });
-      console.log('🔔 Notification: Shown successfully!', notification.title);
-    } catch (error) {
-      console.log('🔔 Notification: Error:', error.message);
-    }
-  };
+  // NOTE: showStatusNotification has been REMOVED
+  // All notifications are now handled by push notifications from the server
+  // This prevents duplicate notifications when the app is in foreground
 
   useEffect(() => {
     loadOrderData();
@@ -246,23 +177,16 @@ const TrackOrderScreen = ({ route, navigation }) => {
     // Connect socket
     socketService.connect();
     
-    // Listen for updates - show local notifications for status changes
+    // Listen for updates - just reload order data, no local notifications
+    // Push notifications from server will handle user alerts
     const handleStatusChange = (data) => {
       console.log('📱 Status change event received:', data?.newStatus, 'orderNumber:', data?.orderNumber);
       
       if (paramOrderNumber) {
         if (data?.orderNumber === paramOrderNumber) {
-          // Show notification for status change
-          if (data?.newStatus) {
-            showStatusNotification(data.newStatus);
-          }
           loadOrderData();
         }
       } else {
-        // Show notification for status change
-        if (data?.newStatus) {
-          showStatusNotification(data.newStatus);
-        }
         loadOrderData();
       }
     };

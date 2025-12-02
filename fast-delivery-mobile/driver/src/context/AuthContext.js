@@ -93,12 +93,15 @@ export const AuthProvider = ({ children }) => {
           return null;
         }
         
-        // Note: Push notifications don't work fully in Expo Go
-        // For full functionality, use a development build
+        // Get push token with projectId (required for standalone builds)
         try {
-          token = (await Notifications.getExpoPushTokenAsync()).data;
+          token = (await Notifications.getExpoPushTokenAsync({
+            projectId: '7d7f4652-50aa-4515-8e0a-b2a83cc2abe9'
+          })).data;
+          console.log('📱 Push: Got token for driver:', token);
         } catch (tokenError) {
           // Push token not available in Expo Go
+          console.log('📱 Push: Could not get token:', tokenError.message);
         }
       } else {
         // Must use physical device for Push Notifications
