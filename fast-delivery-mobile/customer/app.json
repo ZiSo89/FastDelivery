@@ -27,8 +27,11 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE"
       ],
+      "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDUy3hiyc50qQv1ox6wyH4U9O_YsKyKdVE"
@@ -40,6 +43,7 @@
     },
     "plugins": [
       "expo-secure-store",
+      "expo-notifications",
       [
         "expo-av",
         {

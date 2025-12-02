@@ -14,8 +14,8 @@ export const ENABLE_DEBUG_LOGS = true;
 // URLs για κάθε περιβάλλον
 const ENV = {
   development: {
-    //apiUrl: 'http://192.168.31.160:5000',  //http://192.168.31.160:5000 Τοπικό IP (άλλαξέ το αν χρειαστεί)
-    apiUrl: 'https://fastdelivery-hvff.onrender.com',
+    apiUrl: 'http://192.168.31.160:5000',  //http://192.168.31.160:5000 Τοπικό IP (άλλαξέ το αν χρειαστεί)
+    //apiUrl: 'https://fastdelivery-hvff.onrender.com',
   },
   production: {
     apiUrl: 'https://fastdelivery-hvff.onrender.com',

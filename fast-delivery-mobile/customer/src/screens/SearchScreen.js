@@ -26,20 +26,35 @@ const SearchScreen = ({ navigation }) => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
+          console.log('Location permission not granted, using default location');
           loadStores();
           return;
         }
         
         // Try to get last known position first for speed
-        let lastKnown = await Location.getLastKnownPositionAsync({});
-        if (lastKnown) {
-          setLocation(lastKnown.coords);
-        } else {
-          let loc = await Location.getCurrentPositionAsync({});
+        try {
+          let lastKnown = await Location.getLastKnownPositionAsync({});
+          if (lastKnown) {
+            setLocation(lastKnown.coords);
+            return;
+          }
+        } catch (e) {
+          console.log('No last known position available');
+        }
+        
+        // Try current position with timeout
+        try {
+          let loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeout: 5000,
+          });
           setLocation(loc.coords);
+        } catch (e) {
+          console.log('Could not get current position, using default');
+          loadStores();
         }
       } catch (error) {
-        console.error('Error getting location:', error);
+        console.log('Location error, using default:', error.message);
         loadStores();
       }
     })();

@@ -1,47 +1,49 @@
 const { Expo } = require('expo-server-sdk');
 
 // Create a new Expo SDK client
-// optionally providing an access token if you have enabled push security
 const expo = new Expo();
 
 const sendPushNotification = async (pushToken, title, body, data = {}) => {
   if (!Expo.isExpoPushToken(pushToken)) {
-    console.error(`Push token ${pushToken} is not a valid Expo push token`);
-    return;
+    console.error(`❌ Push token ${pushToken} is not a valid Expo push token`);
+    return { success: false, error: 'Invalid token' };
   }
 
-  const messages = [];
-  messages.push({
+  const message = {
     to: pushToken,
     sound: 'default',
     title: title,
     body: body,
     data: data,
-  });
+    priority: 'high',
+  };
 
-  // The Expo push notification service accepts batches of notifications so
-  // that you don't need to send 1000 requests to send 1000 notifications.
-  // We recommend you batch your notifications to reduce the number of
-  // and to compress them (notifications with similar content will get
-  // compressed).
-  const chunks = expo.chunkPushNotifications(messages);
-  const tickets = [];
-
-  (async () => {
-    // Send the chunks to the Expo push notification service. There are
-    // different strategies you could use. A simple one is to send one chunk at a
-    // time, which nicely spreads the load out over time:
-    for (let chunk of chunks) {
-      try {
-        let ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-        tickets.push(...ticketChunk);
-        // NOTE: If a ticket contains an error code in ticket.details.error, you
-        // must handle it. For example, invalid credentials or too many notifications.
-      } catch (error) {
-        console.error('❌ Error sending push notification:', error);
+  try {
+    // Send the notification
+    const tickets = await expo.sendPushNotificationsAsync([message]);
+    const ticket = tickets[0];
+    
+    console.log(`📨 Expo ticket response:`, JSON.stringify(ticket));
+    
+    if (ticket.status === 'ok') {
+      console.log(`✅ Push delivered to Expo, ticket ID: ${ticket.id}`);
+      return { success: true, ticketId: ticket.id };
+    } else {
+      // Handle errors
+      console.error(`❌ Expo push error: ${ticket.message}`);
+      if (ticket.details?.error) {
+        console.error(`   Error type: ${ticket.details.error}`);
+        // DeviceNotRegistered means the token is invalid/expired
+        if (ticket.details.error === 'DeviceNotRegistered') {
+          console.error(`   ⚠️ Device not registered - token may be expired!`);
+        }
       }
+      return { success: false, error: ticket.message };
     }
-  })();
+  } catch (error) {
+    console.error('❌ Error sending push notification:', error);
+    return { success: false, error: error.message };
+  }
 };
 
 module.exports = { sendPushNotification };
