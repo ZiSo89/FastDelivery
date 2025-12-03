@@ -53,9 +53,9 @@ export const driverService = {
   updateStatus: (orderId, status) => 
     api.put(`/driver/orders/${orderId}/status`, { status }),
   
-  // Update push token
-  updatePushToken: (pushToken) => 
-    api.put('/driver/profile', { pushToken }),
+  // Update push token (supports both Expo and FCM tokens)
+  updatePushToken: (pushToken, tokenType = 'expo') => 
+    api.put('/driver/profile', { pushToken, pushTokenType: tokenType }),
 };
 
 export default api;

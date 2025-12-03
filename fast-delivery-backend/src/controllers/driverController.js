@@ -29,10 +29,14 @@ exports.getDriverProfile = async (req, res) => {
 // @access  Private (Driver)
 exports.updateDriverProfile = async (req, res) => {
   try {
-    const { pushToken, name, phone, vehicle, licensePlate } = req.body;
+    const { pushToken, pushTokenType, name, phone, vehicle, licensePlate } = req.body;
     
     const updateData = {};
-    if (pushToken !== undefined) updateData.pushToken = pushToken;
+    if (pushToken !== undefined) {
+      updateData.pushToken = pushToken;
+      updateData.pushTokenType = pushTokenType || 'expo'; // 'expo' or 'fcm'
+      console.log(`📱 Driver push token updated: type=${pushTokenType}, token=${pushToken.substring(0, 30)}...`);
+    }
     if (name) updateData.name = name;
     if (phone) updateData.phone = phone;
     if (vehicle) updateData.vehicle = vehicle;

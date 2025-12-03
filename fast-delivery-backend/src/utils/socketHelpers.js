@@ -46,7 +46,7 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
     // Send Push Notification to Driver for important events
     try {
       const driver = await Driver.findById(order.driverId);
-      console.log(`📱 Driver push check: driverId=${order.driverId}, status=${data.newStatus}, pushToken=${driver?.pushToken ? 'EXISTS' : 'MISSING'}`);
+      console.log(`📱 Driver push check: driverId=${order.driverId}, status=${data.newStatus}, pushToken=${driver?.pushToken ? 'EXISTS' : 'MISSING'}, type=${driver?.pushTokenType || 'expo'}`);
       
       if (driver && driver.pushToken) {
         const driverMessages = {
@@ -55,12 +55,13 @@ const broadcastOrderEvent = async (io, order, eventName, data) => {
         };
         const message = driverMessages[data.newStatus];
         if (message) {
-          console.log(`📱 Sending push to driver: ${driver.pushToken.substring(0, 30)}...`);
+          console.log(`📱 Sending ${driver.pushTokenType || 'expo'} push to driver: ${driver.pushToken.substring(0, 30)}...`);
           await sendPushNotification(
             driver.pushToken,
             data.newStatus === 'assigned' ? '🚗 Νέα Παραγγελία!' : '📦 Έτοιμη για Παραλαβή',
             message,
-            { orderId: order._id?.toString(), orderNumber: order.orderNumber, status: data.newStatus }
+            { orderId: order._id?.toString(), orderNumber: order.orderNumber, status: data.newStatus },
+            driver.pushTokenType || 'expo'
           );
           console.log(`✅ Push notification sent to driver for status: ${data.newStatus}`);
         } else {

@@ -73,6 +73,11 @@ const driverSchema = new mongoose.Schema({
   pushToken: {
     type: String,
     default: null
+  },
+  pushTokenType: {
+    type: String,
+    enum: ['expo', 'fcm'],
+    default: 'expo'
   }
 }, {
   timestamps: true

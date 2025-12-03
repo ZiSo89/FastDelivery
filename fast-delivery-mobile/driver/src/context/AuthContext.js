@@ -93,24 +93,37 @@ export const AuthProvider = ({ children }) => {
           return null;
         }
         
-        // Get push token with projectId (required for standalone builds)
+        // Try to get native FCM token first (for standalone builds)
+        try {
+          const deviceToken = await Notifications.getDevicePushTokenAsync();
+          if (deviceToken && deviceToken.data) {
+            console.log('📱 Push: Got FCM device token:', deviceToken.data.substring(0, 30) + '...');
+            // Return as Expo-compatible format for FCM
+            token = deviceToken.data;
+            return { type: 'fcm', token: deviceToken.data };
+          }
+        } catch (fcmError) {
+          console.log('📱 Push: FCM not available, trying Expo token...');
+        }
+        
+        // Fallback to Expo push token (for development/Expo Go)
         try {
           token = (await Notifications.getExpoPushTokenAsync({
             projectId: '7d7f4652-50aa-4515-8e0a-b2a83cc2abe9'
           })).data;
-          console.log('📱 Push: Got token for driver:', token);
+          console.log('📱 Push: Got Expo token for driver:', token);
+          return { type: 'expo', token };
         } catch (tokenError) {
-          // Push token not available in Expo Go
           console.log('📱 Push: Could not get token:', tokenError.message);
         }
       } else {
         // Must use physical device for Push Notifications
       }
     } catch (error) {
-      // Error setting up notifications
+      console.log('📱 Push: Error:', error.message);
     }
 
-    return token;
+    return null;
   };
 
   const loadUser = async () => {
@@ -127,12 +140,12 @@ export const AuthProvider = ({ children }) => {
         socketService.joinRoom({ role: 'driver', userId: userData._id });
 
         // Register for push notifications
-        const pushToken = await registerForPushNotificationsAsync();
-        if (pushToken) {
-          setExpoPushToken(pushToken);
-          // Send push token to backend
+        const pushResult = await registerForPushNotificationsAsync();
+        if (pushResult) {
+          setExpoPushToken(pushResult.token);
+          // Send push token to backend with type
           try {
-            await driverService.updatePushToken(pushToken);
+            await driverService.updatePushToken(pushResult.token, pushResult.type);
           } catch (e) {
             console.log('Failed to update push token on server');
           }
@@ -160,12 +173,12 @@ export const AuthProvider = ({ children }) => {
       socketService.joinRoom({ role: 'driver', userId: userData._id });
 
       // Register for push notifications
-      const pushToken = await registerForPushNotificationsAsync();
-      if (pushToken) {
-        setExpoPushToken(pushToken);
-        // Send push token to backend
+      const pushResult = await registerForPushNotificationsAsync();
+      if (pushResult) {
+        setExpoPushToken(pushResult.token);
+        // Send push token to backend with type
         try {
-          await driverService.updatePushToken(pushToken);
+          await driverService.updatePushToken(pushResult.token, pushResult.type);
         } catch (e) {
           console.log('Failed to update push token on server');
         }
