@@ -12,59 +12,47 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { customerService } from '../services/api';
-import * as Location from 'expo-location';
+import api from '../services/api';
+
+// Default icon for unknown types (fallback)
+const DEFAULT_ICON = '🏪';
 
 const SearchScreen = ({ navigation }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stores, setStores] = useState([]);
   const [filteredStores, setFilteredStores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState(null);
+  const [storeTypeIcons, setStoreTypeIcons] = useState({});
 
+  // Fetch store types for icons from backend
   useEffect(() => {
-    (async () => {
+    const fetchStoreTypes = async () => {
       try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          console.log('Location permission not granted, using default location');
-          loadStores();
-          return;
-        }
-        
-        // Try to get last known position first for speed
-        try {
-          let lastKnown = await Location.getLastKnownPositionAsync({});
-          if (lastKnown) {
-            setLocation(lastKnown.coords);
-            return;
-          }
-        } catch (e) {
-          console.log('No last known position available');
-        }
-        
-        // Try current position with timeout
-        try {
-          let loc = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-            timeout: 5000,
+        const response = await api.get('/auth/store-types');
+        if (response.data.success && response.data.storeTypes?.length > 0) {
+          // Build icon mapping from backend data
+          const iconMap = {};
+          response.data.storeTypes.forEach(type => {
+            if (typeof type === 'object' && type.name) {
+              iconMap[type.name] = type.icon || DEFAULT_ICON;
+            } else if (typeof type === 'string') {
+              // Fallback for old string format
+              iconMap[type] = DEFAULT_ICON;
+            }
           });
-          setLocation(loc.coords);
-        } catch (e) {
-          console.log('Could not get current position, using default');
-          loadStores();
+          setStoreTypeIcons(iconMap);
         }
       } catch (error) {
-        console.log('Location error, using default:', error.message);
-        loadStores();
+        console.log('Error fetching store types:', error);
       }
-    })();
+    };
+    fetchStoreTypes();
   }, []);
 
+  // Load stores on mount - no location permission needed for search
   useEffect(() => {
-    if (location) {
-      loadStores();
-    }
-  }, [location]);
+    loadStores();
+  }, []);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -83,8 +71,9 @@ const SearchScreen = ({ navigation }) => {
       // Only show full loading indicator if we have no stores yet
       if (stores.length === 0) setLoading(true);
       
-      const lat = location ? location.latitude : 40.8457;
-      const lng = location ? location.longitude : 25.8733;
+      // Use default location - no need for permission in search screen
+      const lat = 40.8457;
+      const lng = 25.8733;
       const response = await customerService.getStores(lat, lng);
       setStores(response.data.stores || []);
       
@@ -106,14 +95,7 @@ const SearchScreen = ({ navigation }) => {
   };
 
   const getStoreIcon = (type) => {
-    switch(type) {
-      case 'Καφετέρια': return '☕';
-      case 'Mini Market': return '🛒';
-      case 'Ταβέρνα': return '🍔';
-      case 'Γλυκά': return '🍰';
-      case 'Φαρμακείο': return '💊';
-      default: return '🏪';
-    }
+    return storeTypeIcons[type] || DEFAULT_ICON;
   };
 
   const renderStoreItem = ({ item }) => (
