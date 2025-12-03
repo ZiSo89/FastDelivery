@@ -413,12 +413,14 @@ const OrderScreen = ({ route, navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Ονοματεπώνυμο"
+                placeholderTextColor="#666"
                 value={name}
                 onChangeText={setName}
               />
               <TextInput
                 style={styles.input}
                 placeholder="Τηλέφωνο"
+                placeholderTextColor="#666"
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
@@ -426,6 +428,7 @@ const OrderScreen = ({ route, navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Διεύθυνση"
+                placeholderTextColor="#666"
                 value={address}
                 onChangeText={setAddress}
               />
@@ -485,6 +488,7 @@ const OrderScreen = ({ route, navigation }) => {
             style={styles.compactTextArea}
             multiline
             placeholder="Προσθέστε σχόλια ή γράψτε την παραγγελία σας..."
+            placeholderTextColor="#666"
             value={orderText}
             onChangeText={setOrderText}
             editable={!isRecording}
@@ -579,6 +583,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 8,
     fontSize: 14,
+    color: '#333',
   },
   customerInfo: {
     gap: 2,

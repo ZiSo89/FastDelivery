@@ -123,6 +123,7 @@ const SearchScreen = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Αναζήτηση καταστήματος..."
+            placeholderTextColor="#666"
             value={searchTerm}
             onChangeText={setSearchTerm}
             autoFocus={false}

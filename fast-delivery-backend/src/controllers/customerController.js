@@ -510,6 +510,12 @@ exports.updateProfile = async (req, res) => {
   try {
     const { name, phone, address, location, pushToken } = req.body;
     
+    // Debug log for push token
+    if (pushToken) {
+      console.log(`📱 PUSH TOKEN UPDATE: Customer ${req.user._id}`);
+      console.log(`📱 New pushToken: ${pushToken}`);
+    }
+    
     // Find customer by ID (from auth middleware)
     const customer = await Customer.findById(req.user._id);
 
@@ -525,7 +531,10 @@ exports.updateProfile = async (req, res) => {
     if (phone) customer.phone = phone;
     if (address) customer.address = address;
     if (location) customer.location = location;
-    if (pushToken) customer.pushToken = pushToken;
+    if (pushToken) {
+      customer.pushToken = pushToken;
+      console.log(`📱 PUSH TOKEN SAVED for ${customer.email}: ${pushToken.substring(0, 40)}...`);
+    }
 
     await customer.save();
 

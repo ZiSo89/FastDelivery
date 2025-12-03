@@ -23,6 +23,75 @@ import { useAuth } from '../context/AuthContext';
 import GuestDetailsModal from '../components/GuestDetailsModal';
 import api from '../services/api';
 
+// Cyan for Prax - Custom Map Style
+const cyanForPraxStyle = [
+  {
+    "featureType": "all",
+    "elementType": "all",
+    "stylers": [{ "visibility": "simplified" }]
+  },
+  {
+    "featureType": "all",
+    "elementType": "labels",
+    "stylers": [{ "visibility": "simplified" }]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "labels",
+    "stylers": [{ "gamma": "3.86" }, { "lightness": "100" }]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#5A5A5A" }]
+  },
+  {
+    "featureType": "landscape",
+    "elementType": "all",
+    "stylers": [{ "color": "#f2f2f2" }]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "all",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "road",
+    "elementType": "all",
+    "stylers": [{ "saturation": -100 }, { "lightness": 45 }]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "all",
+    "stylers": [{ "visibility": "simplified" }]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#ffffff" }]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry.stroke",
+    "stylers": [{ "color": "#a8a8a8" }]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "labels.icon",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "all",
+    "stylers": [{ "visibility": "off" }]
+  },
+  {
+    "featureType": "water",
+    "elementType": "all",
+    "stylers": [{ "color": "#00c2e8" }, { "visibility": "on" }]
+  }
+];
+
 // Default icon for unknown types (fallback)
 const DEFAULT_ICON = '🏪';
 
@@ -420,6 +489,7 @@ const HomeScreen = ({ navigation }) => {
           <TextInput
             style={styles.searchInput}
             placeholder="Αναζήτηση καταστήματος..."
+            placeholderTextColor="#999"
             value={searchTerm}
             onChangeText={setSearchTerm}
             autoFocus
@@ -494,6 +564,8 @@ const HomeScreen = ({ navigation }) => {
               ref={mapRef}
               style={styles.map}
               onMapReady={fitMapToMarkers}
+              userInterfaceStyle="light"
+              customMapStyle={cyanForPraxStyle}
               initialRegion={{
                 latitude: location ? location.latitude : 40.8457,
                 longitude: location ? location.longitude : 25.8733,
@@ -630,6 +702,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     fontSize: 16,
+    color: '#333',
   },
   content: {
     flex: 1,
@@ -657,8 +730,9 @@ const styles = StyleSheet.create({
     borderColor: '#00c2e8',
   },
   categoryIcon: {
-    fontSize: 16,
+    fontSize: 18,
     marginRight: 6,
+    zIndex: 10,
   },
   categoryLabel: {
     fontWeight: '600',
@@ -716,7 +790,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardEmoji: {
-    fontSize: 50,
+    fontSize: 52,
+    zIndex: 10,
   },
   cardContent: {
     padding: 12,

@@ -13,6 +13,15 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { GOOGLE_MAPS_API_KEY } from '../config';
 
+// Force light mode on Google Maps
+const lightMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
+];
+
 // Memoized Marker Components to prevent flickering
 const DriverMarkerMemo = memo(({ coordinate, styles }) => {
   const [isReady, setIsReady] = useState(false);
@@ -223,7 +232,7 @@ const DashboardMap = ({ orders, driverLocation }) => {
           duration: Math.ceil(totalDuration / 60),
         });
 
-        // Fit map to show route
+        // Fit map to show route - tight zoom on pins
         if (mapRef.current && points.length > 0) {
           const allCoords = [
             currentLocation,
@@ -234,7 +243,7 @@ const DashboardMap = ({ orders, driverLocation }) => {
 
           setTimeout(() => {
             mapRef.current?.fitToCoordinates(allCoords, {
-              edgePadding: { top: 60, right: 60, bottom: 100, left: 60 },
+              edgePadding: { top: 30, right: 20, bottom: 60, left: 20 },
               animated: true,
             });
           }, 500);
@@ -245,7 +254,7 @@ const DashboardMap = ({ orders, driverLocation }) => {
           const allCoords = [currentLocation, storeCoords, customerCoords].filter(Boolean);
           setTimeout(() => {
             mapRef.current?.fitToCoordinates(allCoords, {
-              edgePadding: { top: 60, right: 60, bottom: 100, left: 60 },
+              edgePadding: { top: 30, right: 20, bottom: 60, left: 20 },
               animated: true,
             });
           }, 500);
@@ -279,47 +288,14 @@ const DashboardMap = ({ orders, driverLocation }) => {
     }
   }, [currentLocation?.latitude]);
 
-  // Auto-focus map to fit all markers
-  useEffect(() => {
-    if (!mapRef.current) return;
-
-    const storeCoords = getStoreCoords();
-    const customerCoords = getCustomerCoords();
-
-    // Collect all visible coordinates
-    const allCoords = [];
-    if (currentLocation) allCoords.push(currentLocation);
-    if (activeOrder && storeCoords) allCoords.push(storeCoords);
-    if (activeOrder && customerCoords) allCoords.push(customerCoords);
-
-    if (allCoords.length > 1) {
-      // Multiple points - fit to show all
-      setTimeout(() => {
-        mapRef.current?.fitToCoordinates(allCoords, {
-          edgePadding: { top: 50, right: 30, bottom: 80, left: 30 },
-          animated: true,
-        });
-      }, 800);
-    } else if (allCoords.length === 1) {
-      // Single point - center on it
-      setTimeout(() => {
-        mapRef.current?.animateToRegion({
-          ...allCoords[0],
-          latitudeDelta: 0.008,
-          longitudeDelta: 0.008,
-        }, 500);
-      }, 500);
-    }
-  }, [activeOrder?._id, activeOrder?.status, currentLocation?.latitude]);
-
-  // Fit map when no order - just show driver location
+  // Fit map when no order - just show driver location with high zoom
   useEffect(() => {
     if (!activeOrder && currentLocation && mapRef.current) {
       mapRef.current.animateToRegion({
         ...currentLocation,
-        latitudeDelta: 0.008,
-        longitudeDelta: 0.008,
-      }, 500);
+        latitudeDelta: 0.003,
+        longitudeDelta: 0.003,
+      }, 300);
     }
   }, [activeOrder, currentLocation]);
 
@@ -426,11 +402,13 @@ const DashboardMap = ({ orders, driverLocation }) => {
         ref={mapRef}
         style={styles.map}
         provider={PROVIDER_GOOGLE}
+        userInterfaceStyle="light"
+        customMapStyle={lightMapStyle}
         initialRegion={{
           latitude: currentLocation?.latitude || 40.8457,
           longitude: currentLocation?.longitude || 25.8733,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
         }}
         showsUserLocation={false}
         showsMyLocationButton={false}

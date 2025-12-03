@@ -557,10 +557,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     zIndex: 1000,
-    elevation: 10,
   },
   headerLeft: {
     flexDirection: 'row',

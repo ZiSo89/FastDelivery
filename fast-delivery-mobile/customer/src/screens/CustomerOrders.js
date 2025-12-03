@@ -36,10 +36,7 @@ const CustomerOrders = ({ navigation }) => {
   }, [user?.isGuest, loading]);
 
   const loadOrders = async (page = 1, append = false) => {
-    console.log('📦 loadOrders called, page:', page, 'user:', user?.email, 'isGuest:', user?.isGuest);
-    
     if (user?.isGuest) {
-      console.log('📦 User is guest, skipping load');
       setLoading(false);
       return;
     }
@@ -51,13 +48,9 @@ const CustomerOrders = ({ navigation }) => {
         setLoadingMore(true);
       }
       
-      console.log('📦 Calling API getMyOrders...');
       const response = await customerService.getMyOrders(page, 10);
-      console.log('📦 API Response:', response.data);
       const data = response.data;
       const ordersList = data.orders || [];
-      
-      console.log('📦 Orders received:', ordersList.length, 'hasMore:', data.hasMore);
       
       if (append) {
         setOrders(prev => [...prev, ...ordersList]);
@@ -144,7 +137,6 @@ const CustomerOrders = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      console.log('📦 useFocusEffect triggered, user:', user?.email);
       if (user && !user.isGuest) {
         loadOrders(1, false);
       } else if (user?.isGuest) {

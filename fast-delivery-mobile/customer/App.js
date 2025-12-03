@@ -5,9 +5,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AlertProvider } from './src/context/AlertContext';
-import { ActivityIndicator, View, LogBox, Platform } from 'react-native';
+import { ActivityIndicator, View, LogBox, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ServerLoadingScreen from './src/components/ServerLoadingScreen';
+import * as NavigationBar from 'expo-navigation-bar';
+import * as SystemUI from 'expo-system-ui';
 
 // Hide Expo Go specific warnings
 LogBox.ignoreLogs([
@@ -237,6 +239,18 @@ const AppNavigator = () => {
 export default function App() {
   const notificationListener = useRef();
   const responseListener = useRef();
+
+  // Set navigation bar and system UI colors on Android
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      // Set navigation bar to white with dark icons
+      NavigationBar.setBackgroundColorAsync('#ffffff');
+      NavigationBar.setButtonStyleAsync('dark');
+      
+      // Set root background color
+      SystemUI.setBackgroundColorAsync('#ffffff');
+    }
+  }, []);
 
   useEffect(() => {
     // Only set up notification listeners if Notifications is available

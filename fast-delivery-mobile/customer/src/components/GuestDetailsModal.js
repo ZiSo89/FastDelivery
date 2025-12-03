@@ -7,6 +7,23 @@ import { GOOGLE_MAPS_API_KEY } from '../config';
 
 const { width } = Dimensions.get('window');
 
+// Cyan for Prax - Custom Map Style
+const cyanForPraxStyle = [
+  { "featureType": "all", "elementType": "all", "stylers": [{ "visibility": "simplified" }] },
+  { "featureType": "all", "elementType": "labels", "stylers": [{ "visibility": "simplified" }] },
+  { "featureType": "administrative", "elementType": "labels", "stylers": [{ "gamma": "3.86" }, { "lightness": "100" }] },
+  { "featureType": "administrative", "elementType": "labels.text.fill", "stylers": [{ "color": "#5A5A5A" }] },
+  { "featureType": "landscape", "elementType": "all", "stylers": [{ "color": "#f2f2f2" }] },
+  { "featureType": "poi", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "road", "elementType": "all", "stylers": [{ "saturation": -100 }, { "lightness": 45 }] },
+  { "featureType": "road.highway", "elementType": "all", "stylers": [{ "visibility": "simplified" }] },
+  { "featureType": "road.highway", "elementType": "geometry.fill", "stylers": [{ "color": "#ffffff" }] },
+  { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#a8a8a8" }] },
+  { "featureType": "road.arterial", "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "transit", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+  { "featureType": "water", "elementType": "all", "stylers": [{ "color": "#00c2e8" }, { "visibility": "on" }] }
+];
+
 // Alexandroupoli default center
 const DEFAULT_REGION = {
   latitude: 40.8457,
@@ -409,6 +426,8 @@ const GuestDetailsModal = ({ visible, onClose, onSubmit, initialData = {} }) => 
                   ref={mapRef}
                   style={styles.map}
                   initialRegion={DEFAULT_REGION}
+                  userInterfaceStyle="light"
+                  customMapStyle={cyanForPraxStyle}
                   onPress={handleMapPress}
                 >
                   {markerPosition && (

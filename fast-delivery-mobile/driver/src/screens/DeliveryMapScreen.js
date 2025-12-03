@@ -17,6 +17,15 @@ import { GOOGLE_MAPS_API_KEY } from '../config';
 
 const { width, height } = Dimensions.get('window');
 
+// Force light mode on Google Maps
+const lightMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
+];
+
 // Memoized Marker Components to prevent flickering
 const StoreMarkerMemo = memo(({ coordinate, title, description, styles }) => {
   const [isReady, setIsReady] = useState(false);
@@ -214,10 +223,10 @@ const DeliveryMapScreen = ({ route, navigation }) => {
     if (markers.length > 0) {
       setTimeout(() => {
         mapRef.current?.fitToCoordinates(markers, {
-          edgePadding: { top: 100, right: 50, bottom: 200, left: 50 },
+          edgePadding: { top: 40, right: 25, bottom: 120, left: 25 },
           animated: true,
         });
-      }, 500);
+      }, 300);
     }
   };
 
@@ -284,11 +293,13 @@ const DeliveryMapScreen = ({ route, navigation }) => {
           ref={mapRef}
           style={styles.map}
           provider={PROVIDER_GOOGLE}
+          userInterfaceStyle="light"
+          customMapStyle={lightMapStyle}
           initialRegion={{
             latitude: storeLocation?.latitude || 40.8477,
             longitude: storeLocation?.longitude || 25.8744,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
+            latitudeDelta: 0.008,
+            longitudeDelta: 0.008,
           }}
           showsUserLocation={false}
           showsMyLocationButton={false}
@@ -396,8 +407,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   backButton: {
     width: 40,

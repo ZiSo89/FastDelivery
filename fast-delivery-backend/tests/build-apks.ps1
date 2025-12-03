@@ -30,6 +30,11 @@ Write-Host ""
 $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
 $projectPath = "C:\Users\zisog\Documents\Projects\FastDelivery"
 
+# Step 0: Kill Java processes to release file locks
+Write-Host "[0/6] Killing Java processes..." -ForegroundColor Yellow
+taskkill /F /IM java.exe 2>$null
+Start-Sleep -Seconds 1
+
 # Step 1: Clean
 Write-Host "[1/6] Cleaning C:\A\customer..." -ForegroundColor Yellow
 if (Test-Path "C:\A\customer") { 
@@ -54,6 +59,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # Step 4: Prebuild
 Write-Host "[4/6] Expo prebuild..." -ForegroundColor Yellow
+$env:CI = "1"
 npx expo prebuild --platform android --clean
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Expo prebuild FAILED!" -ForegroundColor Red
@@ -112,6 +118,11 @@ Write-Host ""
 $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot"
 $projectPath = "C:\Users\zisog\Documents\Projects\FastDelivery"
 
+# Step 0: Kill Java processes to release file locks
+Write-Host "[0/6] Killing Java processes..." -ForegroundColor Yellow
+taskkill /F /IM java.exe 2>$null
+Start-Sleep -Seconds 1
+
 # Step 1: Clean
 Write-Host "[1/6] Cleaning C:\A\driver..." -ForegroundColor Yellow
 if (Test-Path "C:\A\driver") { 
@@ -136,6 +147,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # Step 4: Prebuild
 Write-Host "[4/6] Expo prebuild..." -ForegroundColor Yellow
+$env:CI = "1"
 npx expo prebuild --platform android --clean
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Expo prebuild FAILED!" -ForegroundColor Red

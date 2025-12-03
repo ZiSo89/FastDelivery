@@ -642,6 +642,7 @@ const TrackOrderScreen = ({ route, navigation }) => {
             style={styles.map}
             provider={PROVIDER_GOOGLE}
             customMapStyle={mapStyle}
+            userInterfaceStyle="light"
             initialRegion={getInitialRegion()}
             showsUserLocation={false}
             showsMyLocationButton={false}
