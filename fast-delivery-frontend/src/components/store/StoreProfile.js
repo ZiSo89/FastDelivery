@@ -1,12 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Form, Button, Row, Col, Alert } from 'react-bootstrap';
-import { storeService } from '../../services/api';
+import { storeService, authService } from '../../services/api';
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 
 const libraries = ['places'];
 
 const StoreProfile = ({ profile, onUpdate }) => {
   const [formData, setFormData] = useState({
+    businessName: profile?.businessName || profile?.storeName || '',
+    storeType: profile?.storeType || '',
+    afm: profile?.afm || '',
     phone: profile?.phone || '',
     address: profile?.address || '',
     workingHours: profile?.workingHours || '',
@@ -14,6 +17,7 @@ const StoreProfile = ({ profile, onUpdate }) => {
     serviceAreas: profile?.serviceAreas || '',
     location: profile?.location || null
   });
+  const [storeTypes, setStoreTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const autocompleteRef = useRef(null);
@@ -33,6 +37,21 @@ const StoreProfile = ({ profile, onUpdate }) => {
     east: 25.92,
     west: 25.82
   };
+
+  // Fetch store types on mount
+  useEffect(() => {
+    const fetchStoreTypes = async () => {
+      try {
+        const response = await authService.getStoreTypes();
+        if (response.storeTypes) {
+          setStoreTypes(response.storeTypes);
+        }
+      } catch (err) {
+        console.error('Error fetching store types:', err);
+      }
+    };
+    fetchStoreTypes();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -93,19 +112,27 @@ const StoreProfile = ({ profile, onUpdate }) => {
               <Form.Label>Όνομα Καταστήματος</Form.Label>
               <Form.Control
                 type="text"
-                value={profile?.businessName || profile?.storeName || ''}
-                disabled
+                name="businessName"
+                value={formData.businessName}
+                onChange={handleChange}
               />
             </Form.Group>
           </Col>
           <Col md={6}>
             <Form.Group className="mb-3">
               <Form.Label>Τύπος</Form.Label>
-              <Form.Control
-                type="text"
-                value={profile?.storeType || ''}
-                disabled
-              />
+              <Form.Select
+                name="storeType"
+                value={formData.storeType}
+                onChange={handleChange}
+              >
+                <option value="">Επιλέξτε τύπο</option>
+                {storeTypes.map((type, index) => (
+                  <option key={index} value={type.name}>
+                    {type.icon} {type.name}
+                  </option>
+                ))}
+              </Form.Select>
             </Form.Group>
           </Col>
         </Row>
@@ -116,8 +143,9 @@ const StoreProfile = ({ profile, onUpdate }) => {
               <Form.Label>ΑΦΜ</Form.Label>
               <Form.Control
                 type="text"
-                value={profile?.afm || ''}
-                disabled
+                name="afm"
+                value={formData.afm}
+                onChange={handleChange}
               />
             </Form.Group>
           </Col>
@@ -142,6 +170,7 @@ const StoreProfile = ({ profile, onUpdate }) => {
                 value={profile?.email || ''}
                 disabled
               />
+              <Form.Text className="text-muted">Το email δεν μπορεί να αλλάξει</Form.Text>
             </Form.Group>
           </Col>
           <Col md={6}>

@@ -311,10 +311,15 @@ exports.getStoreProfile = async (req, res) => {
 // @access  Private (Store)
 exports.updateStoreProfile = async (req, res) => {
   try {
-    const { workingHours, serviceAreas, phone, description, address, location } = req.body;
+    const { businessName, storeType, afm, workingHours, serviceAreas, phone, description, address, location } = req.body;
 
     const store = await Store.findById(req.user._id);
 
+    // Επιτρέπεται αλλαγή ονόματος, τύπου, ΑΦΜ
+    if (businessName) store.businessName = businessName;
+    if (storeType) store.storeType = storeType;
+    if (afm) store.afm = afm;
+    
     if (workingHours) store.workingHours = workingHours;
     if (serviceAreas) store.serviceAreas = serviceAreas;
     if (phone) store.phone = phone;
@@ -330,6 +335,8 @@ exports.updateStoreProfile = async (req, res) => {
       store: {
         _id: store._id,
         businessName: store.businessName,
+        storeType: store.storeType,
+        afm: store.afm,
         workingHours: store.workingHours,
         serviceAreas: store.serviceAreas,
         phone: store.phone,

@@ -190,6 +190,12 @@ export const authService = {
   // Get token (for external use)
   getToken: () => {
     return getToken();
+  },
+
+  // Get store types (public)
+  getStoreTypes: async () => {
+    const response = await api.get('/auth/store-types');
+    return response.data;
   }
 };
 
