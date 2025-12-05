@@ -19,6 +19,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { customerService } from '../services/api';
+import socketService from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import GuestDetailsModal from '../components/GuestDetailsModal';
 import api from '../services/api';
@@ -360,6 +361,11 @@ const HomeScreen = ({ navigation }) => {
       const response = await customerService.getStores(lat, lng);
       console.log('📍 Stores loaded:', response.data.stores?.length || 0);
       
+      // Log isOnline status for debugging
+      if (response.data.stores) {
+        console.log('📡 Store online statuses:', response.data.stores.map(s => ({ name: s.businessName, isOnline: s.isOnline })));
+      }
+      
       setStores(response.data.stores || []);
     } catch (error) {
       console.error('📍 Load stores error:', error);
@@ -367,6 +373,26 @@ const HomeScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
+
+  // Socket listener for real-time store online status changes
+  useEffect(() => {
+    const handleStoreStatusChange = (data) => {
+      console.log('📡 Store status changed (mobile):', data);
+      setStores(prevStores => 
+        prevStores.map(store => 
+          store._id === data.storeId 
+            ? { ...store, isOnline: data.isOnline }
+            : store
+        )
+      );
+    };
+
+    socketService.on('store:online_status_changed', handleStoreStatusChange);
+
+    return () => {
+      socketService.off('store:online_status_changed', handleStoreStatusChange);
+    };
+  }, []);
 
   const handleLogout = () => {
     setShowProfileMenu(false);
@@ -423,27 +449,44 @@ const HomeScreen = ({ navigation }) => {
     return storeTypeIcons[type] || DEFAULT_ICON;
   };
 
-  const renderStoreItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => handleStoreSelect(item)}
-      activeOpacity={0.9}
-    >
-      <View style={styles.cardImagePlaceholder}>
-        <Text style={styles.cardEmoji}>{getStoreIcon(item.storeType)}</Text>
-      </View>
-      <View style={styles.cardContent}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.storeName}>{item.businessName}</Text>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.ratingText}>★ 4.5</Text>
-          </View>
+  const renderStoreItem = ({ item }) => {
+    const isOffline = item.isOnline === false;
+    
+    return (
+      <TouchableOpacity 
+        style={[styles.card, isOffline && { opacity: 0.8 }]}
+        onPress={() => !isOffline && handleStoreSelect(item)}
+        activeOpacity={isOffline ? 1 : 0.9}
+        disabled={isOffline}
+      >
+        {isOffline && (
+          <View style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            width: 12,
+            height: 12,
+            borderRadius: 6,
+            backgroundColor: '#dc3545',
+            zIndex: 1
+          }} />
+        )}
+        <View style={styles.cardImagePlaceholder}>
+          <Text style={styles.cardEmoji}>{getStoreIcon(item.storeType)}</Text>
         </View>
-        <Text style={styles.storeMeta}>{item.storeType} • {item.workingHours || '09:00 - 23:00'}</Text>
-        <Text style={styles.storeAddress}>{item.address}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.storeName}>{item.businessName}</Text>
+            <View style={styles.ratingContainer}>
+              <Text style={styles.ratingText}>★ 4.5</Text>
+            </View>
+          </View>
+          <Text style={styles.storeMeta}>{item.storeType} • {item.workingHours || '09:00 - 23:00'}</Text>
+          <Text style={styles.storeAddress}>{item.address}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

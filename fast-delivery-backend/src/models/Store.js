@@ -69,6 +69,11 @@ const storeSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Online/Busy status - whether store is accepting orders
+  isOnline: {
+    type: Boolean,
+    default: true
+  },
   // Email verification
   isEmailVerified: {
     type: Boolean,

@@ -6,6 +6,59 @@ import socketService from '../../services/socket';
 import AlertModal from '../AlertModal';
 import { useNotification } from '../../context/NotificationContext';
 
+// Timer component that shows elapsed time since order was accepted
+const OrderTimer = ({ acceptedAt, status }) => {
+  const [elapsed, setElapsed] = useState('');
+  
+  useEffect(() => {
+    // Only show timer for orders that have been accepted (not pending_store)
+    if (!acceptedAt || status === 'pending_store' || status === 'completed' || status === 'cancelled') {
+      setElapsed('');
+      return;
+    }
+    
+    const calculateElapsed = () => {
+      const start = new Date(acceptedAt);
+      const now = new Date();
+      const diffMs = now - start;
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+      
+      if (hours > 0) {
+        setElapsed(`${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+      } else {
+        setElapsed(`${minutes}:${String(seconds).padStart(2, '0')}`);
+      }
+    };
+    
+    calculateElapsed();
+    const interval = setInterval(calculateElapsed, 1000);
+    
+    return () => clearInterval(interval);
+  }, [acceptedAt, status]);
+  
+  if (!elapsed) return null;
+  
+  // Color coding based on time
+  const getTimerStyle = () => {
+    if (!acceptedAt) return {};
+    const diffMs = new Date() - new Date(acceptedAt);
+    const minutes = diffMs / (1000 * 60);
+    
+    if (minutes > 30) return { color: '#dc3545', fontWeight: 'bold' }; // Red after 30 min
+    if (minutes > 15) return { color: '#fd7e14', fontWeight: 'bold' }; // Orange after 15 min
+    return { color: '#28a745' }; // Green
+  };
+  
+  return (
+    <span style={getTimerStyle()}>
+      ⏱️ {elapsed}
+    </span>
+  );
+};
+
 const StoreOrders = () => {
   const { user } = useAuth();
   const { removeNotificationsByRelatedId } = useNotification();
@@ -26,6 +79,12 @@ const StoreOrders = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const filterRef = useRef(filter);
+  
+  // One-Click Accept & Price modal state
+  const [showAcceptPriceModal, setShowAcceptPriceModal] = useState(false);
+  const [acceptPriceOrder, setAcceptPriceOrder] = useState(null);
+  const [acceptPriceValue, setAcceptPriceValue] = useState('');
+  const [acceptPriceLoading, setAcceptPriceLoading] = useState(false);
 
   // Keep filterRef in sync with filter state
   useEffect(() => {
@@ -286,6 +345,52 @@ const StoreOrders = () => {
     setShowModal(true);
   };
 
+  // One-Click Accept & Price handlers
+  const handleAcceptAndPrice = (order) => {
+    setAcceptPriceOrder(order);
+    setAcceptPriceValue('');
+    setShowAcceptPriceModal(true);
+  };
+
+  const submitAcceptAndPrice = async () => {
+    if (!acceptPriceValue || parseFloat(acceptPriceValue) <= 0) {
+      setAlertModal({
+        show: true,
+        variant: 'warning',
+        message: 'Παρακαλώ εισάγετε έγκυρη τιμή'
+      });
+      return;
+    }
+
+    try {
+      setAcceptPriceLoading(true);
+      
+      // Step 1: Accept the order
+      await storeService.acceptOrder(acceptPriceOrder._id, true);
+      
+      // Small delay to let backend update status
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Step 2: Set the price
+      await storeService.setPrice(acceptPriceOrder._id, parseFloat(acceptPriceValue));
+      
+      // Remove notifications
+      removeNotificationsByRelatedId(acceptPriceOrder.orderNumber);
+      
+      // Close modal and update order
+      setShowAcceptPriceModal(false);
+      await updateOrderInState(acceptPriceOrder._id);
+    } catch (err) {
+      setAlertModal({
+        show: true,
+        variant: 'danger',
+        message: err.response?.data?.message || 'Σφάλμα επεξεργασίας παραγγελίας'
+      });
+    } finally {
+      setAcceptPriceLoading(false);
+    }
+  };
+
   const submitPrice = async () => {
     if (!productPrice || parseFloat(productPrice) <= 0) {
       setAlertModal({
@@ -396,7 +501,17 @@ const StoreOrders = () => {
             <Col xs={12} key={order._id}>
               <Card className="shadow-sm">
                 <Card.Header className="d-flex justify-content-between align-items-center">
-                  <strong>{order.orderNumber}</strong>
+                  <div>
+                    <strong>{order.orderNumber}</strong>
+                    <div className="small text-muted">
+                      📅 {new Date(order.createdAt).toLocaleDateString('el-GR')} {new Date(order.createdAt).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    {order.acceptedAt && order.status !== 'pending_store' && order.status !== 'completed' && order.status !== 'cancelled' && (
+                      <div className="mt-1">
+                        <OrderTimer acceptedAt={order.acceptedAt} status={order.status} />
+                      </div>
+                    )}
+                  </div>
                   {getStatusBadge(order.status)}
                 </Card.Header>
                 <Card.Body>
@@ -435,10 +550,10 @@ const StoreOrders = () => {
                       <>
                         <Button
                           variant="success"
-                          onClick={() => handleAccept(order._id)}
+                          onClick={() => handleAcceptAndPrice(order)}
                           disabled={processingId === order._id}
                         >
-                          ✅ Αποδοχή
+                          ✅ Αποδοχή & Τιμολόγηση
                         </Button>
                         <Button
                           variant="danger"
@@ -479,6 +594,8 @@ const StoreOrders = () => {
             <thead>
               <tr>
                 <th>Αριθμός</th>
+                <th>Ημ/νία</th>
+                <th>Χρόνος</th>
                 <th>Πελάτης</th>
                 <th>Περιγραφή</th>
                 <th>Τιμή</th>
@@ -490,6 +607,15 @@ const StoreOrders = () => {
               {orders.map((order) => (
                 <tr key={order._id}>
                   <td className="fw-bold">{order.orderNumber}</td>
+                  <td>
+                    <small>
+                      {new Date(order.createdAt).toLocaleDateString('el-GR')}<br />
+                      <span className="text-muted">{new Date(order.createdAt).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </small>
+                  </td>
+                  <td>
+                    <OrderTimer acceptedAt={order.acceptedAt} status={order.status} />
+                  </td>
                   <td>
                     <strong>{order.customer?.name || 'N/A'}</strong><br />
                     <a href={`tel:${order.customer?.phone || order.customerPhone}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -519,10 +645,10 @@ const StoreOrders = () => {
                       <ButtonGroup size="sm">
                         <Button
                           variant="success"
-                          onClick={() => handleAccept(order._id)}
+                          onClick={() => handleAcceptAndPrice(order)}
                           disabled={processingId === order._id}
                         >
-                          ✅ Αποδοχή
+                          ✅ Αποδοχή & Τιμολόγηση
                         </Button>
                         <Button
                           variant="danger"
@@ -650,6 +776,78 @@ const StoreOrders = () => {
             disabled={!rejectReason || rejectReason.trim().length === 0}
           >
             Απόρριψη Παραγγελίας
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* One-Click Accept & Price Modal */}
+      <Modal show={showAcceptPriceModal} onHide={() => !acceptPriceLoading && setShowAcceptPriceModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>🚀 Αποδοχή & Τιμολόγηση</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {acceptPriceOrder && (
+            <>
+              <div className="mb-3 p-3 bg-light rounded">
+                <strong>Παραγγελία: {acceptPriceOrder.orderNumber}</strong>
+                <hr className="my-2" />
+                <div className="mb-2">
+                  <small className="text-muted">Πελάτης:</small><br />
+                  {acceptPriceOrder.customer?.name || 'N/A'}
+                </div>
+                <div className="mb-2">
+                  <small className="text-muted">Περιγραφή:</small><br />
+                  {acceptPriceOrder.orderType === 'voice' && (
+                    <div className="mb-1">
+                      <span className="badge bg-info me-1">🎤 Φωνητική</span>
+                      {acceptPriceOrder.orderVoiceUrl && (
+                        <audio controls src={acceptPriceOrder.orderVoiceUrl} className="w-100" style={{ height: '32px' }} />
+                      )}
+                    </div>
+                  )}
+                  {acceptPriceOrder.orderContent}
+                </div>
+              </div>
+              <Form.Group>
+                <Form.Label><strong>Τιμή Προϊόντων (€)</strong> <span className="text-danger">*</span></Form.Label>
+                <Form.Control
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={acceptPriceValue}
+                  onChange={(e) => setAcceptPriceValue(e.target.value)}
+                  placeholder="0.00"
+                  autoFocus
+                  disabled={acceptPriceLoading}
+                />
+                <Form.Text className="text-muted">
+                  Εισάγετε την τιμή των προϊόντων
+                </Form.Text>
+              </Form.Group>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowAcceptPriceModal(false)}
+            disabled={acceptPriceLoading}
+          >
+            Ακύρωση
+          </Button>
+          <Button 
+            variant="success" 
+            onClick={submitAcceptAndPrice}
+            disabled={acceptPriceLoading || !acceptPriceValue || parseFloat(acceptPriceValue) <= 0}
+          >
+            {acceptPriceLoading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Επεξεργασία...
+              </>
+            ) : (
+              '✅ Αποδοχή & Καταχώρηση'
+            )}
           </Button>
         </Modal.Footer>
       </Modal>

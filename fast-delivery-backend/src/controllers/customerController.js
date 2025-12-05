@@ -95,6 +95,7 @@ exports.getStores = async (req, res) => {
         workingHours: store.workingHours,
         serviceAreas: store.serviceAreas,
         location: store.location,
+        isOnline: store.isOnline !== false, // Include online status
         image: store.image || 'https://via.placeholder.com/150' // Add placeholder if no image
       }))
     });

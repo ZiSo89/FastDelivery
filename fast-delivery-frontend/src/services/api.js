@@ -344,6 +344,12 @@ export const storeService = {
   updateStatus: async (orderId, status) => {
     const response = await api.put(`/store/orders/${orderId}/status`, { status });
     return response.data;
+  },
+
+  // Toggle online/offline status
+  toggleOnlineStatus: async (isOnline) => {
+    const response = await api.put('/store/online-status', { isOnline });
+    return response.data;
   }
 };
 

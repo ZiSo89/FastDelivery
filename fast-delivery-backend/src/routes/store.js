@@ -8,7 +8,8 @@ const {
   addProductPrice,
   updateOrderStatus,
   getStoreProfile,
-  updateStoreProfile
+  updateStoreProfile,
+  toggleOnlineStatus
 } = require('../controllers/storeController');
 
 // Protect all routes
@@ -35,5 +36,8 @@ router.get('/profile', getStoreProfile);
 
 // @route   PUT /api/v1/store/profile
 router.put('/profile', updateStoreProfile);
+
+// @route   PUT /api/v1/store/online-status
+router.put('/online-status', toggleOnlineStatus);
 
 module.exports = router;

@@ -121,6 +121,7 @@ const orderSchema = new mongoose.Schema({
   }],
   
   // Timestamps
+  acceptedAt: Date,
   confirmedAt: Date,
   completedAt: Date
 }, {

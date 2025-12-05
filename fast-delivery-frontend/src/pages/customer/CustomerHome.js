@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { customerService } from '../../services/api';
 import api from '../../services/api';
+import socketService from '../../services/socket';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import '../../styles/CustomerPortal.css';
 
@@ -174,6 +175,7 @@ const CustomerHome = () => {
 
         const data = await customerService.getStores(params);
         if (data.success) {
+          console.log('📦 Stores loaded:', data.stores.map(s => ({ name: s.businessName, isOnline: s.isOnline })));
           setStores(data.stores);
         }
       } catch (error) {
@@ -185,6 +187,26 @@ const CustomerHome = () => {
 
     fetchStores();
   }, [activeCategory, user]);
+
+  // Socket listener for real-time store online status changes
+  useEffect(() => {
+    const handleStoreStatusChange = (data) => {
+      console.log('📡 Store status changed:', data);
+      setStores(prevStores => 
+        prevStores.map(store => 
+          store._id === data.storeId 
+            ? { ...store, isOnline: data.isOnline }
+            : store
+        )
+      );
+    };
+
+    socketService.on('store:online_status_changed', handleStoreStatusChange);
+
+    return () => {
+      socketService.off('store:online_status_changed', handleStoreStatusChange);
+    };
+  }, []);
 
   const handleStoreClick = (store) => {
     console.log('🖱️ Clicked Store:', store.businessName);
@@ -340,7 +362,30 @@ const CustomerHome = () => {
                 <div className="stores-list">
                   {filteredStores.length > 0 ? (
                     filteredStores.map(store => (
-                      <div key={store._id} className="store-card" onClick={() => handleStoreClick(store)}>
+                      <div 
+                        key={store._id} 
+                        className="store-card" 
+                        onClick={() => store.isOnline !== false && handleStoreClick(store)}
+                        style={{ 
+                          opacity: store.isOnline === false ? 0.8 : 1,
+                          cursor: store.isOnline === false ? 'default' : 'pointer',
+                          position: 'relative'
+                        }}
+                      >
+                        {store.isOnline === false && (
+                          <span 
+                            style={{
+                              position: 'absolute',
+                              top: '10px',
+                              right: '10px',
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '50%',
+                              backgroundColor: '#dc3545',
+                              zIndex: 1
+                            }}
+                          />
+                        )}
                         <div className="store-image-placeholder">
                           {storeTypeIcons[store.storeType] || DEFAULT_ICON}
                         </div>

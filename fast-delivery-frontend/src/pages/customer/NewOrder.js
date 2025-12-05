@@ -320,19 +320,37 @@ const NewOrder = () => {
                       stores.map((store) => (
                         <ListGroup.Item
                           key={store._id}
-                          action
+                          action={store.isOnline !== false}
                           active={selectedStore?._id === store._id}
-                          onClick={() => setSelectedStore(store)}
+                          onClick={() => store.isOnline !== false && setSelectedStore(store)}
                           className="cursor-pointer"
+                          style={{ 
+                            opacity: store.isOnline === false ? 0.8 : 1,
+                            cursor: store.isOnline === false ? 'default' : 'pointer',
+                            position: 'relative'
+                          }}
                         >
                           <div className="d-flex justify-content-between align-items-center">
                             <div>
                               <h6 className="mb-1">{store.businessName || store.storeName}</h6>
                               <small>{store.storeType} · {store.address}</small>
                             </div>
-                            {selectedStore?._id === store._id && (
-                              <span className="badge bg-success">✓</span>
-                            )}
+                            <div className="d-flex align-items-center">
+                              {store.isOnline === false && (
+                                <span 
+                                  style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#dc3545',
+                                    marginRight: '8px'
+                                  }}
+                                />
+                              )}
+                              {selectedStore?._id === store._id && (
+                                <span className="badge bg-success">✓</span>
+                              )}
+                            </div>
                           </div>
                         </ListGroup.Item>
                       ))

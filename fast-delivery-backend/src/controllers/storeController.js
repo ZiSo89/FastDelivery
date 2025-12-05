@@ -98,6 +98,7 @@ exports.acceptRejectOrder = async (req, res) => {
 
     if (action === 'accept') {
       order.status = 'pricing';
+      order.acceptedAt = new Date();
       order._updatedBy = 'store';
       await order.save();
 
@@ -342,6 +343,50 @@ exports.updateStoreProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Σφάλμα ενημέρωσης προφίλ'
+    });
+  }
+};
+
+// @desc    Toggle store online/offline status
+// @route   PUT /api/v1/store/online-status
+// @access  Private (Store)
+exports.toggleOnlineStatus = async (req, res) => {
+  try {
+    const { isOnline } = req.body;
+    
+    const store = await Store.findById(req.user._id);
+    
+    if (!store) {
+      return res.status(404).json({
+        success: false,
+        message: 'Το κατάστημα δεν βρέθηκε'
+      });
+    }
+    
+    store.isOnline = isOnline;
+    await store.save();
+    
+    // Broadcast to all customers that store status changed
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('store:online_status_changed', {
+        storeId: store._id.toString(),
+        isOnline: store.isOnline,
+        businessName: store.businessName
+      });
+      console.log(`📡 Broadcasted store online status: ${store.businessName} is now ${isOnline ? 'Online' : 'Offline'}`);
+    }
+    
+    res.json({
+      success: true,
+      message: isOnline ? 'Το κατάστημα είναι Online' : 'Το κατάστημα είναι Offline',
+      isOnline: store.isOnline
+    });
+  } catch (error) {
+    console.error('Toggle online status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Σφάλμα αλλαγής κατάστασης'
     });
   }
 };

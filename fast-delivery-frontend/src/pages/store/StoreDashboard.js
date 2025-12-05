@@ -17,6 +17,7 @@ const StoreDashboard = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('orders');
   const [statusMessage, setStatusMessage] = useState('');
+  const [isOnline, setIsOnline] = useState(true);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -24,6 +25,8 @@ const StoreDashboard = () => {
       // Backend επιστρέφει { success: true, store: {...} }
       const storeData = response.store || response.data || response;
       setProfile(storeData);
+      // Set isOnline from profile (default true if not set)
+      setIsOnline(storeData.isOnline !== false);
       setError('');
     } catch (err) {
       console.error('Profile fetch error:', err);
@@ -108,7 +111,7 @@ const StoreDashboard = () => {
 
   return (
     <div className="store-dashboard">
-      <StoreNavbar user={user} profile={profile} />
+      <StoreNavbar user={user} profile={profile} isOnline={isOnline} setIsOnline={setIsOnline} />
       
       <Container fluid className="py-4">
         {statusMessage && (

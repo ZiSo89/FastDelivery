@@ -365,6 +365,8 @@ exports.addDeliveryFee = async (req, res) => {
       customerPhone: order.customer.phone,
       totalPrice: order.totalPrice,
       newStatus: 'pending_customer_confirm',
+      storeId: order.storeId?.toString(),
+      driverId: order.driverId?.toString(),
       breakdown: {
         productPrice: order.productPrice,
         deliveryFee: order.deliveryFee
