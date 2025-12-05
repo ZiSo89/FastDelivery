@@ -2,8 +2,10 @@ import React, { createContext, useState, useContext, useEffect, useRef } from 'r
 import * as SecureStore from 'expo-secure-store';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { customerService, healthCheck } from '../services/api';
+import Constants from 'expo-constants';
+import { customerService, healthCheck, checkAppVersion } from '../services/api';
 import socketService from '../services/socket';
+import { checkVersionUpdate } from '../utils/versionUtils';
 
 // Safe import for expo-notifications
 let Notifications = null;
@@ -25,6 +27,13 @@ export const AuthProvider = ({ children }) => {
   const [serverReady, setServerReady] = useState(false);
   const [serverStatus, setServerStatus] = useState('Σύνδεση με τον server...');
   const [expoPushToken, setExpoPushToken] = useState('');
+  
+  // App update state
+  const [updateInfo, setUpdateInfo] = useState({
+    showModal: false,
+    forceUpdate: false,
+    storeUrl: ''
+  });
 
   useEffect(() => {
     initializeApp();
@@ -39,8 +48,14 @@ export const AuthProvider = ({ children }) => {
     
     if (healthResult.success) {
       setServerReady(true);
+      
+      // Step 2: Check app version (skip in development)
+      if (!__DEV__) {
+        await performVersionCheck();
+      }
+      
       setServerStatus('Έλεγχος σύνδεσης...');
-      // Step 2: Load user
+      // Step 3: Load user
       console.log('👤 Loading user...');
       await loadUser();
       console.log('✅ User loaded');
@@ -52,6 +67,41 @@ export const AuthProvider = ({ children }) => {
         setServerReady(true);
         loadUser();
       }, 3000);
+    }
+  };
+
+  const performVersionCheck = async () => {
+    try {
+      const currentVersion = Constants.expoConfig?.version || '1.0.0';
+      const platform = Platform.OS; // 'android' or 'ios'
+      
+      console.log('📱 Checking app version:', currentVersion, 'on', platform);
+      
+      const result = await checkAppVersion('customer', platform);
+      
+      if (result.success && result.data?.version) {
+        const versionInfo = result.data.version;
+        const updateCheck = checkVersionUpdate(currentVersion, versionInfo);
+        
+        console.log('📱 Version check result:', updateCheck);
+        
+        if (updateCheck.needsUpdate) {
+          setUpdateInfo({
+            showModal: true,
+            forceUpdate: updateCheck.forceUpdate,
+            storeUrl: updateCheck.storeUrl
+          });
+        }
+      }
+    } catch (error) {
+      console.log('📱 Version check error (continuing):', error.message);
+      // Don't block app usage if version check fails
+    }
+  };
+
+  const dismissUpdateModal = () => {
+    if (!updateInfo.forceUpdate) {
+      setUpdateInfo(prev => ({ ...prev, showModal: false }));
     }
   };
 
@@ -266,7 +316,9 @@ export const AuthProvider = ({ children }) => {
       register, 
       logout, 
       loginAsGuest,
-      refreshUser
+      refreshUser,
+      updateInfo,
+      dismissUpdateModal
     }}>
       {children}
     </AuthContext.Provider>

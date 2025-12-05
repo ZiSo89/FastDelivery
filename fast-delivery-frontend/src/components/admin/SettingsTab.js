@@ -33,7 +33,10 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaSync,
-  FaHistory
+  FaHistory,
+  FaMobileAlt,
+  FaAndroid,
+  FaApple
 } from 'react-icons/fa';
 import api from '../../services/api';
 
@@ -98,6 +101,19 @@ const SettingsTab = () => {
   const [dbBackupFile, setDbBackupFile] = useState(null);
   const [dbBackupProgress, setDbBackupProgress] = useState('');
 
+  // App Versions state
+  const [appVersions, setAppVersions] = useState({
+    customer: {
+      android: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' },
+      ios: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' }
+    },
+    driver: {
+      android: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' },
+      ios: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' }
+    }
+  });
+  const [savingVersions, setSavingVersions] = useState(false);
+
   // Fetch settings on mount
   const fetchSettings = useCallback(async () => {
     try {
@@ -112,6 +128,11 @@ const SettingsTab = () => {
         setServiceHoursEnabled(settings.serviceHoursEnabled || false);
         setServiceHoursStart(settings.serviceHoursStart || '09:00');
         setServiceHoursEnd(settings.serviceHoursEnd || '23:00');
+        
+        // Load app versions
+        if (settings.appVersions) {
+          setAppVersions(settings.appVersions);
+        }
       }
       
       // Fetch admin profile
@@ -444,6 +465,41 @@ const SettingsTab = () => {
   useEffect(() => {
     checkDbToolsStatus();
   }, []);
+
+  // Update app version field
+  const handleVersionChange = (app, platform, field, value) => {
+    setAppVersions(prev => ({
+      ...prev,
+      [app]: {
+        ...prev[app],
+        [platform]: {
+          ...prev[app][platform],
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  // Save app versions
+  const handleSaveVersions = async () => {
+    try {
+      setSavingVersions(true);
+      setError(null);
+      setSuccess(null);
+      
+      const res = await api.put('/admin/settings', { appVersions });
+      
+      if (res.data.success) {
+        setSuccess('Οι εκδόσεις εφαρμογών αποθηκεύτηκαν επιτυχώς!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error saving versions:', err);
+      setError(err.response?.data?.message || 'Σφάλμα αποθήκευσης εκδόσεων');
+    } finally {
+      setSavingVersions(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -795,6 +851,249 @@ const SettingsTab = () => {
                   </Button>
                 </div>
               </Form>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* App Versions Card */}
+        <Col lg={12}>
+          <Card className="shadow-sm mb-4">
+            <Card.Header className="bg-dark text-white">
+              <FaMobileAlt className="me-2" />
+              Εκδόσεις Εφαρμογών (App Versioning)
+            </Card.Header>
+            <Card.Body>
+              <Row>
+                {/* Customer App */}
+                <Col md={6}>
+                  <h6 className="mb-3">
+                    <span className="me-2">📱</span>
+                    Customer App
+                  </h6>
+                  
+                  {/* Android */}
+                  <div className="border rounded p-3 mb-3">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaAndroid className="text-success me-2" />
+                      <strong>Android</strong>
+                    </div>
+                    <Row className="g-2">
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Τρέχουσα Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.customer?.android?.latest || ''}
+                            onChange={(e) => handleVersionChange('customer', 'android', 'latest', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Ελάχιστη Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.customer?.android?.minimum || ''}
+                            onChange={(e) => handleVersionChange('customer', 'android', 'minimum', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={12}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Play Store URL</Form.Label>
+                          <Form.Control
+                            type="url"
+                            size="sm"
+                            placeholder="https://play.google.com/store/apps/details?id=..."
+                            value={appVersions.customer?.android?.storeUrl || ''}
+                            onChange={(e) => handleVersionChange('customer', 'android', 'storeUrl', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </div>
+
+                  {/* iOS */}
+                  <div className="border rounded p-3">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaApple className="text-dark me-2" />
+                      <strong>iOS</strong>
+                    </div>
+                    <Row className="g-2">
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Τρέχουσα Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.customer?.ios?.latest || ''}
+                            onChange={(e) => handleVersionChange('customer', 'ios', 'latest', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Ελάχιστη Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.customer?.ios?.minimum || ''}
+                            onChange={(e) => handleVersionChange('customer', 'ios', 'minimum', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={12}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">App Store URL</Form.Label>
+                          <Form.Control
+                            type="url"
+                            size="sm"
+                            placeholder="https://apps.apple.com/app/..."
+                            value={appVersions.customer?.ios?.storeUrl || ''}
+                            onChange={(e) => handleVersionChange('customer', 'ios', 'storeUrl', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </div>
+                </Col>
+
+                {/* Driver App */}
+                <Col md={6}>
+                  <h6 className="mb-3">
+                    <FaMotorcycle className="me-2" />
+                    Driver App
+                  </h6>
+                  
+                  {/* Android */}
+                  <div className="border rounded p-3 mb-3">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaAndroid className="text-success me-2" />
+                      <strong>Android</strong>
+                    </div>
+                    <Row className="g-2">
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Τρέχουσα Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.driver?.android?.latest || ''}
+                            onChange={(e) => handleVersionChange('driver', 'android', 'latest', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Ελάχιστη Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.driver?.android?.minimum || ''}
+                            onChange={(e) => handleVersionChange('driver', 'android', 'minimum', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={12}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Play Store URL</Form.Label>
+                          <Form.Control
+                            type="url"
+                            size="sm"
+                            placeholder="https://play.google.com/store/apps/details?id=..."
+                            value={appVersions.driver?.android?.storeUrl || ''}
+                            onChange={(e) => handleVersionChange('driver', 'android', 'storeUrl', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </div>
+
+                  {/* iOS */}
+                  <div className="border rounded p-3">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaApple className="text-dark me-2" />
+                      <strong>iOS</strong>
+                    </div>
+                    <Row className="g-2">
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Τρέχουσα Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.driver?.ios?.latest || ''}
+                            onChange={(e) => handleVersionChange('driver', 'ios', 'latest', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Ελάχιστη Έκδοση</Form.Label>
+                          <Form.Control
+                            type="text"
+                            size="sm"
+                            placeholder="1.0.0"
+                            value={appVersions.driver?.ios?.minimum || ''}
+                            onChange={(e) => handleVersionChange('driver', 'ios', 'minimum', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col sm={12}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">App Store URL</Form.Label>
+                          <Form.Control
+                            type="url"
+                            size="sm"
+                            placeholder="https://apps.apple.com/app/..."
+                            value={appVersions.driver?.ios?.storeUrl || ''}
+                            onChange={(e) => handleVersionChange('driver', 'ios', 'storeUrl', e.target.value)}
+                          />
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </div>
+                </Col>
+              </Row>
+
+              <div className="d-flex justify-content-end mt-3">
+                <Button 
+                  variant="dark" 
+                  onClick={handleSaveVersions}
+                  disabled={savingVersions}
+                >
+                  {savingVersions ? (
+                    <>
+                      <Spinner size="sm" animation="border" className="me-2" />
+                      Αποθήκευση...
+                    </>
+                  ) : (
+                    <>
+                      <FaSave className="me-2" />
+                      Αποθήκευση Εκδόσεων
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <Alert variant="info" className="mt-3 mb-0 small">
+                <strong>📌 Οδηγίες:</strong>
+                <ul className="mb-0 mt-1">
+                  <li><strong>Τρέχουσα Έκδοση:</strong> Η τελευταία διαθέσιμη έκδοση (προαιρετική ενημέρωση)</li>
+                  <li><strong>Ελάχιστη Έκδοση:</strong> Αν ο χρήστης έχει παλαιότερη, εμφανίζεται force update</li>
+                  <li>Χρησιμοποιήστε semantic versioning: MAJOR.MINOR.PATCH (π.χ. 1.2.3)</li>
+                  <li>Οι εφαρμογές ελέγχουν την έκδοση κατά την εκκίνηση</li>
+                </ul>
+              </Alert>
             </Card.Body>
           </Card>
         </Col>

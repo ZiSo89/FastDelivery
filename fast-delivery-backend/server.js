@@ -97,6 +97,44 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
+// App version check (public endpoint)
+app.get('/api/v1/app-version', async (req, res) => {
+  try {
+    const Settings = require('./src/models/Settings');
+    const settings = await Settings.getSettings();
+    
+    const { app, platform } = req.query;
+    
+    // If specific app and platform requested
+    if (app && platform && settings.appVersions?.[app]?.[platform]) {
+      return res.json({
+        success: true,
+        app,
+        platform,
+        version: settings.appVersions[app][platform]
+      });
+    }
+    
+    // Return all versions
+    res.json({
+      success: true,
+      versions: settings.appVersions || {
+        customer: {
+          android: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' },
+          ios: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' }
+        },
+        driver: {
+          android: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' },
+          ios: { latest: '1.0.0', minimum: '1.0.0', storeUrl: '' }
+        }
+      }
+    });
+  } catch (error) {
+    console.error('App version check error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching app version' });
+  }
+});
+
 // Routes
 app.use('/api/v1/auth', require('./src/routes/auth'));
 app.use('/api/v1/orders', require('./src/routes/customer'));

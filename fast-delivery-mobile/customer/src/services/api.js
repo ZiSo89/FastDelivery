@@ -66,4 +66,17 @@ export const customerService = {
   deleteAccount: () => api.delete('/orders/profile'),
 };
 
+// App version check (public endpoint)
+export const checkAppVersion = async (app = 'customer', platform = 'android') => {
+  try {
+    const response = await api.get(`/app-version?app=${app}&platform=${platform}`, { 
+      timeout: 5000 
+    });
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.log('Version check failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 export default api;

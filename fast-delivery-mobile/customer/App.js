@@ -8,6 +8,7 @@ import { AlertProvider } from './src/context/AlertContext';
 import { ActivityIndicator, View, LogBox, Platform, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ServerLoadingScreen from './src/components/ServerLoadingScreen';
+import UpdateModal from './src/components/UpdateModal';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as SystemUI from 'expo-system-ui';
 
@@ -170,7 +171,7 @@ const MainTabNavigator = () => {
 };
 
 const AppNavigator = () => {
-  const { user, loading, serverReady, serverStatus } = useAuth();
+  const { user, loading, serverReady, serverStatus, updateInfo, dismissUpdateModal } = useAuth();
 
   // Show server loading screen while connecting to backend
   if (!serverReady) {
@@ -187,7 +188,16 @@ const AppNavigator = () => {
   }
 
   return (
-    <Stack.Navigator 
+    <>
+      {/* Update Modal - shows when app needs update */}
+      <UpdateModal
+        visible={updateInfo.showModal}
+        forceUpdate={updateInfo.forceUpdate}
+        storeUrl={updateInfo.storeUrl}
+        onDismiss={dismissUpdateModal}
+      />
+      
+      <Stack.Navigator 
       screenOptions={{
         headerStyle: {
           backgroundColor: '#00c2e8',
@@ -233,6 +243,7 @@ const AppNavigator = () => {
         </>
       )}
     </Stack.Navigator>
+    </>
   );
 };
 

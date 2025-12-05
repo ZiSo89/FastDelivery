@@ -29,6 +29,12 @@ api.interceptors.response.use(
   (error) => Promise.reject(error)
 );
 
+// Public API calls (no auth required)
+export const publicService = {
+  // Check app version
+  checkAppVersion: () => api.get('/app-version'),
+};
+
 export const driverService = {
   // Login
   login: (credentials) => api.post('/auth/login', { ...credentials, role: 'driver' }),

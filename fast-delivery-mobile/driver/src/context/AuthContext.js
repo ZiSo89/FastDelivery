@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import * as Device from 'expo-device';
 import { Platform, AppState } from 'react-native';
+import Constants from 'expo-constants';
 
 // Safe import for expo-notifications
 let Notifications = null;
@@ -10,8 +11,9 @@ try {
 } catch (e) {
   console.log('expo-notifications not available in AuthContext');
 }
-import { driverService } from '../services/api';
+import { driverService, publicService } from '../services/api';
 import socketService from '../services/socket';
+import { checkVersionUpdate } from '../utils/versionUtils';
 
 const AuthContext = createContext();
 
@@ -35,10 +37,53 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expoPushToken, setExpoPushToken] = useState('');
+  const [updateInfo, setUpdateInfo] = useState(null); // { needsUpdate, forceUpdate, storeUrl }
 
   useEffect(() => {
     loadUser();
+    performVersionCheck();
   }, []);
+
+  // Version check on app start
+  const performVersionCheck = async () => {
+    try {
+      const response = await publicService.checkAppVersion();
+      const versions = response.data?.versions;
+      
+      if (!versions?.driver) {
+        console.log('📱 Version: No driver version info from server');
+        return;
+      }
+
+      // Get current app version
+      const currentVersion = Constants.expoConfig?.version || Constants.manifest?.version || '1.0.0';
+      const platform = Platform.OS; // 'android' or 'ios'
+      
+      // Get version info for current platform
+      const platformVersions = versions.driver[platform];
+      if (!platformVersions) {
+        console.log(`📱 Version: No ${platform} version info`);
+        return;
+      }
+
+      const result = checkVersionUpdate(currentVersion, platformVersions);
+      console.log(`📱 Version check: current=${currentVersion}, latest=${platformVersions.latest}, min=${platformVersions.minimum}`);
+      
+      if (result.needsUpdate) {
+        console.log(`📱 Version: Update needed, force=${result.forceUpdate}`);
+        setUpdateInfo(result);
+      }
+    } catch (error) {
+      console.log('📱 Version check failed:', error.message);
+    }
+  };
+
+  const dismissUpdateModal = () => {
+    // Only dismiss if not a force update
+    if (updateInfo && !updateInfo.forceUpdate) {
+      setUpdateInfo(null);
+    }
+  };
 
   // Handle app state changes for reconnection - separate effect
   useEffect(() => {
@@ -229,7 +274,9 @@ export const AuthProvider = ({ children }) => {
       logout, 
       updateUser, 
       refreshUser,
-      expoPushToken 
+      expoPushToken,
+      updateInfo,
+      dismissUpdateModal
     }}>
       {children}
     </AuthContext.Provider>

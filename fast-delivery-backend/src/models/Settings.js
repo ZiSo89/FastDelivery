@@ -56,6 +56,34 @@ const settingsSchema = new mongoose.Schema({
   serviceHoursEnd: {
     type: String,
     default: '23:00'
+  },
+  
+  // App versions for mobile apps
+  appVersions: {
+    customer: {
+      android: {
+        latest: { type: String, default: '1.0.0' },
+        minimum: { type: String, default: '1.0.0' },
+        storeUrl: { type: String, default: '' }
+      },
+      ios: {
+        latest: { type: String, default: '1.0.0' },
+        minimum: { type: String, default: '1.0.0' },
+        storeUrl: { type: String, default: '' }
+      }
+    },
+    driver: {
+      android: {
+        latest: { type: String, default: '1.0.0' },
+        minimum: { type: String, default: '1.0.0' },
+        storeUrl: { type: String, default: '' }
+      },
+      ios: {
+        latest: { type: String, default: '1.0.0' },
+        minimum: { type: String, default: '1.0.0' },
+        storeUrl: { type: String, default: '' }
+      }
+    }
   }
 }, {
   timestamps: true

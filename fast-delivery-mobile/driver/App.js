@@ -19,6 +19,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import PendingApprovalScreen from './src/screens/PendingApprovalScreen';
 import DeliveryMapScreen from './src/screens/DeliveryMapScreen';
+import UpdateModal from './src/components/UpdateModal';
 
 // Ignore expo-notifications warnings in Expo Go
 LogBox.ignoreLogs([
@@ -59,7 +60,7 @@ if (Notifications && Notifications.setNotificationHandler) {
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, updateInfo, dismissUpdateModal } = useAuth();
   const notificationListener = useRef();
   const responseListener = useRef();
 
@@ -103,55 +104,65 @@ const AppNavigator = () => {
   };
 
   return (
-    <Stack.Navigator 
-      initialRouteName={getInitialScreen()}
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#00c2e8',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      {!user ? (
-        // Auth Stack
-        <>
+    <>
+      <Stack.Navigator 
+        initialRouteName={getInitialScreen()}
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#00c2e8',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      >
+        {!user ? (
+          // Auth Stack
+          <>
+            <Stack.Screen 
+              name="Login" 
+              component={LoginScreen} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="ForgotPassword" 
+              component={ForgotPasswordScreen} 
+              options={{ headerShown: false }}
+            />
+          </>
+        ) : user.status === 'pending' || !user.isApproved ? (
+          // Pending Approval
           <Stack.Screen 
-            name="Login" 
-            component={LoginScreen} 
+            name="PendingApproval" 
+            component={PendingApprovalScreen} 
             options={{ headerShown: false }}
           />
-          <Stack.Screen 
-            name="ForgotPassword" 
-            component={ForgotPasswordScreen} 
-            options={{ headerShown: false }}
-          />
-        </>
-      ) : user.status === 'pending' || !user.isApproved ? (
-        // Pending Approval
-        <Stack.Screen 
-          name="PendingApproval" 
-          component={PendingApprovalScreen} 
-          options={{ headerShown: false }}
-        />
-      ) : (
-        // Main App
-        <>
-          <Stack.Screen 
-            name="Dashboard" 
-            component={DashboardScreen} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="DeliveryMap" 
-            component={DeliveryMapScreen} 
-            options={{ headerShown: false }}
-          />
-        </>
-      )}
-    </Stack.Navigator>
+        ) : (
+          // Main App
+          <>
+            <Stack.Screen 
+              name="Dashboard" 
+              component={DashboardScreen} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="DeliveryMap" 
+              component={DeliveryMapScreen} 
+              options={{ headerShown: false }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+      
+      {/* Update Modal */}
+      <UpdateModal 
+        visible={updateInfo?.needsUpdate || false}
+        forceUpdate={updateInfo?.forceUpdate || false}
+        storeUrl={updateInfo?.storeUrl || ''}
+        onDismiss={dismissUpdateModal}
+      />
+    </>
   );
 };
 

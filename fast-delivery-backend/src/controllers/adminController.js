@@ -764,7 +764,7 @@ exports.getSettings = async (req, res) => {
 // @access  Private (Admin)
 exports.updateSettings = async (req, res) => {
   try {
-    const { driverSalary, defaultDeliveryFee, serviceArea, serviceHoursEnabled, serviceHoursStart, serviceHoursEnd } = req.body;
+    const { driverSalary, defaultDeliveryFee, serviceArea, serviceHoursEnabled, serviceHoursStart, serviceHoursEnd, appVersions } = req.body;
     
     const updates = {};
     if (driverSalary !== undefined) updates.driverSalary = driverSalary;
@@ -773,6 +773,7 @@ exports.updateSettings = async (req, res) => {
     if (serviceHoursEnabled !== undefined) updates.serviceHoursEnabled = serviceHoursEnabled;
     if (serviceHoursStart) updates.serviceHoursStart = serviceHoursStart;
     if (serviceHoursEnd) updates.serviceHoursEnd = serviceHoursEnd;
+    if (appVersions) updates.appVersions = appVersions;
     
     const settings = await Settings.updateSettings(updates);
     
