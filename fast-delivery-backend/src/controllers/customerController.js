@@ -61,7 +61,8 @@ const upload = multer({
 // @access  Public
 exports.getStores = async (req, res) => {
   try {
-    const { serviceArea, storeType } = req.query;
+    const { serviceArea, storeType, phone } = req.query;
+    const Order = require('../models/Order');
 
     // Only show approved stores to customers
     const filter = { 
@@ -82,22 +83,119 @@ exports.getStores = async (req, res) => {
     // Get ALL approved stores - no geo filter (worldwide support)
     const stores = await Store.find(filter).select('-password');
 
+    // Get global store popularity (total orders per store)
+    const storePopularity = {};
+    try {
+      const popularityStats = await Order.aggregate([
+        { $match: { status: { $in: ['completed', 'in_delivery', 'preparing', 'pending', 'assigned'] } } },
+        { $group: { _id: '$storeId', totalOrders: { $sum: 1 } } }
+      ]);
+      popularityStats.forEach(stat => {
+        if (stat._id) {
+          storePopularity[stat._id.toString()] = stat.totalOrders;
+        }
+      });
+    } catch (err) {
+      console.log('Popularity stats error (continuing):', err.message);
+    }
+
+    // Format stores for response
+    let formattedStores = stores.map(store => ({
+      _id: store._id,
+      businessName: store.businessName,
+      storeType: store.storeType,
+      address: store.address,
+      phone: store.phone,
+      description: store.description,
+      workingHours: store.workingHours,
+      serviceAreas: store.serviceAreas,
+      location: store.location,
+      isOnline: store.isOnline !== false,
+      image: store.image || 'https://via.placeholder.com/150',
+      _popularity: storePopularity[store._id.toString()] || 0 // Internal field for sorting
+    }));
+
+    // User's personalized stores (last ordered, most ordered)
+    let lastOrderedStoreId = null;
+    let mostOrderedStoreId = null;
+
+    if (phone) {
+      try {
+        // Find all orders for this phone
+        const orders = await Order.find({
+          'customer.phone': phone,
+          status: { $in: ['completed', 'in_delivery', 'preparing', 'pending', 'assigned'] }
+        }).sort({ createdAt: -1 }).select('storeId createdAt');
+
+        if (orders.length > 0) {
+          // Calculate store stats for this user
+          const storeStats = {};
+          orders.forEach(order => {
+            const storeId = order.storeId?.toString();
+            if (!storeId) return;
+            
+            if (!storeStats[storeId]) {
+              storeStats[storeId] = {
+                lastOrderDate: order.createdAt,
+                orderCount: 0
+              };
+            }
+            storeStats[storeId].orderCount++;
+          });
+
+          // Find last ordered and most ordered for this user
+          let maxOrders = 0;
+          Object.entries(storeStats).forEach(([storeId, stats]) => {
+            if (!lastOrderedStoreId) {
+              lastOrderedStoreId = storeId;
+            }
+            if (stats.orderCount > maxOrders) {
+              maxOrders = stats.orderCount;
+              mostOrderedStoreId = storeId;
+            }
+          });
+
+          console.log(`📊 Personalized for ${phone}: last=${lastOrderedStoreId?.slice(-4)}, most=${mostOrderedStoreId?.slice(-4)} (${maxOrders} orders)`);
+        }
+      } catch (err) {
+        console.log('Personalization error (continuing):', err.message);
+      }
+    }
+
+    // SORTING ALGORITHM:
+    // 1. Last ordered by user (if logged in)
+    // 2. Most ordered by user (if different from #1)
+    // 3. Online stores before offline
+    // 4. By global popularity (total orders)
+    formattedStores.sort((a, b) => {
+      const aId = a._id.toString();
+      const bId = b._id.toString();
+
+      // 1. Last ordered store comes first
+      if (aId === lastOrderedStoreId) return -1;
+      if (bId === lastOrderedStoreId) return 1;
+
+      // 2. Most ordered store comes second (if different from last)
+      if (mostOrderedStoreId && mostOrderedStoreId !== lastOrderedStoreId) {
+        if (aId === mostOrderedStoreId) return -1;
+        if (bId === mostOrderedStoreId) return 1;
+      }
+
+      // 3. Online stores before offline
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+
+      // 4. Sort by global popularity (most orders first)
+      return (b._popularity || 0) - (a._popularity || 0);
+    });
+
+    // Remove internal _popularity field before sending
+    formattedStores = formattedStores.map(({ _popularity, ...store }) => store);
+
     res.json({
       success: true,
-      count: stores.length,
-      stores: stores.map(store => ({
-        _id: store._id,
-        businessName: store.businessName,
-        storeType: store.storeType,
-        address: store.address,
-        phone: store.phone,
-        description: store.description,
-        workingHours: store.workingHours,
-        serviceAreas: store.serviceAreas,
-        location: store.location,
-        isOnline: store.isOnline !== false, // Include online status
-        image: store.image || 'https://via.placeholder.com/150' // Add placeholder if no image
-      }))
+      count: formattedStores.length,
+      stores: formattedStores
     });
   } catch (error) {
     console.error('Get stores error:', error);

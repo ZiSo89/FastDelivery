@@ -52,7 +52,11 @@ export const healthCheck = async (maxRetries = 3) => {
 export const customerService = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/customer/register', data),
-  getStores: (lat, lng) => api.get(`/orders/stores?latitude=${lat}&longitude=${lng}&maxDistance=5000000`),
+  getStores: (lat, lng, phone = null) => {
+    let url = `/orders/stores?latitude=${lat}&longitude=${lng}&maxDistance=5000000`;
+    if (phone) url += `&phone=${encodeURIComponent(phone)}`;
+    return api.get(url);
+  },
   getServiceStatus: () => api.get('/orders/service-status'),
   createOrder: (orderData) => api.post('/orders', orderData, {
     headers: orderData instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}

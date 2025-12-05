@@ -357,8 +357,11 @@ const HomeScreen = ({ navigation }) => {
       const lat = location ? location.latitude : 40.8457;
       const lng = location ? location.longitude : 25.8733;
       
-      console.log('📍 Loading stores for location:', lat, lng);
-      const response = await customerService.getStores(lat, lng);
+      // Get user's phone for personalized store ordering
+      const userPhone = user?.phone || null;
+      
+      console.log('📍 Loading stores for location:', lat, lng, userPhone ? `(personalized for ${userPhone})` : '');
+      const response = await customerService.getStores(lat, lng, userPhone);
       console.log('📍 Stores loaded:', response.data.stores?.length || 0);
       
       // Log isOnline status for debugging

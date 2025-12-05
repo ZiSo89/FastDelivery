@@ -13,11 +13,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { customerService } from '../services/api';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 // Default icon for unknown types (fallback)
 const DEFAULT_ICON = '🏪';
 
 const SearchScreen = ({ navigation }) => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [stores, setStores] = useState([]);
   const [filteredStores, setFilteredStores] = useState([]);
@@ -74,7 +76,9 @@ const SearchScreen = ({ navigation }) => {
       // Use default location - no need for permission in search screen
       const lat = 40.8457;
       const lng = 25.8733;
-      const response = await customerService.getStores(lat, lng);
+      const userPhone = user?.phone || null;
+      
+      const response = await customerService.getStores(lat, lng, userPhone);
       setStores(response.data.stores || []);
       
       // If we already have a search term, filter immediately
