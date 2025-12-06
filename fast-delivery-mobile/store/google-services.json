@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "396794187924",
+    "project_id": "fast-delivery-10142",
+    "storage_bucket": "fast-delivery-10142.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396794187924:android:912669772923f8d35be481",
+        "android_client_info": {
+          "package_name": "com.fastdelivery.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKO5Ti2rzlj9JrHPXB4NvIRVlBihJK4i4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396794187924:android:6cb5e7497ab1b4735be481",
+        "android_client_info": {
+          "package_name": "com.fastdelivery.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKO5Ti2rzlj9JrHPXB4NvIRVlBihJK4i4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396794187924:android:cd44a2c1a540722a5be481",
+        "android_client_info": {
+          "package_name": "com.fastdelivery.store"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKO5Ti2rzlj9JrHPXB4NvIRVlBihJK4i4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

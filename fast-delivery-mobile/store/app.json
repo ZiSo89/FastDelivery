@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Fast Delivery Store",
+    "slug": "fastdelivery-store",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#007bff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fastdelivery.store"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#007bff"
+      },
+      "package": "com.fastdelivery.store",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "43835cb5-520f-4c0e-b5d4-93428e536914"
+      }
+    },
+    "owner": "zisosak"
+  }
+}
